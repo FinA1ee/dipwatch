@@ -1,0 +1,14 @@
+version: "2"
+
+linters:
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - unconvert
+  exclusions:
+    rules:
+      # Tests use fixed fake tokens and local URLs on purpose.
+      - path: _test\.go
+        linters: [gosec]

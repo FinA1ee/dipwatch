@@ -1,0 +1,10 @@
+packages:
+  - gateway
+  - web
+
+# esbuild (used by vite, vitest and tsx) downloads its binary in a build script.
+allowBuilds:
+  esbuild: true
+
+# Lets `pnpm deploy` build a self-contained gateway image.
+injectWorkspacePackages: true

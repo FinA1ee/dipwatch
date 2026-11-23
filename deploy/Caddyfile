@@ -1,0 +1,22 @@
+# Plain HTTP until ICP filing is done. Replace ":80" with the domain name
+# afterwards and Caddy will obtain and renew HTTPS certificates on its own.
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		# flush_interval -1 streams SSE responses without buffering.
+		reverse_proxy gateway:3000 {
+			flush_interval -1
+		}
+	}
+
+	handle /auth/* {
+		reverse_proxy gateway:3000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

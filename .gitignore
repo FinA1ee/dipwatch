@@ -1,0 +1,22 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+deploy/.env
+
+# dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+core/bin/
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/
+
+# agent tooling (kept local)
+.claude/
+CLAUDE.md
+AGENTS.md
