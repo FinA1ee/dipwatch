@@ -121,7 +121,8 @@ func TestRunReturnsValidatedOffers(t *testing.T) {
 	if run.Offers[1].Availability != "unknown" || run.Offers[1].Condition != "unknown" {
 		t.Fatalf("second offer defaults: %+v", run.Offers[1])
 	}
-	if strings.Join(browser.calls, ",") != "browser_navigate,browser_snapshot" || !browser.closed {
+	// The harness snapshots after navigate, then the model's own snapshot call.
+	if strings.Join(browser.calls, ",") != "browser_navigate,browser_snapshot,browser_snapshot" || !browser.closed {
 		t.Fatalf("browser calls %v, closed=%v", browser.calls, browser.closed)
 	}
 	if run.Steps != 3 || run.TokensIn != 3000 || run.TokensOut != 150 || run.CostMicros != 3000*2+150*8 {
@@ -288,5 +289,123 @@ func TestFileWritingArgumentsAreRemoved(t *testing.T) {
 	}
 	if _, ok := b.args[0]["filename"]; ok || len(b.args) != 1 {
 		t.Fatalf("filename reached the browser: %v", b.args)
+	}
+}
+
+func TestOldPageContentIsTrimmedFromHistory(t *testing.T) {
+	page := strings.Repeat("- listitem: RTX 5090 $1,999\n", 200)
+	model := &scriptedModel{turns: []llm.Turn{
+		call("1", "browser_navigate", `{"url":"https://www.newegg.com/p/pl?d=rtx+5090"}`),
+		call("2", "browser_snapshot", `{}`),
+		call("3", "browser_snapshot", `{}`),
+		call("4", "submit_offers", goodSubmission),
+	}}
+	a := newAgent(model, &fakeBrowser{page: page}, &memRecorder{}, DefaultBudget)
+	if _, err := a.Run(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+	var full, trimmed int
+	for _, m := range model.lastSeen {
+		if m.Role != llm.RoleTool {
+			continue
+		}
+		if m.Content == trimmedNote {
+			trimmed++
+		} else {
+			full++
+		}
+	}
+	// Three page results were sent before submit_offers; only the newest stays full.
+	if full != 1 || trimmed != 2 {
+		t.Fatalf("last request carried %d full and %d trimmed tool results, want 1 and 2", full, trimmed)
+	}
+}
+
+func TestFindResultsAreCapped(t *testing.T) {
+	model := &scriptedModel{turns: []llm.Turn{
+		call("1", "browser_find", `{"regex":"\\$","maxResults":40}`),
+		call("2", "browser_find", `{"regex":"\\$"}`),
+		call("3", "submit_offers", goodSubmission),
+	}}
+	b := &argsBrowser{}
+	a := &Agent{Model: model, NewBrowser: func(context.Context) (Browser, error) { return b, nil }}
+	if _, err := a.Run(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+	for i, args := range b.args {
+		if args["maxResults"] != float64(maxFindResults) {
+			t.Fatalf("call %d: maxResults %v, want %d", i+1, args["maxResults"], maxFindResults)
+		}
+	}
+}
+
+func TestLatestPageSurvivesLaterSearches(t *testing.T) {
+	page := strings.Repeat("- heading \"RTX 5090\" $1,999\n", 200)
+	model := &scriptedModel{turns: []llm.Turn{
+		call("1", "browser_navigate", `{"url":"https://www.newegg.com/p/pl?d=rtx+5090"}`),
+		call("2", "browser_find", `{"regex":"5090"}`),
+		call("3", "browser_find", `{"regex":"\\$"}`),
+		call("4", "submit_offers", goodSubmission),
+	}}
+	a := newAgent(model, &fakeBrowser{page: page}, &memRecorder{}, DefaultBudget)
+	if _, err := a.Run(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+	var navigate, find2 string
+	for _, m := range model.lastSeen {
+		switch m.ToolCallID {
+		case "1":
+			navigate = m.Content
+		case "2":
+			find2 = m.Content
+		}
+	}
+	if navigate == trimmedNote {
+		t.Fatal("the page from navigate was trimmed although it is the latest page")
+	}
+	if find2 != trimmedNote {
+		t.Fatal("an older search result was kept")
+	}
+}
+
+type toolsSeenModel struct {
+	scriptedModel
+	offered [][]string
+}
+
+func (m *toolsSeenModel) Chat(ctx context.Context, msgs []llm.Message, tools []llm.Tool) (llm.Turn, error) {
+	names := make([]string, len(tools))
+	for i, t := range tools {
+		names[i] = t.Name
+	}
+	m.offered = append(m.offered, names)
+	return m.scriptedModel.Chat(ctx, msgs, tools)
+}
+
+func TestHarnessForcesWrapUpNearBudget(t *testing.T) {
+	model := &toolsSeenModel{scriptedModel: scriptedModel{turns: []llm.Turn{
+		call("1", "browser_snapshot", `{}`), call("2", "browser_snapshot", `{}`), call("3", "browser_snapshot", `{}`),
+		call("4", "browser_snapshot", `{}`), call("5", "browser_snapshot", `{}`), call("6", "browser_snapshot", `{}`),
+		call("7", "browser_snapshot", `{}`), call("8", "submit_offers", goodSubmission),
+	}}}
+	a := &Agent{Model: model, NewBrowser: func(context.Context) (Browser, error) { return &fakeBrowser{}, nil },
+		Budget: Budget{MaxSteps: 10, MaxTokens: 1_000_000, Timeout: time.Minute}}
+	run, err := a.Run(context.Background(), task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := model.offered[len(model.offered)-1]
+	if strings.Join(last, ",") != "submit_offers,report_blocked" {
+		t.Fatalf("after 7 of 10 steps the model was offered %v, want only the finishing tools", last)
+	}
+	if len(model.offered[0]) <= 2 {
+		t.Fatalf("browser tools missing at the start: %v", model.offered[0])
+	}
+	found := false
+	for _, s := range run.Trace {
+		found = found || strings.HasPrefix(s.Note, "harness: budget")
+	}
+	if !found {
+		t.Fatal("wrap-up not recorded in the trace")
 	}
 }

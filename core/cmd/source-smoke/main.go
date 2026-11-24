@@ -63,6 +63,7 @@ func run(ctx context.Context, source, query string, limit int, browserOnly bool,
 		NewBrowser: func(ctx context.Context) (agent.Browser, error) {
 			return agent.StartPlaywright(ctx, agent.PlaywrightCommand())
 		},
+		Recorder: printTrace{},
 	}
 	return search(ctx, agent.Strategy{Agent: a, Store: store}, source, query, limit)
 }
@@ -109,5 +110,25 @@ func openInBrowser(ctx context.Context, store agent.Store, query, dump string) e
 	for _, l := range exLines[:min(40, len(exLines))] {
 		fmt.Println("  " + l)
 	}
+	return nil
+}
+
+// printTrace prints each step of an agent run, so a live run can be inspected.
+type printTrace struct{}
+
+func (printTrace) Record(_ context.Context, run agent.Run) error {
+	fmt.Fprintf(os.Stderr, "\n--- agent trace (%s, prompt %s)\n", run.Outcome, agent.PromptVersion)
+	for i, s := range run.Trace {
+		line := s.Tool
+		if s.Arguments != "" && s.Arguments != "{}" {
+			line += " " + s.Arguments
+		}
+		if s.Note != "" {
+			line = s.Note
+		}
+		fmt.Fprintf(os.Stderr, "%2d. %.140s\n    -> %.140s\n", i+1, line, strings.ReplaceAll(s.Result, "\n", " "))
+	}
+	fmt.Fprintf(os.Stderr, "steps %d, tokens in %d out %d, cost %.4f yuan, %s\n\n",
+		run.Steps, run.TokensIn, run.TokensOut, float64(run.CostMicros)/1e6, run.Duration.Round(time.Second))
 	return nil
 }

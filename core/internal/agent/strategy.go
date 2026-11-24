@@ -25,8 +25,9 @@ var Stores = map[string]Store{
 	"pcpartpicker": {"pcpartpicker", "PCPartPicker", "https://pcpartpicker.com/search/?q=%s", []string{"pcpartpicker.com"}, "USD"},
 	"smzdm":        {"smzdm", "SMZDM 什么值得买", "https://search.smzdm.com/?c=home&s=%s", []string{"smzdm.com"}, "CNY"},
 	"jd":           {"jd", "JD.com 京东", "https://search.jd.com/Search?keyword=%s&enc=utf-8", []string{"jd.com"}, "CNY"},
-	"amazon-us":    {"amazon-us", "Amazon US", "https://www.amazon.com/s?k=%s", []string{"amazon.com"}, "USD"},
-	"amazon-jp":    {"amazon-jp", "Amazon Japan", "https://www.amazon.co.jp/s?k=%s", []string{"amazon.co.jp"}, "JPY"},
+	// From mainland China, amazon.com may redirect to amazon.sg and show SGD.
+	"amazon-us": {"amazon-us", "Amazon US", "https://www.amazon.com/s?k=%s", []string{"amazon.com", "amazon.sg"}, "USD"},
+	"amazon-jp": {"amazon-jp", "Amazon Japan", "https://www.amazon.co.jp/s?k=%s", []string{"amazon.co.jp"}, "JPY"},
 }
 
 // Strategy makes the agent a sources.Strategy named "agent".

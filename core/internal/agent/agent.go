@@ -33,7 +33,17 @@ const (
 	toolBlocked = "report_blocked"
 	// Page snapshots can be 100,000+ characters. Cutting them keeps a run inside
 	// its token budget; listings are usually near the top of a results page.
-	maxToolResultChars = 12_000
+	maxToolResultChars = 8_000
+	// Every model call re-sends the whole conversation, so old page contents would be
+	// paid for again on each turn. The latest page and the latest result of any
+	// tool are kept in full; older ones are replaced with a note.
+	keepFullToolResults = 1
+	// Past this share of the step or token budget, the model is told to submit and
+	// is offered only the finishing tools.
+	wrapUpAt = 0.7
+	// browser_find returns this many matches at most, whatever the model asks for.
+	maxFindResults = 15
+	trimmedNote    = "[Older page content removed to save tokens. Use the latest page content, or take a new snapshot.]"
 )
 
 // browserTools is the allowlist. Anything else Playwright MCP offers (file upload,
@@ -46,6 +56,17 @@ var browserTools = map[string]bool{
 	"browser_press_key": true,
 	"browser_wait_for":  true,
 	"browser_find":      true,
+}
+
+// pageChangingTools leave the browser on a new or changed page. Playwright MCP
+// answers them with a link to a snapshot file rather than the page itself, so the
+// harness takes a snapshot right after and returns that instead.
+var pageChangingTools = map[string]bool{
+	"browser_navigate":  true,
+	"browser_click":     true,
+	"browser_type":      true,
+	"browser_press_key": true,
+	"browser_wait_for":  true,
 }
 
 // argsRemoved are tool arguments the model may not use: "filename" would make
@@ -186,7 +207,9 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 		{Role: llm.RoleSystem, Content: systemPrompt},
 		{Role: llm.RoleUser, Content: taskPrompt(task)},
 	}
-	nudged, rejectedSubmission := false, false
+	nudged, rejectedSubmission, wrappingUp := false, false, false
+	pageResultIDs := map[string]bool{}  // tool calls whose result is page content
+	finishTools := tools[len(tools)-2:] // submit_offers and report_blocked, added last
 
 	for {
 		if ctx.Err() != nil {
@@ -202,7 +225,18 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 			return
 		}
 
-		turn, err := a.Model.Chat(ctx, messages, tools)
+		offered := tools
+		if !wrappingUp && (float64(run.Steps) >= wrapUpAt*float64(budget.MaxSteps) ||
+			float64(run.TokensIn+run.TokensOut) >= wrapUpAt*float64(budget.MaxTokens)) {
+			wrappingUp = true
+			run.Trace = append(run.Trace, Step{Note: "harness: budget 70% used, asking the model to submit"})
+			messages = append(messages, llm.Message{Role: llm.RoleUser, Content: "Budget nearly used. Call submit_offers now " +
+				"with the listings you have seen (use the latest page content), or report_blocked if you saw none."})
+		}
+		if wrappingUp {
+			offered = finishTools
+		}
+		turn, err := a.Model.Chat(ctx, messages, offered)
 		if err != nil {
 			fail(OutcomeError, err)
 			return
@@ -258,10 +292,14 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 
 			default:
 				result = a.callBrowser(ctx, browser, task, call)
+				if pageChangingTools[call.Name] || call.Name == "browser_snapshot" {
+					pageResultIDs[call.ID] = true
+				}
 			}
 			step.Result = truncate(result, 300)
 			run.Trace = append(run.Trace, step)
 			messages = append(messages, llm.Message{Role: llm.RoleTool, ToolCallID: call.ID, Content: result})
+			trimOldToolResults(messages, keepFullToolResults, pageResultIDs)
 		}
 	}
 }
@@ -279,6 +317,11 @@ func (a *Agent) callBrowser(ctx context.Context, browser Browser, task Task, cal
 	for _, k := range argsRemoved {
 		delete(args, k)
 	}
+	if call.Name == "browser_find" {
+		if n, ok := args["maxResults"].(float64); !ok || n <= 0 || n > maxFindResults {
+			args["maxResults"] = float64(maxFindResults)
+		}
+	}
 	if call.Name == "browser_navigate" {
 		raw, _ := args["url"].(string)
 		u, err := url.Parse(raw)
@@ -290,7 +333,37 @@ func (a *Agent) callBrowser(ctx context.Context, browser Browser, task Task, cal
 	if err != nil {
 		return "Error: " + truncate(err.Error(), 500)
 	}
+	if pageChangingTools[call.Name] {
+		if snap, err := browser.Call(ctx, "browser_snapshot", map[string]any{}); err == nil {
+			out = snap
+		}
+	}
 	return untrusted(truncate(excerpt(compact(out), task.Product, maxToolResultChars), maxToolResultChars+200))
+}
+
+// trimOldToolResults replaces older tool results with a short note. It keeps the
+// last keep results of any kind, plus the most recent page content, so the model
+// can still read listings after a few searches. Tool messages themselves must
+// stay: the API pairs each one with its tool call.
+func trimOldToolResults(messages []llm.Message, keep int, pageResults map[string]bool) {
+	seen, latestPageKept := 0, false
+	for i := len(messages) - 1; i >= 0; i-- {
+		m := &messages[i]
+		if m.Role != llm.RoleTool {
+			continue
+		}
+		seen++
+		isPage := pageResults[m.ToolCallID]
+		if seen <= keep || (isPage && !latestPageKept) {
+			if isPage {
+				latestPageKept = true
+			}
+			continue
+		}
+		if len(m.Content) > len(trimmedNote) {
+			m.Content = trimmedNote
+		}
+	}
 }
 
 func allowedTools(available []llm.Tool) []llm.Tool {

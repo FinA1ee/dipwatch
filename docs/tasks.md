@@ -124,7 +124,7 @@ The LLM key is not available yet. The agent is built and tested against a script
 - [x] **3.4 Run recording.** `InsertAgentRun` query and a recorder used by every run.
 - [x] **3.5 Agent strategy.** `sources.Strategy` named `agent`, one task template per store (search URL, allowed hosts, currency).
 - [x] **3.6 Worker image.** Separate `worker` image with Node 24, Chromium and Playwright MCP; compose, CI and deploy updated.
-- [ ] **3.7 Live check (live).** Run the agent against the five candidate stores and enable the ones that work.
+- [x] **3.7 Live check (live).** Run the agent against the five candidate stores and enable the ones that work.
 
 ### Day 3 notes
 
@@ -134,4 +134,27 @@ The LLM key is not available yet. The agent is built and tested against a script
 - **Model:** DeepSeek `deepseek-flash`, the cheapest current model, with thinking turned off via `LLM_EXTRA_BODY`. Prices configured at the peak rate (2 and 8 yuan per million input and output tokens) so cost estimates are on the high side.
 - **Prompt version** is recorded in every run's trace (`browse-v1`), so later prompt changes can be compared.
 - **Worker image** is a separate build target with Node 24, Chromium and Playwright MCP 0.0.86, about 1.9 GB. Compose gives it 512 MB of shared memory, which Chromium needs.
-- **Blocked:** the DeepSeek account returns "Insufficient Balance", so M3.8 (live) waits for credit.
+
+### Day 3 live results (M3.8 met)
+
+DeepSeek `deepseek-flash`, query "RTX 5090", limit 10, from the dev machine:
+
+| Store        | Outcome | Offers | Steps | Tokens in / out | Cost   |
+| ------------ | ------- | ------ | ----- | --------------- | ------ |
+| Amazon US    | ok      | 1      | 6     | 25,424 / 588    | ¥0.056 |
+| Amazon Japan | ok      | 1      | 6     | 28,672 / 1,382  | ¥0.068 |
+| SMZDM        | ok      | 5      | 5     | 21,985 / 760    | ¥0.050 |
+
+Open quality issues for the Day 4 eval: Amazon runs return only one offer although the page shows 9 to 13; SMZDM prices may be list prices rather than deal prices; titles in Chinese still need English titles (matcher).
+
+### How the harness got there (prompt and harness versions)
+
+Each version was one live run on Amazon US. This is the kind of iteration the Day 4 eval set will make measurable.
+
+| Version   | Change                                                                                                                                                                                      | Result                                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| browse-v1 | First version                                                                                                                                                                               | Token limit after 9 steps: tried to switch from amazon.sg back to amazon.com, then searched with browser_find |
+| browse-v2 | Trim old tool results from the history (each call re-sends the whole conversation); tell the model not to change region; submit early                                                       | Token limit after 8 steps: browser_find returned 40 matches each time, tried page 2                           |
+| browse-v3 | Cap browser_find at 15 matches; tool results 8,000 characters; one results page only; allow amazon.sg                                                                                       | Token limit after 9 steps: still searching                                                                    |
+| browse-v4 | Found the root cause: Playwright MCP answers navigate with a link to a snapshot file, not the page. The harness now takes a snapshot after every page-changing tool and returns the excerpt | Token limit: page visible, but the model kept searching and the page was trimmed out of the history           |
+| browse-v5 | Keep the latest page in full while trimming older results; at 70% of the step or token budget, offer only submit_offers and report_blocked                                                  | **ok** on all three stores, 5 to 6 steps, about ¥0.05 to ¥0.07 per run                                        |
