@@ -48,6 +48,8 @@ jobs:
     if: needs.check.outputs.ready == 'true'
     runs-on: ubuntu-latest
     strategy:
+      # Let every image finish, so one failure shows all problems at once.
+      fail-fast: false
       matrix:
         include:
           - name: core
@@ -75,6 +77,9 @@ jobs:
           file: ${{ matrix.file }}
           platforms: linux/amd64
           push: true
+          # ACR Personal Edition rejects the attestation manifests buildx adds by default.
+          provenance: false
+          sbom: false
           tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/dipwatch:${{ matrix.name }}-${{ github.event.workflow_run.head_sha || github.sha }}
           cache-from: type=gha,scope=deploy-${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=deploy-${{ matrix.name }}
@@ -130,4 +135,4 @@ jobs:
           printf '%s' "$ACR_PASSWORD" | $SSH "$USER@$HOST" "docker login --username '$ACR_USERNAME' --password-stdin '$ACR_REGISTRY'"
           $SSH "$USER@$HOST" 'mkdir -p /opt/dipwatch/deploy'
           scp -i ~/.ssh/deploy_key -P "$PORT" deploy/compose.yaml deploy/deploy.sh "$USER@$HOST:/opt/dipwatch/deploy/"
-          $SSH "$USER@$HOST" "/opt/dipwatch/deploy/deploy.sh '$REPO' '$TAG'"
+          $SSH "$USER@$HOST" "sh /opt/dipwatch/deploy/deploy.sh '$REPO' '$TAG'"

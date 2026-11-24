@@ -38,13 +38,13 @@ flowchart TB
 
 ### Services
 
-| Service    | Language            | Listens on                  | Purpose                                                                                                               |
-| ---------- | ------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `caddy`    | Caddy               | 80 (8080 before ICP filing) | Serves the built web app. Sends `/api/*` and `/auth/*` to the gateway                                                 |
-| `gateway`  | TypeScript, Node 24 | 3000, internal              | Sign-in and sessions (Better Auth), rate limits, forwards `/api/*` to core with the user id                           |
-| `core-api` | Go                  | 8000, internal              | All product, search, tracking and history endpoints. Generates the OpenAPI contract                                   |
-| `worker`   | Go                  | none                        | Runs River jobs: source refresh, matching, alert checks, notifications. Runs headless Chromium for the browsing agent |
-| `postgres` | Postgres 16         | 5432, internal              | All data, plus the River job queue                                                                                    |
+| Service    | Language            | Listens on                                             | Purpose                                                                                                               |
+| ---------- | ------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `caddy`    | Caddy               | 80 in the container; host port 18080 before ICP filing | Serves the built web app. Sends `/api/*` and `/auth/*` to the gateway                                                 |
+| `gateway`  | TypeScript, Node 24 | 3000, internal                                         | Sign-in and sessions (Better Auth), rate limits, forwards `/api/*` to core with the user id                           |
+| `core-api` | Go                  | 8000, internal                                         | All product, search, tracking and history endpoints. Generates the OpenAPI contract                                   |
+| `worker`   | Go                  | none                                                   | Runs River jobs: source refresh, matching, alert checks, notifications. Runs headless Chromium for the browsing agent |
+| `postgres` | Postgres 16         | 5432, internal                                         | All data, plus the River job queue                                                                                    |
 
 Only Caddy is reachable from outside. The gateway, core and Postgres sit on a private Docker network.
 
@@ -253,7 +253,7 @@ flowchart LR
 
 ## Local development
 
-`make dev` starts Postgres, core-api, worker, gateway and Caddy with `docker compose`. `make dev-native` runs Postgres in Docker and the rest natively for faster iteration. The site is at `http://localhost:8080`.
+`make dev` builds the images and starts Postgres, core-api, worker, gateway and Caddy with `docker compose`. The site is at `http://localhost:18080`. `make db` starts only Postgres, for running Go tests on the host.
 
 ## Library choices
 

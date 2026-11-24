@@ -16,8 +16,9 @@ deploy/.env:
 	     deploy/.env.example > deploy/.env
 	@echo "created deploy/.env"
 
-dev: env ## Build and start the full stack at http://localhost:8080
-	$(COMPOSE) up --build -d
+dev: env ## Build and start the full stack at http://localhost:18080
+	$(COMPOSE) build
+	$(COMPOSE) up -d
 	@echo "open http://localhost:$(call envval,HTTP_PORT)"
 
 down: ## Stop the stack (keeps data)
