@@ -26,7 +26,9 @@ services:
 
   core-api:
     image: ${IMAGE_REPO:-dipwatch}:core-${IMAGE_TAG:-local}
-    build: ../core
+    build:
+      context: ../core
+      target: core
     command: ["core-api", "serve"]
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
@@ -45,10 +47,23 @@ services:
           memory: 256m
 
   worker:
-    image: ${IMAGE_REPO:-dipwatch}:core-${IMAGE_TAG:-local}
+    # Worker image: Go worker plus Node, Chromium and Playwright MCP for the browsing agent.
+    image: ${IMAGE_REPO:-dipwatch}:worker-${IMAGE_TAG:-local}
+    build:
+      context: ../core
+      target: worker
     command: ["worker"]
+    # Chromium needs more shared memory than Docker's 64 MB default.
+    shm_size: 512m
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
+      # Browsing agent. Empty LLM_API_KEY keeps it off.
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-flash}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_PRICE_IN_CNY_PER_M: ${LLM_PRICE_IN_CNY_PER_M:-2}
+      LLM_PRICE_OUT_CNY_PER_M: ${LLM_PRICE_OUT_CNY_PER_M:-8}
+      LLM_EXTRA_BODY: ${LLM_EXTRA_BODY:-}
     depends_on:
       core-api:
         condition: service_healthy

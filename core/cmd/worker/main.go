@@ -20,9 +20,11 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
+	"github.com/FinA1ee/dipwatch/core/internal/agent"
 	"github.com/FinA1ee/dipwatch/core/internal/config"
 	"github.com/FinA1ee/dipwatch/core/internal/db"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/kakaku"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
@@ -45,11 +47,35 @@ func main() {
 	}
 }
 
-func adapters() jobs.Adapters {
+func adapters(pool *pgxpool.Pool) jobs.Adapters {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	return jobs.Adapters{
+	a := jobs.Adapters{
 		"kakaku": {"html": kakaku.New(httpClient, kakaku.DefaultBaseURL)},
 	}
+
+	cfg, err := llm.ConfigFromEnv()
+	if errors.Is(err, llm.ErrNotConfigured) {
+		slog.Info("LLM_API_KEY not set: browsing agent disabled")
+		return a
+	} else if err != nil {
+		slog.Error("LLM config invalid: browsing agent disabled", "err", err)
+		return a
+	}
+	browsing := &agent.Agent{
+		Model: llm.NewOpenAI(cfg),
+		NewBrowser: func(ctx context.Context) (agent.Browser, error) {
+			return agent.StartPlaywright(ctx, agent.PlaywrightCommand())
+		},
+		Recorder: agent.DBRecorder{Queries: store.New(pool)},
+	}
+	for id, s := range agent.Stores {
+		if a[id] == nil {
+			a[id] = map[string]sources.Strategy{}
+		}
+		a[id]["agent"] = agent.Strategy{Agent: browsing, Store: s}
+	}
+	slog.Info("browsing agent enabled", "model", cfg.Model, "stores", len(agent.Stores))
+	return a
 }
 
 func open(ctx context.Context) (*pgxpool.Pool, error) {
@@ -74,7 +100,7 @@ func run() error {
 	river.AddWorker(workers, &jobs.RefreshProductWorker{
 		DB:       pool,
 		Registry: sources.NewRegistry(),
-		Adapters: adapters(),
+		Adapters: adapters(pool),
 	})
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues:          map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: maxWorkers}},

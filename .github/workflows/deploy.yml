@@ -55,6 +55,11 @@ jobs:
           - name: core
             context: core
             file: core/Dockerfile
+            target: core
+          - name: worker
+            context: core
+            file: core/Dockerfile
+            target: worker
           - name: gateway
             context: .
             file: gateway/Dockerfile
@@ -75,6 +80,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
           platforms: linux/amd64
           push: true
           # ACR Personal Edition rejects the attestation manifests buildx adds by default.

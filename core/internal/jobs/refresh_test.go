@@ -57,8 +57,11 @@ func runJob(t *testing.T, ctx context.Context, pool *pgxpool.Pool, adapters Adap
 	t.Helper()
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &RefreshProductWorker{DB: pool, Registry: sources.NewRegistry(), Adapters: adapters})
+	// A queue of its own, so a worker from `make dev` sharing this database does not
+	// take the test's job.
+	queue := fmt.Sprintf("test_%d", time.Now().UnixNano())
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}},
+		Queues:  map[string]river.QueueConfig{queue: {MaxWorkers: 1}},
 		Workers: workers,
 	})
 	if err != nil {
@@ -71,7 +74,7 @@ func runJob(t *testing.T, ctx context.Context, pool *pgxpool.Pool, adapters Adap
 	}
 	defer func() { _ = client.Stop(ctx) }()
 
-	res, err := client.Insert(ctx, RefreshProductArgs{ProductID: productID}, nil)
+	res, err := client.Insert(ctx, RefreshProductArgs{ProductID: productID}, &river.InsertOpts{Queue: queue})
 	if err != nil {
 		t.Fatal(err)
 	}

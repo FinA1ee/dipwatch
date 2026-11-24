@@ -99,6 +99,11 @@ jobs:
           - name: core
             context: core
             file: core/Dockerfile
+            target: core
+          - name: worker
+            context: core
+            file: core/Dockerfile
+            target: worker
           - name: gateway
             context: .
             file: gateway/Dockerfile
@@ -112,6 +117,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
           push: false
           tags: dipwatch-${{ matrix.name }}:ci
           cache-from: type=gha,scope=${{ matrix.name }}
