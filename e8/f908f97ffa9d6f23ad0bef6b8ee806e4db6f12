@@ -1,0 +1,21 @@
+docs/tasks.md
+  s_3313d584934833::t_5aaa7765768792 94
+deploy/deploy.sh
+  s_3313d584934833::t_dea28ae3444aff 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "e8f908f97ffa9d6f23ad0bef6b8ee806e4db6f12",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
