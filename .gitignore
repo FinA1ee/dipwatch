@@ -20,3 +20,6 @@ core/bin/
 .claude/
 CLAUDE.md
 AGENTS.md
+
+# Playwright MCP page snapshots written during local runs
+.playwright-mcp/

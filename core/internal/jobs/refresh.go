@@ -54,7 +54,8 @@ type RefreshProductWorker struct {
 }
 
 func (w *RefreshProductWorker) Timeout(*river.Job[RefreshProductArgs]) time.Duration {
-	return 5 * time.Minute
+	// Agent sources take up to 90 s each and run one after another (per-source jobs come on Day 4).
+	return 15 * time.Minute
 }
 
 func (w *RefreshProductWorker) Work(ctx context.Context, job *river.Job[RefreshProductArgs]) error {

@@ -83,7 +83,7 @@ The ECS and eBay keys are not available yet. Everything that needs them is built
 - [x] **2.3 Sources package.** `core/internal/sources`: `Offer`, `Query`, `Strategy`, `Source`, `Registry` with ordered fallback and health tracking. Tests for M2.3.
 - [x] **2.4 River and the refresh job.** River migrations run with ours. `core/internal/jobs`: `RefreshProductArgs` and its worker, which calls the registry for each enabled source and upserts offers and price points. Worker binary runs River. Integration test for M2.4.
 - [x] **2.5 Kakaku adapter.** `core/internal/sources/kakaku`: html strategy with goquery, Shift_JIS decoding, catalog and mall item IDs. Fixture tests (M2.5). `cmd/source-smoke` for the live check.
-- [ ] **2.6 Deploy pipeline (live part open).** `.github/workflows/deploy.yml`, `deploy/deploy.sh` (pull, up, health check, rollback). `deploy/compose.yaml` reads images from one ACR repository via `IMAGE_REPO`, with tags like `core-<sha>`. Written and passing `actionlint`; the workflow skips until the ECS and ACR secrets exist.
+- [x] **2.6 Deploy pipeline.** `.github/workflows/deploy.yml`, `deploy/deploy.sh` (pull, up, health check, rollback). `deploy/compose.yaml` reads images from one ACR repository via `IMAGE_REPO`, with tags like `core-<sha>`. Written and passing `actionlint`; the workflow skips until the ECS and ACR secrets exist.
 - [x] **2.7 Server spike (live).** Run the spike and an LLM reachability check on the ECS.
 
 ### Day 2 notes
@@ -95,3 +95,43 @@ The ECS and eBay keys are not available yet. Everything that needs them is built
 - **Postgres on the server** comes from a copy in ACR (`dipwatch-postgres:16`), pushed by the deploy workflow, because the server cannot pull from Docker Hub.
 - Verified end to end in the local stack: `make refresh Q="RTX 5090"` stored 44 offers and 44 price points from Kakaku.
 - **Server checked (2.7):** Kakaku and Amazon US work from the ECS; Amazon Japan times out there. DeepSeek, Qwen and Kimi are reachable; OpenAI, Google OAuth, Docker Hub and the Go proxy are not. Google sign-in is dropped.
+- **First live deploy (2.6):** merge of `be35549` to `main` passed CI, deployed itself, and the health URL answers from the internet on the server IP. Fixes needed on the way: the personal ACR domain, buildx attestations off for ACR, and running `deploy.sh` with `sh` because `scp` drops the executable bit.
+
+## Day 3: browsing agent
+
+Goal: an `agent` strategy that drives a real browser with an LLM and returns validated offers, with every run budgeted and recorded.
+
+The LLM key is not available yet. The agent is built and tested against a scripted fake model and a fake browser; the live run against real stores happens once the key arrives (marked **live**).
+
+### Success metrics
+
+| #    | Metric                                                  | How to check                                                                                                                                                                               |
+| ---- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M3.1 | Provider-neutral LLM client                             | `internal/llm` talks to any OpenAI-compatible endpoint, set by env. Tested against a fake server: tool calls and token usage parsed, cost computed from configured prices                  |
+| M3.2 | Agent loop works                                        | Test with a scripted model and fake browser: navigate, snapshot, `submit_offers`, offers returned                                                                                          |
+| M3.3 | Budgets enforced (C3)                                   | Tests: run stops at 15 steps, 30,000 tokens and 90 seconds, each with its own outcome                                                                                                      |
+| M3.4 | Agent stays on the store                                | Tests: navigation to another host is refused without calling the browser; tools outside the allowlist are refused; offers whose URL is off the store are dropped                           |
+| M3.5 | Output is validated                                     | Tests: invalid prices or missing fields are dropped; a submission with no valid offers is sent back to the model once; a "blocked" report fails the strategy so the registry can fall back |
+| M3.6 | Every run recorded (C5)                                 | Each run writes one `agent_runs` row with model, steps, tokens, cost and outcome (integration test)                                                                                        |
+| M3.7 | Real browser wired up                                   | The worker image contains Node, Chromium and Playwright MCP. A Go test talks to an in-memory MCP server through the same client code                                                       |
+| M3.8 | **Live:** offers from at least 3 sources without an API | `make source-smoke SOURCE=<id>` with a real key returns valid offers for 3 of: Amazon US, Amazon Japan, SMZDM (the stores a real browser can read, see notes)                              |
+
+### Tasks
+
+- [x] **3.1 LLM client.** `core/internal/llm`: `Model` interface with provider-neutral `Message`, `Tool`, `ToolCall` and `Turn` types; `OpenAI` implementation on `openai-go`; config from `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_PRICE_IN_CNY_PER_M`, `LLM_PRICE_OUT_CNY_PER_M`.
+- [x] **3.2 Browser client.** `core/internal/agent/browser.go`: start Playwright MCP as a child process, list and call tools through the Go MCP SDK.
+- [x] **3.3 Agent loop.** `core/internal/agent/agent.go`: system prompt, tool allowlist, host check, `submit_offers` validation, budgets, result truncation, trace.
+- [x] **3.4 Run recording.** `InsertAgentRun` query and a recorder used by every run.
+- [x] **3.5 Agent strategy.** `sources.Strategy` named `agent`, one task template per store (search URL, allowed hosts, currency).
+- [x] **3.6 Worker image.** Separate `worker` image with Node 24, Chromium and Playwright MCP; compose, CI and deploy updated.
+- [ ] **3.7 Live check (live).** Run the agent against the five candidate stores and enable the ones that work.
+
+### Day 3 notes
+
+- **Real browser check (no LLM):** `source-smoke -browser-only` opened each store in headless Chromium, on the Mac and inside the worker image. Amazon US (served as Amazon Singapore to this location), Amazon Japan and SMZDM show results. Newegg, B&H and PCPartPicker show a bot-check page (HTTP 403), and JD redirects to its verification page. The live target therefore uses the first three.
+- **Pages are too big for the model as-is.** Amazon's snapshot is about 220,000 characters. `compact` (drop refs on non-clickable lines, display attributes, query strings, repeated links, empty containers, price fragments) and `excerpt` (keep a window after each line naming the product) bring it to 12,000 characters with 8 to 13 listings.
+- **Currencies:** stores show the visitor's local currency (Amazon US showed SGD), so the agent records the currency on the page and only checks that it is an ISO code. Conversion happens in the matcher (Day 4).
+- **Model:** DeepSeek `deepseek-flash`, the cheapest current model, with thinking turned off via `LLM_EXTRA_BODY`. Prices configured at the peak rate (2 and 8 yuan per million input and output tokens) so cost estimates are on the high side.
+- **Prompt version** is recorded in every run's trace (`browse-v1`), so later prompt changes can be compared.
+- **Worker image** is a separate build target with Node 24, Chromium and Playwright MCP 0.0.86, about 1.9 GB. Compose gives it 512 MB of shared memory, which Chromium needs.
+- **Blocked:** the DeepSeek account returns "Insufficient Balance", so M3.8 (live) waits for credit.
