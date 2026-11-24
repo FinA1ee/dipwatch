@@ -1,0 +1,100 @@
+core/internal/sources/sources.go
+  s_3313d584934833::t_741e9ce7f38d62 1-48
+deploy/compose.yaml
+  s_3313d584934833::t_8504f851ea3c0a 6-7
+Makefile
+  s_3313d584934833::t_c33a7972903584 6
+  s_3313d584934833::t_9c64fa966b55ea 54-62
+docs/spikes/day1-sources.md
+  s_3313d584934833::t_9af7a84482bb63 55-60
+docs/design.md
+  s_3313d584934833::t_9af7a84482bb63 88-90,114-116,133
+core/internal/money/money.go
+  s_3313d584934833::t_69a65045951fd3 1-47
+deploy/deploy.sh
+  s_3313d584934833::t_847544772994ec 1-53
+core/sqlc.yaml
+  s_3313d584934833::t_503df72b83e3a5 1-11
+core/internal/sources/kakaku/testdata/search.html
+  s_3313d584934833::t_fa1388bf9774e1 1-50
+core/internal/store/queries/sources.sql
+  s_3313d584934833::t_b4fcbb5733fd73 1-12
+core/internal/store/db.go
+  s_3313d584934833::t_2bcd8b8af95e3d 1-32
+core/internal/sources/kakaku/kakaku_test.go
+  s_3313d584934833::t_74ae4c706aac80 1-88
+core/internal/store/queries/products.sql
+  s_3313d584934833::t_934e528a250f26 1-11
+core/cmd/worker/main.go
+  s_3313d584934833::t_7ea4b34e0423e0 1-6,11,13,17-21,25-28,31-33,36-42,48-55,58,60-63,67,73-91,94-122
+core/cmd/source-smoke/main.go
+  s_3313d584934833::t_959576ce100faf 1-46
+core/internal/db/migrations/00003_seed_sources.sql
+  s_3313d584934833::t_73fbbee1e9e7a5 1-5,8-19
+  s_3313d584934833::t_d8a372c9d6abd6 6-7
+core/internal/store/offers.sql.go
+  s_3313d584934833::t_2bcd8b8af95e3d 1-162
+.github/workflows/ci.yml
+  s_3313d584934833::t_7c0710ec56971d 38-42
+core/go.sum
+  s_3313d584934833::t_317d63ba7d15de 1-4,16-17,37-48,56-66,69-70,75-76
+core/internal/db/migrations/00002_schema.sql
+  s_3313d584934833::t_b3fc76fd113752 1-131
+core/go.mod
+  s_3313d584934833::t_4eabf7d786a052 24-25,27-30
+  s_3313d584934833::t_396355458960e2 6,13-15,19
+  s_3313d584934833::t_37924b415e99af 11-12
+core/internal/store/sources.sql.go
+  s_3313d584934833::t_2bcd8b8af95e3d 1-74
+docs/tasks.md
+  s_3313d584934833::t_d9eb0e90baec17 86
+  s_3313d584934833::t_f9eac0ae8cb25b 60-68,78-80,87
+  s_3313d584934833::t_2e253643aeb0c9 44
+  s_3313d584934833::t_9af7a84482bb63 81-85,88-95
+  s_3313d584934833::t_c6d2689e1beb26 69-77
+core/internal/store/products.sql.go
+  s_3313d584934833::t_2bcd8b8af95e3d 1-69
+core/internal/jobs/refresh.go
+  s_3313d584934833::t_0cfb5dc95cb25c 1-12,14-30,43-157
+  s_3313d584934833::t_3e7b806af1ba1f 13
+  s_3313d584934833::t_f8e70abf5564db 31-42
+core/internal/jobs/refresh_test.go
+  s_3313d584934833::t_5f9b986c7504be 1-185
+README.md
+  s_3313d584934833::t_c6d2689e1beb26 9,26-29,60-63,102-114
+  s_3313d584934833::t_eaea71651dfa78 79
+core/internal/sources/kakaku/kakaku.go
+  s_3313d584934833::t_9a24ef5139a13c 1-133
+core/internal/money/money_test.go
+  s_3313d584934833::t_f05ad56f0a6a9f 34-36
+  s_3313d584934833::t_2caf1a9f514200 1-33,37-43
+core/internal/sources/registry.go
+  s_3313d584934833::t_519c8ac556a3c5 1-93
+.github/workflows/deploy.yml
+  s_3313d584934833::t_89cf7551d478c8 1-121
+core/internal/store/queries/offers.sql
+  s_3313d584934833::t_4f9b8bfa2da29e 1-47
+core/internal/store/models.go
+  s_3313d584934833::t_2bcd8b8af95e3d 1-118
+core/internal/sources/registry_test.go
+  s_3313d584934833::t_1e60cf5fee3b1a 1-129
+core/internal/db/db.go
+  s_3313d584934833::t_266a805954b4ec 60-81
+  s_3313d584934833::t_8f384b1f60b5a2 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "afb5e397be8b9f65af8e898436ff0c58a663a211",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
