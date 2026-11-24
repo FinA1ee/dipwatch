@@ -89,6 +89,22 @@ All application tables live in the `app` schema. Better Auth owns the `auth` sch
 
 Money is stored as integer minor units (`price_minor`: cents, or yen for JPY) plus an ISO 4217 currency code. This avoids floating-point errors without a decimal library. `internal/money` converts between decimal strings and minor units.
 
+```mermaid
+erDiagram
+  users ||--o{ watch_items : tracks
+  products ||--o{ watch_items : "tracked by"
+  products ||--o{ queries : "spelled as"
+  products ||--o{ offers : "sold as"
+  sources ||--o{ offers : lists
+  offers ||--o{ price_points : history
+  watch_items ||--o{ alerts : fires
+  offers ||--o{ alerts : about
+  sources |o--o{ agent_runs : for
+  products |o--o{ agent_runs : for
+```
+
+`fx_rates` has no relations: it holds one row of exchange rates per day.
+
 | Table          | Key columns                                                                                                                                                                                                      | Notes                                                                |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `users`        | `id` (Better Auth user id), `email`, `currency`, `created_at`                                                                                                                                                    | Profile copy, created on first authenticated request                 |
