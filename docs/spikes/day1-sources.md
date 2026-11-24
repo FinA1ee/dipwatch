@@ -36,21 +36,59 @@ This only tells us what plain HTTP gets. The browsing agent (real Chromium, Day 
 
 The spike adds one tier to the design: **html**, a deterministic parser for pages that return results without script (CSS selectors or JSON-LD). It costs no tokens, so it is tried before the agent. It is the same mechanism the agent's saved recipes use for re-checks.
 
-| Source                    | Starting strategies (in order)      | Week 1 status                                                    |
-| ------------------------- | ----------------------------------- | ---------------------------------------------------------------- |
-| eBay                      | api (Browse API)                    | Day 2, needs developer keys                                      |
-| Kakaku.com                | html (JSON-LD)                      | Day 3                                                            |
-| Amazon Japan              | html, agent                         | Day 3                                                            |
-| Amazon US                 | html, agent                         | Day 3                                                            |
-| JD.com                    | agent                               | Day 3. If the agent also hits verification, defer with Taobao    |
-| SMZDM                     | agent                               | Day 3                                                            |
-| Newegg                    | agent                               | Day 3                                                            |
-| B&H Photo                 | agent                               | Day 3                                                            |
-| PCPartPicker              | agent                               | Day 3. Aggregates US retailers, so one source covers many stores |
-| Best Buy                  | api (Products API)                  | Only if keys are granted and the API accepts non-US callers      |
-| Taobao, Xianyu, Pinduoduo | agent with a logged-in local worker | Deferred, as agreed                                              |
+| Source       | Starting strategies (in order)         | Week 1 status                                                    |
+| ------------ | -------------------------------------- | ---------------------------------------------------------------- |
+| eBay         | api (Browse API)                       | Day 2, needs developer keys                                      |
+| Kakaku.com   | html (JSON-LD)                         | Day 3                                                            |
+| Amazon Japan | html, agent                            | Day 3                                                            |
+| Amazon US    | html, agent                            | Day 3                                                            |
+| JD.com       | agent                                  | Day 3. If the agent also hits verification, defer with Taobao    |
+| SMZDM        | agent                                  | Day 3                                                            |
+| Newegg       | agent                                  | Day 3                                                            |
+| B&H Photo    | agent                                  | Day 3                                                            |
+| PCPartPicker | agent                                  | Day 3. Aggregates US retailers, so one source covers many stores |
+| Best Buy     | api (Products API)                     | Only if keys are granted and the API accepts non-US callers      |
+| Taobao       | api (淘宝联盟 affiliate API)           | After week 1. Needs a 淘宝客 affiliate account and app approval  |
+| Xianyu       | agent with a logged-in browser session | After week 1. See design, "Sources that need a login"            |
+| Pinduoduo    | agent with a logged-in local worker    | Deferred                                                         |
 
 That gives 6 to 8 candidates for the week 1 target of at least 6 working sources, with at least 2 in China (JD, SMZDM) and 3 overseas.
+
+## Day 2 follow-up
+
+- **Kakaku** redirects to `search.kakaku.com`. Its JSON-LD turned out to be only a breadcrumb, so the adapter reads the HTML instead (`p-item` blocks with `p-item_name` and `p-item_priceNum`). A live search for "RTX 5090" returned 44 offers, and it is the first enabled source.
+- **eBay** is deferred. It needs a developer account and keyset approval, and its listings are mostly auctions and resellers. The `ebay-us` row stays in the database, disabled.
+- Kakaku results include laptops and PCs with an RTX 5090, not only the card. Filtering those out is the LLM matcher's job (Day 4, spec S6).
+
+## Day 2: the same check from the server
+
+Run once from the ECS (Aliyun, Hangzhou, 2026-11-24). Store pages:
+
+| Source                          | From the dev machine | From the server        |
+| ------------------------------- | -------------------- | ---------------------- |
+| Kakaku.com                      | 200, results         | 200, results (244 KB)  |
+| Amazon US                       | 200, results         | 200, results (636 KB)  |
+| Amazon Japan                    | 200, results         | **Timeout after 20 s** |
+| Best Buy                        | 200, no results      | **Connection error**   |
+| JD.com                          | Verification page    | Verification page      |
+| Taobao, Xianyu, Pinduoduo       | Script shell         | Script shell           |
+| SMZDM                           | Empty 202            | Empty 202              |
+| eBay, Newegg, B&H, PCPartPicker | 403                  | 403                    |
+
+Other services the server needs:
+
+| Service                                     | Result                                                                 | Consequence                                                   |
+| ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| DeepSeek, Qwen (DashScope), Kimi (Moonshot) | Reachable, under 1 s                                                   | Any of the three can be the server LLM                        |
+| OpenAI                                      | Unreachable                                                            | Local experiments only, as planned                            |
+| Google OAuth (`oauth2.googleapis.com`)      | Unreachable                                                            | **No Google sign-in.** Email and GitHub only (spec A1)        |
+| GitHub, GitHub API                          | Reachable                                                              | GitHub sign-in works                                          |
+| Aliyun ACR (Hangzhou)                       | Reachable, 40 ms                                                       | Images come from ACR, as planned                              |
+| Docker Hub                                  | Unreachable                                                            | Confirms the ACR copy of Postgres is needed                   |
+| Go module proxy                             | Unreachable                                                            | Never build Go on the server, as planned                      |
+| FX API (frankfurter)                        | Reachable; `api.frankfurter.app` redirects to `api.frankfurter.dev/v1` | Use `https://api.frankfurter.dev/v1/latest?base=CNY` directly |
+
+Amazon Japan works from the dev machine but not from the server, so it may need the agent or a local worker. Kakaku and Amazon US work from both.
 
 ## Open risks
 

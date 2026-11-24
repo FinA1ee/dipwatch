@@ -36,7 +36,7 @@ Requirements use EARS form. IDs are referenced from [tasks.md](tasks.md).
 
 ### Accounts
 
-- **A1.** A visitor shall be able to sign in with email (magic link) or GitHub. Google sign-in shall be added only if the server can reach Google's token endpoint.
+- **A1.** A visitor shall be able to sign in with email (magic link) or GitHub. Google sign-in is out of scope: the server cannot reach Google's token endpoint (checked on Day 2).
 - **A2.** The same verified email used through different sign-in methods shall map to one member.
 - **A3.** A member's tracked products, notes, alert rules, channels and currency shall be the same on every device they sign in from.
 

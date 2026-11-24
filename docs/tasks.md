@@ -41,7 +41,7 @@ Goal: every service exists, talks to the next one, runs locally with one command
 - [x] **1.4 Gateway skeleton.** Files: `gateway/src/app.ts`, `gateway/src/server.ts`, `gateway/src/app.test.ts`. `GET /healthz` for the container. `/api/*` forwarded to core with `X-Dipwatch-Internal` set and all incoming `X-Dipwatch-*` headers removed (M1.4).
 - [x] **1.5 Web skeleton.** Files: `web/index.html`, `web/src/main.tsx`, `web/src/App.tsx`, `web/src/api/client.ts`. Tailwind via the Vite plugin. Shows core and db status (M1.2).
 - [x] **1.6 Local stack.** Files: `deploy/compose.yaml`, `deploy/Caddyfile`, `core/Dockerfile`, `gateway/Dockerfile`, `web/Dockerfile`, `deploy/.env.example`, `Makefile` target `dev`. Core runs migrations on start. Done when M1.1 holds.
-- [ ] **1.7 CI.** File: `.github/workflows/ci.yml`. Jobs: `go` (golangci-lint, tests with a Postgres service), `ts` (Biome, `tsc`, Vitest, web build), `contract` (regenerate and diff), `secrets` (gitleaks), `images` (build all three images, no push). Done when M1.6 holds.
+- [x] **1.7 CI.** File: `.github/workflows/ci.yml`. Jobs: `go` (golangci-lint, tests with a Postgres service), `ts` (Biome, `tsc`, Vitest, web build), `contract` (regenerate and diff), `secrets` (gitleaks), `images` (build all three images, no push). Done when M1.6 holds.
 - [x] **1.8 Source feasibility spike.** Files: `tools/spike/sources/main.go`, `docs/spikes/day1-sources.md`. One polite GET per source search page for "RTX 5090" from the dev machine. Record status code, response size, whether prices appear in the HTML, and signs of login walls or captchas. Assign a starting tier per source (M1.7). Server-side reachability is Day 2.
 
 ### Day 1 notes
@@ -57,3 +57,40 @@ Goal: every service exists, talks to the next one, runs locally with one command
 - An Aliyun ACR namespace and push credentials as GitHub Actions secrets.
 - eBay developer keys in `deploy/.env` on the server and in a local `.env`.
 - One LLM key (DeepSeek or Qwen) in the local `.env`, needed from Day 3.
+
+## Day 2: data layer, job queue, first source, deploy pipeline
+
+Goal: offers can be fetched from a source by a background job and stored with history, and a merge to `main` can deploy to the ECS.
+
+The ECS and eBay keys are not available yet. Everything that needs them is built and tested against fakes now, and verified live once they arrive (marked **live**).
+
+### Success metrics
+
+| #    | Metric                           | How to check                                                                                                                                                                                                                        |
+| ---- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M2.1 | Full schema migrated             | Migration `00002` creates every table in the design's data model. Migrations apply twice without error (Go test, real Postgres)                                                                                                     |
+| M2.2 | Typed queries generated          | `sqlc generate` output is committed. CI regenerates it and fails on drift                                                                                                                                                           |
+| M2.3 | Strategy fallback works          | Registry tests: first strategy with offers wins; an error falls through to the next; 3 failures in a row mark a strategy unhealthy for 1 hour                                                                                       |
+| M2.4 | A job refreshes a product        | Integration test: enqueue `refresh_product` with a fake source; the worker stores offers and one price point per offer; a second run with a new price adds a price point and keeps one offer row                                    |
+| M2.5 | First source returns real offers | Kakaku adapter tested against a Shift_JIS fixture. Live: `make source-smoke` returns at least 10 offers for "RTX 5090". (Changed from eBay, see notes)                                                                              |
+| M2.6 | Deploy pipeline exists           | `deploy.yml` builds and pushes images to ACR, then deploys over SSH with a health check and rollback to the previous tag. Skips cleanly when secrets are missing. **Live:** merge to `main` is reachable at `http://<ECS_IP>:18080` |
+| M2.7 | Server reachability known        | **Live:** the Day 1 spike plus LLM endpoints re-run from the ECS, results added to the spike doc                                                                                                                                    |
+
+### Tasks
+
+- [x] **2.1 Schema.** `core/internal/db/migrations/00002_schema.sql`: `users`, `products`, `queries`, `sources`, `offers`, `price_points`, `watch_items`, `alerts`, `fx_rates`, `agent_runs`, all in schema `app`. Prices are stored as integer minor units (cents, or yen for JPY) plus an ISO currency code, which avoids floating point and a decimal library.
+- [x] **2.2 sqlc.** `core/sqlc.yaml`, `core/internal/store/queries/*.sql`, generated code in `core/internal/store`. Makefile target `sqlc`, CI drift check.
+- [x] **2.3 Sources package.** `core/internal/sources`: `Offer`, `Query`, `Strategy`, `Source`, `Registry` with ordered fallback and health tracking. Tests for M2.3.
+- [x] **2.4 River and the refresh job.** River migrations run with ours. `core/internal/jobs`: `RefreshProductArgs` and its worker, which calls the registry for each enabled source and upserts offers and price points. Worker binary runs River. Integration test for M2.4.
+- [x] **2.5 Kakaku adapter.** `core/internal/sources/kakaku`: html strategy with goquery, Shift_JIS decoding, catalog and mall item IDs. Fixture tests (M2.5). `cmd/source-smoke` for the live check.
+- [ ] **2.6 Deploy pipeline (live part open).** `.github/workflows/deploy.yml`, `deploy/deploy.sh` (pull, up, health check, rollback). `deploy/compose.yaml` reads images from one ACR repository via `IMAGE_REPO`, with tags like `core-<sha>`. Written and passing `actionlint`; the workflow skips until the ECS and ACR secrets exist.
+- [x] **2.7 Server spike (live).** Run the spike and an LLM reachability check on the ECS.
+
+### Day 2 notes
+
+- **eBay replaced by Kakaku** as the first source. eBay needs a developer keyset and its listings are mostly auctions and resellers; Kakaku needed no keys and a live search returned 44 offers.
+- **Price points are written only on change.** An unchanged re-check updates `last_seen_at` and adds no row, so history stays small.
+- **River uniqueness:** a refresh job is unique per product only while it is waiting or running. River's default also counts completed jobs, which would have blocked every later refresh of the product.
+- **Postgres on the server** comes from a copy in ACR (`dipwatch-postgres:16`), pushed by the deploy workflow, because the server cannot pull from Docker Hub.
+- Verified end to end in the local stack: `make refresh Q="RTX 5090"` stored 44 offers and 44 price points from Kakaku.
+- **Server checked (2.7):** Kakaku and Amazon US work from the ECS; Amazon Japan times out there. DeepSeek, Qwen and Kimi are reachable; OpenAI, Google OAuth, Docker Hub and the Go proxy are not. Google sign-in is dropped.

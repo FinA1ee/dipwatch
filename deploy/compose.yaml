@@ -3,7 +3,8 @@ name: dipwatch
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # On the server this points at a copy in ACR, because Docker Hub is not reachable.
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: dipwatch
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
@@ -24,7 +25,7 @@ services:
           memory: 512m
 
   core-api:
-    image: ${IMAGE_PREFIX:-dipwatch}-core:${IMAGE_TAG:-local}
+    image: ${IMAGE_REPO:-dipwatch}:core-${IMAGE_TAG:-local}
     build: ../core
     command: ["core-api", "serve"]
     environment:
@@ -44,7 +45,7 @@ services:
           memory: 256m
 
   worker:
-    image: ${IMAGE_PREFIX:-dipwatch}-core:${IMAGE_TAG:-local}
+    image: ${IMAGE_REPO:-dipwatch}:core-${IMAGE_TAG:-local}
     command: ["worker"]
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
@@ -57,7 +58,7 @@ services:
           memory: 1536m
 
   gateway:
-    image: ${IMAGE_PREFIX:-dipwatch}-gateway:${IMAGE_TAG:-local}
+    image: ${IMAGE_REPO:-dipwatch}:gateway-${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: gateway/Dockerfile
@@ -79,7 +80,7 @@ services:
           memory: 256m
 
   web:
-    image: ${IMAGE_PREFIX:-dipwatch}-web:${IMAGE_TAG:-local}
+    image: ${IMAGE_REPO:-dipwatch}:web-${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: web/Dockerfile

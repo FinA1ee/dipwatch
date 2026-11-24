@@ -85,7 +85,25 @@ docs/                       constitution, spec, design, tasks, spike results
 
 ## Data model
 
-All application tables live in the `app` schema. Better Auth owns the `auth` schema.
+All application tables live in the `app` schema. Better Auth owns the `auth` schema. River keeps its job tables in `public`.
+
+Money is stored as integer minor units (`price_minor`: cents, or yen for JPY) plus an ISO 4217 currency code. This avoids floating-point errors without a decimal library. `internal/money` converts between decimal strings and minor units.
+
+```mermaid
+erDiagram
+  users ||--o{ watch_items : tracks
+  products ||--o{ watch_items : "tracked by"
+  products ||--o{ queries : "spelled as"
+  products ||--o{ offers : "sold as"
+  sources ||--o{ offers : lists
+  offers ||--o{ price_points : history
+  watch_items ||--o{ alerts : fires
+  offers ||--o{ alerts : about
+  sources |o--o{ agent_runs : for
+  products |o--o{ agent_runs : for
+```
+
+`fx_rates` has no relations: it holds one row of exchange rates per day.
 
 | Table          | Key columns                                                                                                                                                                                                      | Notes                                                                |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -109,9 +127,9 @@ type Offer struct {
     ExternalID   string
     URL          string
     Title        string
-    Price        decimal.Decimal
-    Currency     string // ISO 4217
-    Shipping     *decimal.Decimal
+    PriceMinor    int64  // minor units, see Data model
+    Currency      string // ISO 4217
+    ShippingMinor *int64 // nil when unknown
     Condition    string // "new", "used", "refurbished", "unknown"
     Availability string // "in_stock", "out_of_stock", "unknown"
     SellerType   string // "official", "third_party", "individual", "unknown"
@@ -128,12 +146,19 @@ Each source has an ordered list of strategies in `sources.strategies`. The regis
 
 ### Strategy tiers
 
-1. **API:** official search APIs (eBay Browse API first; JD and Best Buy if keys are granted).
+1. **API:** official search APIs (eBay Browse API and Best Buy if keys are granted; deferred in week 1).
 2. **MCP:** a site's own MCP server, called through the Go MCP client. None of the target stores ships one today, so this tier is an interface with no adapter in week 1.
 3. **HTML:** a deterministic parser (CSS selectors or JSON-LD) for pages that return results without running script. No tokens. Added after the Day 1 spike showed Amazon and Kakaku return full result pages. Saved agent recipes run through this tier too.
 4. **Agent:** the browsing agent. Used for every source the tiers above cannot read, and as fallback when they fail.
 
 The Day 1 spike in [spikes/day1-sources.md](spikes/day1-sources.md) records which tier each candidate source starts with.
+
+### Sources that need a login
+
+Decided on Day 2, built after week 1:
+
+- **Taobao** goes through the official 淘宝联盟 (Taobao affiliate) API as an `api` strategy. It returns products, prices and coupons without scraping. It needs a 淘宝客 affiliate account and an approved app key, kept in the server's `.env`.
+- **Xianyu** has no public API. The browsing agent reads it from a browser session that a person has logged in to. The session cookies are a secret and never enter the repository or the logs. Direction (Day 2): each member logs in with their own Xianyu account. Open question for when this is built: storing members' session cookies makes Dipwatch hold credentials for third-party accounts, so it needs encryption at rest, a way to revoke, and a check of Xianyu's terms.
 
 ### Browsing agent
 
