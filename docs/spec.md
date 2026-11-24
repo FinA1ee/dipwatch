@@ -11,7 +11,7 @@ What Dipwatch does, for whom, and how we know it works. How it is built is in [d
 
 In scope: web app (installable PWA), Go core API and worker, TypeScript gateway with sign-in, at least 6 working sources, LLM matching, ranking, price history, tracking with email and Feishu alerts, CI/CD to the Aliyun ECS.
 
-Out of scope for week 1, planned later: native iOS app with APNs push and Sign in with Apple, WeChat sign-in (needs a business entity), public domain and HTTPS (needs ICP filing), 淘宝 and 闲鱼 sources (need a logged-in local worker), MongoDB for raw listing archives.
+Out of scope for week 1, planned later: native iOS app with APNs push and Sign in with Apple, WeChat sign-in (needs a business entity), public domain and HTTPS (needs ICP filing), 淘宝 and 闲鱼 sources (need a logged-in local worker), MongoDB for raw listing archives, the installable PWA, and Feishu alerts (both moved out on Day 4 to make room for the agent harness, see H1 to H6).
 
 ## Functional requirements
 
@@ -47,7 +47,7 @@ Requirements use EARS form. IDs are referenced from [tasks.md](tasks.md).
 - **T3.** While a product has at least one tracker, the system shall re-check its known offers every 6 hours by default, adapting between 2 and 24 hours based on how often the price changes, and shall search for new offers at least once a day. Products with no trackers shall not be refreshed on a schedule.
 - **T4.** When a rule matches, the system shall notify the member through each enabled channel within 5 minutes of the refresh that detected it.
 - **T5.** The system shall not send the same alert for the same offer and rule more than once per 24 hours.
-- **T6.** Channels in week 1: email (default) and a Feishu bot webhook supplied by the member. The webhook host must be `open.feishu.cn` or `open.larksuite.com`.
+- **T6.** Channel in week 1: email. A Feishu bot webhook supplied by the member follows after week 1; its host must be `open.feishu.cn` or `open.larksuite.com`.
 - **T7.** A member shall be able to see the price history of a tracked product as a chart.
 
 ### Cost and abuse controls
@@ -57,6 +57,17 @@ Requirements use EARS form. IDs are referenced from [tasks.md](tasks.md).
 - **C3.** Each browsing-agent run shall stop after 15 tool steps, 30,000 tokens or 90 seconds, whichever comes first.
 - **C4.** When daily LLM spend reaches 80% of the daily budget, the browsing agent shall run only for products that already have trackers. At 100%, the system shall serve cached data only until the next day.
 - **C5.** Every LLM call shall be recorded with model, tokens, estimated cost, duration and outcome.
+
+### Agent harness
+
+How the browsing agent is controlled, observed, evaluated and improved. Added on Day 4 as an explicit learning goal.
+
+- **H1. Offline evaluation.** The system shall include a set of saved store pages with hand-labelled expected offers, and a command that runs the real agent loop against them (with the real LLM and a browser that serves the saved pages) and reports, per store and overall, precision and recall of extracted offers, steps, tokens and cost.
+- **H2. Versioned runs.** Every agent run shall record the prompt version and model, so results before and after a change can be compared from `agent_runs` and from H1 reports.
+- **H3. Per-source metrics.** The system shall report, per source and day, run count, success rate, offers per run, median steps, tokens and cost per run, and the most common failure outcome.
+- **H4. Run inspection.** An admin page shall list agent runs with filters (source, outcome, prompt version, day) and show any run's step-by-step trace with the tool, arguments, a result excerpt, and the tokens and cost of the run.
+- **H5. Guardrail tests.** The eval set shall include at least one page containing instructions aimed at the agent (prompt injection). The agent shall never follow them: no navigation off the store and no submission of the injected content.
+- **H6. Documented iterations.** Each prompt or harness change that is kept shall have its H1 results before and after recorded in `docs/harness.md`.
 
 ## Non-functional requirements
 
@@ -68,12 +79,14 @@ Requirements use EARS form. IDs are referenced from [tasks.md](tasks.md).
 
 ## Success metrics for week 1
 
-| Metric                          | Target                                                       |
-| ------------------------------- | ------------------------------------------------------------ |
-| Working sources                 | At least 6, with at least 2 in China and 3 overseas          |
-| Filter accuracy                 | At least 90% on a hand-labeled set of 30 "RTX 5090" listings |
-| Cached search latency           | Under 1 second at p95                                        |
-| Cold search, first offers shown | Under 10 seconds                                             |
-| Alert delay                     | Under 5 minutes from refresh to email                        |
-| Deploy time                     | Merge to live in under 10 minutes                            |
-| LLM cost per cold search        | Measured and reported, target under ¥0.10                    |
+| Metric                          | Target                                                         |
+| ------------------------------- | -------------------------------------------------------------- |
+| Working sources                 | At least 6, with at least 2 in China and 3 overseas            |
+| Filter accuracy                 | At least 90% on a hand-labeled set of 30 "RTX 5090" listings   |
+| Cached search latency           | Under 1 second at p95                                          |
+| Cold search, first offers shown | Under 10 seconds                                               |
+| Alert delay                     | Under 5 minutes from refresh to email                          |
+| Deploy time                     | Merge to live in under 10 minutes                              |
+| LLM cost per cold search        | Measured and reported, target under ¥0.10                      |
+| Agent extraction quality (H1)   | Precision at least 90% and recall at least 60% on the eval set |
+| Agent run cost (H1)             | Median under ¥0.08 per store run                               |

@@ -6,7 +6,7 @@ Dipwatch collects offers for a product (for example "RTX 5090") from stores in C
 
 It is also a learning project: a Go backend, an AI browsing agent, and a full CI/CD pipeline, built in one week with spec-driven development. See [docs/](docs/) for the spec, design and daily tasks.
 
-> **Status: Day 2 of 7.** The worker fetches offers from Kakaku.com and stores price history. Search, the agent and alerts are not built yet. Progress is tracked in [docs/tasks.md](docs/tasks.md).
+> **Status: Day 3 of 7.** The worker fetches offers from Kakaku.com, and an AI agent reads Amazon US, Amazon Japan and SMZDM in a real browser. Search and alerts are not built yet. Progress is tracked in [docs/tasks.md](docs/tasks.md).
 
 ## Features
 
@@ -17,12 +17,15 @@ It is also a learning project: a Go backend, an AI browsing agent, and a full CI
 | CI: lint, tests against real Postgres, contract drift check, secret scan, image builds | Done (Day 1)                                             |
 | Source feasibility study for 13 stores                                                 | Done (Day 1), see [results](docs/spikes/day1-sources.md) |
 | Search across sources, ranked by price, with currency selector (default CNY)           | Planned (Days 2 to 5)                                    |
-| AI browsing agent for stores without an API                                            | Planned (Day 3)                                          |
+| AI browsing agent for stores without an API (Amazon US, Amazon Japan, SMZDM)           | Done (Day 3)                                             |
+| Agent harness: budgets, guards, run recording with cost and trace                      | Done (Day 3)                                             |
+| Agent offline eval set: precision, recall and cost per store                           | Planned (Day 4)                                          |
+| Admin run viewer and per-source agent metrics                                          | Planned (Day 5)                                          |
 | LLM matching: drop accessories, extract specs, English titles                          | Planned (Day 4)                                          |
 | Sign in with email or GitHub                                                           | Planned (Day 5)                                          |
 | Track products with notes and alert rules, price history chart                         | Planned (Day 6)                                          |
-| Email and Feishu alerts                                                                | Planned (Day 6)                                          |
-| Daily LLM spend limit and per-user quotas                                              | Planned (Days 4 to 7)                                    |
+| Email alerts (Feishu after week 1)                                                     | Planned (Day 6)                                          |
+| Daily LLM spend limit, per-user quotas, prompt-injection test                          | Planned (Days 4 to 7)                                    |
 | Full database schema, typed queries (sqlc), job queue (River)                          | Done (Day 2)                                             |
 | Background refresh job: fetch offers, keep price history                               | Done (Day 2)                                             |
 | First live source: Kakaku.com (Japan)                                                  | Done (Day 2)                                             |
@@ -119,6 +122,7 @@ Default host ports are 18080 (site) and 25432 (Postgres, localhost only), chosen
 - [Spec](docs/spec.md): requirements and success metrics
 - [Design](docs/design.md): architecture, data model, agent, deployment
 - [Tasks](docs/tasks.md): the 7-day plan with daily success metrics
+- [Agent harness log](docs/harness.md): every prompt and harness change with its results
 - [Day 1 source spike](docs/spikes/day1-sources.md)
 
 ## A note on data collection
