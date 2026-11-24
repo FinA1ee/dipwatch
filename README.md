@@ -19,7 +19,7 @@ It is also a learning project: a Go backend, an AI browsing agent, and a full CI
 | Search across sources, ranked by price, with currency selector (default CNY)           | Planned (Days 2 to 5)                                    |
 | AI browsing agent for stores without an API                                            | Planned (Day 3)                                          |
 | LLM matching: drop accessories, extract specs, English titles                          | Planned (Day 4)                                          |
-| Sign in with email or GitHub; Google if reachable from the server                      | Planned (Day 5)                                          |
+| Sign in with email or GitHub                                                           | Planned (Day 5)                                          |
 | Track products with notes and alert rules, price history chart                         | Planned (Day 6)                                          |
 | Email and Feishu alerts                                                                | Planned (Day 6)                                          |
 | Daily LLM spend limit and per-user quotas                                              | Planned (Days 4 to 7)                                    |
