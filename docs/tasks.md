@@ -84,7 +84,7 @@ The ECS and eBay keys are not available yet. Everything that needs them is built
 - [x] **2.4 River and the refresh job.** River migrations run with ours. `core/internal/jobs`: `RefreshProductArgs` and its worker, which calls the registry for each enabled source and upserts offers and price points. Worker binary runs River. Integration test for M2.4.
 - [x] **2.5 Kakaku adapter.** `core/internal/sources/kakaku`: html strategy with goquery, Shift_JIS decoding, catalog and mall item IDs. Fixture tests (M2.5). `cmd/source-smoke` for the live check.
 - [ ] **2.6 Deploy pipeline (live part open).** `.github/workflows/deploy.yml`, `deploy/deploy.sh` (pull, up, health check, rollback). `deploy/compose.yaml` reads images from ACR via `IMAGE_PREFIX`. Written and passing `actionlint`; the workflow skips until the ECS and ACR secrets exist.
-- [ ] **2.7 Server spike (live).** Run the spike and an LLM reachability check on the ECS.
+- [x] **2.7 Server spike (live).** Run the spike and an LLM reachability check on the ECS.
 
 ### Day 2 notes
 
@@ -93,3 +93,4 @@ The ECS and eBay keys are not available yet. Everything that needs them is built
 - **River uniqueness:** a refresh job is unique per product only while it is waiting or running. River's default also counts completed jobs, which would have blocked every later refresh of the product.
 - **Postgres on the server** comes from a copy in ACR (`dipwatch-postgres:16`), pushed by the deploy workflow, because the server cannot pull from Docker Hub.
 - Verified end to end in the local stack: `make refresh Q="RTX 5090"` stored 44 offers and 44 price points from Kakaku.
+- **Server checked (2.7):** Kakaku and Amazon US work from the ECS; Amazon Japan times out there. DeepSeek, Qwen and Kimi are reachable; OpenAI, Google OAuth, Docker Hub and the Go proxy are not. Google sign-in is dropped.

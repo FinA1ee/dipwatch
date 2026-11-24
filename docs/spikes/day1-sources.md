@@ -58,6 +58,36 @@ That gives 6 to 8 candidates for the week 1 target of at least 6 working sources
 - **eBay** is deferred. It needs a developer account and keyset approval, and its listings are mostly auctions and resellers. The `ebay-us` row stays in the database, disabled.
 - Kakaku results include laptops and PCs with an RTX 5090, not only the card. Filtering those out is the LLM matcher's job (Day 4, spec S6).
 
+## Day 2: the same check from the server
+
+Run once from the ECS (Aliyun, Hangzhou, 2026-11-24). Store pages:
+
+| Source                          | From the dev machine | From the server        |
+| ------------------------------- | -------------------- | ---------------------- |
+| Kakaku.com                      | 200, results         | 200, results (244 KB)  |
+| Amazon US                       | 200, results         | 200, results (636 KB)  |
+| Amazon Japan                    | 200, results         | **Timeout after 20 s** |
+| Best Buy                        | 200, no results      | **Connection error**   |
+| JD.com                          | Verification page    | Verification page      |
+| Taobao, Xianyu, Pinduoduo       | Script shell         | Script shell           |
+| SMZDM                           | Empty 202            | Empty 202              |
+| eBay, Newegg, B&H, PCPartPicker | 403                  | 403                    |
+
+Other services the server needs:
+
+| Service                                     | Result                                                                 | Consequence                                                   |
+| ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| DeepSeek, Qwen (DashScope), Kimi (Moonshot) | Reachable, under 1 s                                                   | Any of the three can be the server LLM                        |
+| OpenAI                                      | Unreachable                                                            | Local experiments only, as planned                            |
+| Google OAuth (`oauth2.googleapis.com`)      | Unreachable                                                            | **No Google sign-in.** Email and GitHub only (spec A1)        |
+| GitHub, GitHub API                          | Reachable                                                              | GitHub sign-in works                                          |
+| Aliyun ACR (Hangzhou)                       | Reachable, 40 ms                                                       | Images come from ACR, as planned                              |
+| Docker Hub                                  | Unreachable                                                            | Confirms the ACR copy of Postgres is needed                   |
+| Go module proxy                             | Unreachable                                                            | Never build Go on the server, as planned                      |
+| FX API (frankfurter)                        | Reachable; `api.frankfurter.app` redirects to `api.frankfurter.dev/v1` | Use `https://api.frankfurter.dev/v1/latest?base=CNY` directly |
+
+Amazon Japan works from the dev machine but not from the server, so it may need the agent or a local worker. Kakaku and Amazon US work from both.
+
 ## Open risks
 
 - **China coverage is thin.** Only JD and SMZDM are candidates without login, and JD showed verification. If both fail under the agent, week 1 has no China source, and the logged-in local worker for Taobao moves up.
