@@ -3,7 +3,8 @@ name: dipwatch
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # On the server this points at a copy in ACR, because Docker Hub is not reachable.
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: dipwatch
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}

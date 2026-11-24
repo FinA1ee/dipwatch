@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver for goose
 	"github.com/pressly/goose/v3"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivermigrate"
 )
 
 //go:embed migrations/*.sql
@@ -54,6 +56,28 @@ func Migrate(ctx context.Context, url string) error {
 	}
 	for _, r := range results {
 		slog.Info("migration applied", "version", r.Source.Version, "duration", r.Duration)
+	}
+	return migrateRiver(ctx, url)
+}
+
+// migrateRiver installs or upgrades the River job queue tables (public schema).
+func migrateRiver(ctx context.Context, url string) error {
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return fmt.Errorf("create pool for river migrations: %w", err)
+	}
+	defer pool.Close()
+
+	migrator, err := rivermigrate.New(riverpgxv5.New(pool), nil)
+	if err != nil {
+		return fmt.Errorf("create river migrator: %w", err)
+	}
+	res, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
+	if err != nil {
+		return fmt.Errorf("apply river migrations: %w", err)
+	}
+	for _, v := range res.Versions {
+		slog.Info("river migration applied", "version", v.Version)
 	}
 	return nil
 }

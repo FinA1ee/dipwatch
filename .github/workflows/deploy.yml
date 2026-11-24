@@ -1,0 +1,121 @@
+name: deploy
+
+# Runs after CI passes on main. Builds images on GitHub's runners, pushes them to
+# Aliyun Container Registry, then deploys over SSH. The server only pulls from ACR.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      ready: ${{ steps.secrets.outputs.ready }}
+    steps:
+      - id: secrets
+        name: Skip until deploy secrets are configured
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+        run: |
+          if [ -n "$ECS_HOST" ] && [ -n "$ACR_REGISTRY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Deploy skipped: ECS_HOST or ACR_REGISTRY secret is not set."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  images:
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: core
+            context: core
+            file: core/Dockerfile
+          - name: gateway
+            context: .
+            file: gateway/Dockerfile
+          - name: web
+            context: .
+            file: web/Dockerfile
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/dipwatch-${{ matrix.name }}:${{ github.event.workflow_run.head_sha || github.sha }}
+          cache-from: type=gha,scope=deploy-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=deploy-${{ matrix.name }}
+
+  postgres-image:
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      - name: Mirror postgres to ACR
+        env:
+          TARGET: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/dipwatch-postgres:16
+        run: |
+          docker pull --platform linux/amd64 postgres:16-alpine
+          docker tag postgres:16-alpine "$TARGET"
+          docker push "$TARGET"
+
+  deploy:
+    needs: [images, postgres-image]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Set up SSH
+        env:
+          ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
+          ECS_KNOWN_HOSTS: ${{ secrets.ECS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$ECS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$ECS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Copy compose files and deploy
+        env:
+          HOST: ${{ secrets.ECS_HOST }}
+          USER: ${{ secrets.ECS_USER }}
+          PORT: ${{ secrets.ECS_SSH_PORT || '22' }}
+          PREFIX: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/dipwatch
+          TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key -p $PORT -o StrictHostKeyChecking=yes"
+          $SSH "$USER@$HOST" 'mkdir -p /opt/dipwatch/deploy'
+          scp -i ~/.ssh/deploy_key -P "$PORT" deploy/compose.yaml deploy/deploy.sh "$USER@$HOST:/opt/dipwatch/deploy/"
+          $SSH "$USER@$HOST" "/opt/dipwatch/deploy/deploy.sh '$PREFIX' '$TAG'"

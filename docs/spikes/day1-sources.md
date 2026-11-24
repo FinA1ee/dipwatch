@@ -52,6 +52,12 @@ The spike adds one tier to the design: **html**, a deterministic parser for page
 
 That gives 6 to 8 candidates for the week 1 target of at least 6 working sources, with at least 2 in China (JD, SMZDM) and 3 overseas.
 
+## Day 2 follow-up
+
+- **Kakaku** redirects to `search.kakaku.com`. Its JSON-LD turned out to be only a breadcrumb, so the adapter reads the HTML instead (`p-item` blocks with `p-item_name` and `p-item_priceNum`). A live search for "RTX 5090" returned 44 offers, and it is the first enabled source.
+- **eBay** is deferred. It needs a developer account and keyset approval, and its listings are mostly auctions and resellers. The `ebay-us` row stays in the database, disabled.
+- Kakaku results include laptops and PCs with an RTX 5090, not only the card. Filtering those out is the LLM matcher's job (Day 4, spec S6).
+
 ## Open risks
 
 - **China coverage is thin.** Only JD and SMZDM are candidates without login, and JD showed verification. If both fail under the agent, week 1 has no China source, and the logged-in local worker for Taobao moves up.

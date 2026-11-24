@@ -3,7 +3,7 @@ COMPOSE := docker compose -f deploy/compose.yaml
 envval = $(shell grep ^$(1)= deploy/.env | cut -d= -f2)
 DEV_DB_URL =postgres://dipwatch:$(call envval,POSTGRES_PASSWORD)@localhost:$(call envval,PG_HOST_PORT)/dipwatch?sslmode=disable
 
-.PHONY: help env dev down logs db test test-go test-ts lint contract check-contract spike
+.PHONY: help env dev down logs db test test-go test-ts lint contract check-contract spike sqlc source-smoke refresh
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -51,3 +51,12 @@ check-contract: contract ## Fail if generated contract files differ from the com
 
 spike: ## Run the Day 1 source feasibility spike
 	cd tools/spike && go run ./sources
+
+sqlc: ## Regenerate typed queries after changing migrations or queries
+	cd core && sqlc generate
+
+source-smoke: ## Search one live source, e.g. make source-smoke SOURCE=kakaku Q="RTX 5090"
+	cd core && go run ./cmd/source-smoke -source "$(or $(SOURCE),kakaku)" -q "$(or $(Q),RTX 5090)"
+
+refresh: ## Enqueue a refresh in the running stack, e.g. make refresh Q="RTX 5090"
+	$(COMPOSE) exec worker worker refresh "$(or $(Q),RTX 5090)"

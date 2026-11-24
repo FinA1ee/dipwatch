@@ -85,7 +85,9 @@ docs/                       constitution, spec, design, tasks, spike results
 
 ## Data model
 
-All application tables live in the `app` schema. Better Auth owns the `auth` schema.
+All application tables live in the `app` schema. Better Auth owns the `auth` schema. River keeps its job tables in `public`.
+
+Money is stored as integer minor units (`price_minor`: cents, or yen for JPY) plus an ISO 4217 currency code. This avoids floating-point errors without a decimal library. `internal/money` converts between decimal strings and minor units.
 
 | Table          | Key columns                                                                                                                                                                                                      | Notes                                                                |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -109,9 +111,9 @@ type Offer struct {
     ExternalID   string
     URL          string
     Title        string
-    Price        decimal.Decimal
-    Currency     string // ISO 4217
-    Shipping     *decimal.Decimal
+    PriceMinor    int64  // minor units, see Data model
+    Currency      string // ISO 4217
+    ShippingMinor *int64 // nil when unknown
     Condition    string // "new", "used", "refurbished", "unknown"
     Availability string // "in_stock", "out_of_stock", "unknown"
     SellerType   string // "official", "third_party", "individual", "unknown"
@@ -128,7 +130,7 @@ Each source has an ordered list of strategies in `sources.strategies`. The regis
 
 ### Strategy tiers
 
-1. **API:** official search APIs (eBay Browse API first; JD and Best Buy if keys are granted).
+1. **API:** official search APIs (eBay Browse API and Best Buy if keys are granted; deferred in week 1).
 2. **MCP:** a site's own MCP server, called through the Go MCP client. None of the target stores ships one today, so this tier is an interface with no adapter in week 1.
 3. **HTML:** a deterministic parser (CSS selectors or JSON-LD) for pages that return results without running script. No tokens. Added after the Day 1 spike showed Amazon and Kakaku return full result pages. Saved agent recipes run through this tier too.
 4. **Agent:** the browsing agent. Used for every source the tiers above cannot read, and as fallback when they fail.
