@@ -2,11 +2,13 @@
 # Runs on the server. Pulls the given image tag, starts it, and rolls back to the
 # previously deployed tag if the site does not become healthy.
 #
-#   deploy.sh <image-prefix> <tag>
-#   e.g. deploy.sh registry.cn-hangzhou.aliyuncs.com/dipwatch/dipwatch 3f2c1ab
+#   deploy.sh <image-repo> <tag>
+#   e.g. deploy.sh registry.cn-hangzhou.aliyuncs.com/project_dipwatch/dipwatch 3f2c1ab
+#
+# All images live in one repository; the tag names the component: core-<sha>, web-<sha> ...
 set -eu
 
-PREFIX="$1"
+REPO="$1"
 TAG="$2"
 cd "$(dirname "$0")"
 
@@ -16,7 +18,7 @@ PORT="${PORT:-18080}"
 PREVIOUS="$(cat .deployed_tag 2>/dev/null || true)"
 
 start() {
-	export IMAGE_PREFIX="$PREFIX" IMAGE_TAG="$1" POSTGRES_IMAGE="$PREFIX-postgres:16"
+	export IMAGE_REPO="$REPO" IMAGE_TAG="$1" POSTGRES_IMAGE="$REPO:postgres-16"
 	docker compose -f compose.yaml pull --quiet
 	docker compose -f compose.yaml up -d --no-build --remove-orphans
 }

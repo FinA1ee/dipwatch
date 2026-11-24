@@ -83,7 +83,7 @@ The ECS and eBay keys are not available yet. Everything that needs them is built
 - [x] **2.3 Sources package.** `core/internal/sources`: `Offer`, `Query`, `Strategy`, `Source`, `Registry` with ordered fallback and health tracking. Tests for M2.3.
 - [x] **2.4 River and the refresh job.** River migrations run with ours. `core/internal/jobs`: `RefreshProductArgs` and its worker, which calls the registry for each enabled source and upserts offers and price points. Worker binary runs River. Integration test for M2.4.
 - [x] **2.5 Kakaku adapter.** `core/internal/sources/kakaku`: html strategy with goquery, Shift_JIS decoding, catalog and mall item IDs. Fixture tests (M2.5). `cmd/source-smoke` for the live check.
-- [ ] **2.6 Deploy pipeline (live part open).** `.github/workflows/deploy.yml`, `deploy/deploy.sh` (pull, up, health check, rollback). `deploy/compose.yaml` reads images from ACR via `IMAGE_PREFIX`. Written and passing `actionlint`; the workflow skips until the ECS and ACR secrets exist.
+- [ ] **2.6 Deploy pipeline (live part open).** `.github/workflows/deploy.yml`, `deploy/deploy.sh` (pull, up, health check, rollback). `deploy/compose.yaml` reads images from one ACR repository via `IMAGE_REPO`, with tags like `core-<sha>`. Written and passing `actionlint`; the workflow skips until the ECS and ACR secrets exist.
 - [x] **2.7 Server spike (live).** Run the spike and an LLM reachability check on the ECS.
 
 ### Day 2 notes
