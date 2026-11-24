@@ -27,12 +27,19 @@ jobs:
         name: Skip until deploy secrets are configured
         env:
           ECS_HOST: ${{ secrets.ECS_HOST }}
+          ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
           ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
         run: |
-          if [ -n "$ECS_HOST" ] && [ -n "$ACR_REGISTRY" ]; then
+          missing=""
+          for name in ECS_HOST ECS_SSH_KEY ACR_REGISTRY ACR_USERNAME ACR_PASSWORD; do
+            [ -n "$(printenv "$name")" ] || missing="$missing $name"
+          done
+          if [ -z "$missing" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Deploy skipped: ECS_HOST or ACR_REGISTRY secret is not set."
+            echo "::notice::Deploy skipped, secrets not set:$missing"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -114,8 +121,13 @@ jobs:
           PORT: ${{ secrets.ECS_SSH_PORT || '22' }}
           PREFIX: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/dipwatch
           TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -p $PORT -o StrictHostKeyChecking=yes"
+          # Log the server into ACR; the password goes over stdin, never on a command line.
+          printf '%s' "$ACR_PASSWORD" | $SSH "$USER@$HOST" "docker login --username '$ACR_USERNAME' --password-stdin '$ACR_REGISTRY'"
           $SSH "$USER@$HOST" 'mkdir -p /opt/dipwatch/deploy'
           scp -i ~/.ssh/deploy_key -P "$PORT" deploy/compose.yaml deploy/deploy.sh "$USER@$HOST:/opt/dipwatch/deploy/"
           $SSH "$USER@$HOST" "/opt/dipwatch/deploy/deploy.sh '$PREFIX' '$TAG'"

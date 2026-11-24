@@ -158,7 +158,7 @@ The Day 1 spike in [spikes/day1-sources.md](spikes/day1-sources.md) records whic
 Decided on Day 2, built after week 1:
 
 - **Taobao** goes through the official 淘宝联盟 (Taobao affiliate) API as an `api` strategy. It returns products, prices and coupons without scraping. It needs a 淘宝客 affiliate account and an approved app key, kept in the server's `.env`.
-- **Xianyu** has no public API. The browsing agent reads it from a browser session that a person has logged in to. The session cookies are a secret and never enter the repository or the logs.
+- **Xianyu** has no public API. The browsing agent reads it from a browser session that a person has logged in to. The session cookies are a secret and never enter the repository or the logs. Direction (Day 2): each member logs in with their own Xianyu account. Open question for when this is built: storing members' session cookies makes Dipwatch hold credentials for third-party accounts, so it needs encryption at rest, a way to revoke, and a check of Xianyu's terms.
 
 ### Browsing agent
 
