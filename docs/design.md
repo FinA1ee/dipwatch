@@ -153,6 +153,13 @@ Each source has an ordered list of strategies in `sources.strategies`. The regis
 
 The Day 1 spike in [spikes/day1-sources.md](spikes/day1-sources.md) records which tier each candidate source starts with.
 
+### Sources that need a login
+
+Decided on Day 2, built after week 1:
+
+- **Taobao** goes through the official 淘宝联盟 (Taobao affiliate) API as an `api` strategy. It returns products, prices and coupons without scraping. It needs a 淘宝客 affiliate account and an approved app key, kept in the server's `.env`.
+- **Xianyu** has no public API. The browsing agent reads it from a browser session that a person has logged in to. The session cookies are a secret and never enter the repository or the logs.
+
 ### Browsing agent
 
 The worker starts `@playwright/mcp` as a child process (headless Chromium) and connects to it with the Go MCP SDK client. The agent loop is written by hand in `internal/agent`:

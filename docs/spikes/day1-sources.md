@@ -36,19 +36,21 @@ This only tells us what plain HTTP gets. The browsing agent (real Chromium, Day 
 
 The spike adds one tier to the design: **html**, a deterministic parser for pages that return results without script (CSS selectors or JSON-LD). It costs no tokens, so it is tried before the agent. It is the same mechanism the agent's saved recipes use for re-checks.
 
-| Source                    | Starting strategies (in order)      | Week 1 status                                                    |
-| ------------------------- | ----------------------------------- | ---------------------------------------------------------------- |
-| eBay                      | api (Browse API)                    | Day 2, needs developer keys                                      |
-| Kakaku.com                | html (JSON-LD)                      | Day 3                                                            |
-| Amazon Japan              | html, agent                         | Day 3                                                            |
-| Amazon US                 | html, agent                         | Day 3                                                            |
-| JD.com                    | agent                               | Day 3. If the agent also hits verification, defer with Taobao    |
-| SMZDM                     | agent                               | Day 3                                                            |
-| Newegg                    | agent                               | Day 3                                                            |
-| B&H Photo                 | agent                               | Day 3                                                            |
-| PCPartPicker              | agent                               | Day 3. Aggregates US retailers, so one source covers many stores |
-| Best Buy                  | api (Products API)                  | Only if keys are granted and the API accepts non-US callers      |
-| Taobao, Xianyu, Pinduoduo | agent with a logged-in local worker | Deferred, as agreed                                              |
+| Source       | Starting strategies (in order)         | Week 1 status                                                    |
+| ------------ | -------------------------------------- | ---------------------------------------------------------------- |
+| eBay         | api (Browse API)                       | Day 2, needs developer keys                                      |
+| Kakaku.com   | html (JSON-LD)                         | Day 3                                                            |
+| Amazon Japan | html, agent                            | Day 3                                                            |
+| Amazon US    | html, agent                            | Day 3                                                            |
+| JD.com       | agent                                  | Day 3. If the agent also hits verification, defer with Taobao    |
+| SMZDM        | agent                                  | Day 3                                                            |
+| Newegg       | agent                                  | Day 3                                                            |
+| B&H Photo    | agent                                  | Day 3                                                            |
+| PCPartPicker | agent                                  | Day 3. Aggregates US retailers, so one source covers many stores |
+| Best Buy     | api (Products API)                     | Only if keys are granted and the API accepts non-US callers      |
+| Taobao       | api (淘宝联盟 affiliate API)           | After week 1. Needs a 淘宝客 affiliate account and app approval  |
+| Xianyu       | agent with a logged-in browser session | After week 1. See design, "Sources that need a login"            |
+| Pinduoduo    | agent with a logged-in local worker    | Deferred                                                         |
 
 That gives 6 to 8 candidates for the week 1 target of at least 6 working sources, with at least 2 in China (JD, SMZDM) and 3 overseas.
 
