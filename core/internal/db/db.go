@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver for goose
 	"github.com/pressly/goose/v3"
@@ -32,8 +33,24 @@ func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// Migrate applies all pending migrations. Running it again is a no-op.
+// migrationLockKey is an arbitrary constant shared by every Dipwatch process.
+const migrationLockKey int64 = 0x646970776174 // "dipwat"
+
+// Migrate applies all pending migrations. Running it again is a no-op. A Postgres
+// advisory lock makes concurrent callers (several services starting at once, or test
+// packages running in parallel) take turns instead of racing on CREATE statements.
 func Migrate(ctx context.Context, url string) error {
+	lockConn, err := pgx.Connect(ctx, url)
+	if err != nil {
+		return fmt.Errorf("connect for migration lock: %w", err)
+	}
+	defer func() { _ = lockConn.Close(context.Background()) }()
+	if _, err := lockConn.Exec(ctx, "SELECT pg_advisory_lock($1)", migrationLockKey); err != nil {
+		return fmt.Errorf("take migration lock: %w", err)
+	}
+	// Closing the connection also releases the lock; unlock explicitly to be prompt.
+	defer func() { _, _ = lockConn.Exec(context.Background(), "SELECT pg_advisory_unlock($1)", migrationLockKey) }()
+
 	sqlDB, err := sql.Open("pgx", url)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
