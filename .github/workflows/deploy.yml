@@ -135,4 +135,4 @@ jobs:
           printf '%s' "$ACR_PASSWORD" | $SSH "$USER@$HOST" "docker login --username '$ACR_USERNAME' --password-stdin '$ACR_REGISTRY'"
           $SSH "$USER@$HOST" 'mkdir -p /opt/dipwatch/deploy'
           scp -i ~/.ssh/deploy_key -P "$PORT" deploy/compose.yaml deploy/deploy.sh "$USER@$HOST:/opt/dipwatch/deploy/"
-          $SSH "$USER@$HOST" "/opt/dipwatch/deploy/deploy.sh '$REPO' '$TAG'"
+          $SSH "$USER@$HOST" "sh /opt/dipwatch/deploy/deploy.sh '$REPO' '$TAG'"
