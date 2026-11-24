@@ -91,6 +91,7 @@ The ECS and eBay keys are not available yet. Everything that needs them is built
 - **eBay replaced by Kakaku** as the first source. eBay needs a developer keyset and its listings are mostly auctions and resellers; Kakaku needed no keys and a live search returned 44 offers.
 - **Price points are written only on change.** An unchanged re-check updates `last_seen_at` and adds no row, so history stays small.
 - **River uniqueness:** a refresh job is unique per product only while it is waiting or running. River's default also counts completed jobs, which would have blocked every later refresh of the product.
+- **ACR address:** newer ACR Personal Edition instances have their own domain (`<instance>.cn-hangzhou.personal.cr.aliyuncs.com`), shown on the console's 访问凭证 page. The shared `registry.cn-hangzhou.aliyuncs.com` returned 403 for this instance. All images live in one repository, `dipwatch`, with tags `core-<sha>`, `gateway-<sha>`, `web-<sha>` and `postgres-16`.
 - **Postgres on the server** comes from a copy in ACR (`dipwatch-postgres:16`), pushed by the deploy workflow, because the server cannot pull from Docker Hub.
 - Verified end to end in the local stack: `make refresh Q="RTX 5090"` stored 44 offers and 44 price points from Kakaku.
 - **Server checked (2.7):** Kakaku and Amazon US work from the ECS; Amazon Japan times out there. DeepSeek, Qwen and Kimi are reachable; OpenAI, Google OAuth, Docker Hub and the Go proxy are not. Google sign-in is dropped.

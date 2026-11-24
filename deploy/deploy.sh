@@ -3,7 +3,7 @@
 # previously deployed tag if the site does not become healthy.
 #
 #   deploy.sh <image-repo> <tag>
-#   e.g. deploy.sh registry.cn-hangzhou.aliyuncs.com/project_dipwatch/dipwatch 3f2c1ab
+#   e.g. deploy.sh <instance>.cn-hangzhou.personal.cr.aliyuncs.com/<namespace>/dipwatch 3f2c1ab
 #
 # All images live in one repository; the tag names the component: core-<sha>, web-<sha> ...
 set -eu
