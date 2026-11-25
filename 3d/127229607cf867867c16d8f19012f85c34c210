@@ -1,0 +1,27 @@
+web/src/utils/url.ts
+  s_3313d584934833::t_768226e0c71f41 1-9
+web/src/components/OfferTable.tsx
+  s_3313d584934833::t_768226e0c71f41 4,73,77,90-99
+web/src/pages/MyProducts/modules/TrackedModule/View/TrackedView.tsx
+  s_3313d584934833::t_768226e0c71f41 35-47
+  s_3313d584934833::t_d59a1a9c6c7429 6
+web/src/pages/Product/modules/HistoryModule/View/HistoryView.tsx
+  s_3313d584934833::t_d59a1a9c6c7429 15-16
+  s_3313d584934833::t_dd12a66433448a 4-8,12-14,17-19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "3d127229607cf867867c16d8f19012f85c34c210",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
