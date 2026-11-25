@@ -26,12 +26,12 @@ export function EmailForm({ email, sending, error, onChange, onSubmit }: Props) 
           autoComplete="email"
           value={email}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2"
+          className="flex-1 rounded-[14px] bg-white px-3 py-2"
         />
         <button
           type="submit"
           disabled={sending}
-          className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-ink px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {sending ? "Sending…" : "Email me a link"}
         </button>

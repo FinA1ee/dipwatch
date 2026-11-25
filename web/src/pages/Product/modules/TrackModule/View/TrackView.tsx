@@ -27,7 +27,7 @@ export function TrackView() {
 
   if (!t.signedIn) {
     return (
-      <section className="rounded-lg border border-slate-200 p-3 text-sm">
+      <section className="rounded-[14px] bg-white p-4 text-sm">
         <Link
           to={`/signin?next=${encodeURIComponent(`/p/${productId}`)}`}
           className="font-medium hover:underline"
@@ -48,9 +48,9 @@ export function TrackView() {
   const error = problem || t.save.error?.message || t.remove.error?.message;
 
   return (
-    <section className="space-y-3 rounded-lg border border-slate-200 p-3">
+    <section className="space-y-3 rounded-[14px] bg-white p-4">
       <h2 className="text-lg font-semibold">{current ? "You track this product" : "Track this product"}</h2>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted">
         At{" "}
         {(current && current.stores.length > 0 ? current.stores : stores.selected)
           .map((id) => stores.all.find((s) => s.id === id)?.name ?? id)
@@ -64,7 +64,7 @@ export function TrackView() {
           type="button"
           onClick={save}
           disabled={t.save.isPending}
-          className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-ink px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {current ? "Save changes" : "Track"}
         </button>
@@ -73,7 +73,7 @@ export function TrackView() {
             Stop tracking
           </button>
         )}
-        {t.save.isSuccess && <span className="text-emerald-700">Saved.</span>}
+        {t.save.isSuccess && <span className="text-drop">Saved.</span>}
         <Link to="/me" className="ml-auto hover:underline">
           My products and alert settings
         </Link>

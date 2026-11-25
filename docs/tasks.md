@@ -299,7 +299,7 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 ### Tasks
 
 - [x] **7.1 Spend breaker.** Today's LLM spend from `agent_runs` (China day); daily budget as a live limit; 80% and 100% rules in search, the refresh jobs, the matcher and the scheduler; spend on `/admin`.
-- [ ] **7.2 UI pass.** Two mockups of the search page; apply the chosen one to every page.
+- [x] **7.2 UI pass.** Two mockups of the search page; apply the chosen one to every page.
 - [x] **7.3 JD Union adapter.** `jd.union.open.goods.query` with the router's MD5 signature; app key and secret from env; source row disabled until keys are set.
 - [ ] **7.4 Rollback test and backups.** Broken-image deploy on the server; `deploy/backup.sh` installed by the deploy script, restore check.
 - [ ] **7.5 README and retro.** Fresh-clone check, README updates for sign-in, limits and alerts; `docs/retro.md`.
@@ -311,3 +311,4 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - **Backups (7.4).** `deploy/backup.sh` keeps 7 gzipped `pg_dump` files; the deploy script installs it in the deploy user's crontab (03:30). Ran once by hand on the server (36 KB) and restored into a scratch database: 109 offers, as in the live one.
 - **Fresh clone (7.5).** A clone of `main` in an empty directory, following the README with its own compose project and ports, came up healthy. It found one gap: without an LLM key every new search answered 503. Without a key the gate now uses the typed name as the product (not cached, so a later key still merges spellings).
 - **JD (7.3).** Adapter for `jd.union.open.goods.query` (router at `api.jd.com/routerjson`, MD5 signature, response JSON wrapped in a string), tested against recorded responses. Not tried against the real API yet: that needs the owner's app key.
+- **UI pass (7.2).** The owner picked mockup A, "price ladder": every offer as a tick on one price line, cheapest in green, the others as steps up from it. Applied through Tailwind theme tokens (paper, ink, muted, rule, drop) and self-hosted Familjen Grotesk and Public Sans; the search page, product page, offer list, filters (now chips) and all other pages use them. `/admin` gained a "Test an alert" form for the simulated price drop. Alert and test messages now start with lower-case "dipwatch", because Feishu's keyword check is case-sensitive (checked against a real bot: "Dipwatch" was refused, "dipwatch" accepted).

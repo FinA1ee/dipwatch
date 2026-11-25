@@ -13,7 +13,7 @@ export function GitHubView({ next }: { next: string | null }) {
             setError(e instanceof Error ? e.message : "GitHub sign-in failed"),
           )
         }
-        className="w-full rounded-lg border border-slate-300 px-4 py-2 font-medium hover:bg-slate-50"
+        className="w-full rounded-[14px] bg-white px-4 py-2 font-medium hover:bg-paper"
       >
         Continue with GitHub
       </button>

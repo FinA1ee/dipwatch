@@ -7,12 +7,12 @@ export function MetricsView() {
   const m = useMetrics();
   return (
     <div className="space-y-6">
-      <label className="flex items-center gap-2 text-sm text-slate-700">
+      <label className="flex items-center gap-2 text-sm text-muted">
         Last
         <select
           value={m.days}
           onChange={(e) => m.setDays(Number(e.target.value))}
-          className="rounded border border-slate-300 px-2 py-1"
+          className="rounded border border-rule px-2 py-1"
         >
           {[1, 7, 30].map((d) => (
             <option key={d} value={d}>
@@ -21,7 +21,7 @@ export function MetricsView() {
           ))}
         </select>
       </label>
-      {m.loading && <p className="text-slate-600">Loading…</p>}
+      {m.loading && <p className="text-muted">Loading…</p>}
       {m.error && <AdminError error={m.error} />}
       {m.metrics && (
         <>

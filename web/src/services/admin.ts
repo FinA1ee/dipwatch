@@ -82,3 +82,12 @@ export async function getSpend(): Promise<SpendStatus> {
   if (!data) fail(response, error);
   return data;
 }
+
+/** Lowers the cheapest offer of a product and runs the alert check (test of delivery). */
+export async function simulateDrop(productId: number, percent: number): Promise<void> {
+  const { error, response } = await api.POST("/admin/products/{productId}/simulate-drop", {
+    params: { path: { productId } },
+    body: { percent },
+  });
+  if (!response.ok) fail(response, error);
+}

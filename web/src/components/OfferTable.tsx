@@ -8,12 +8,6 @@ const conditionLabel: Record<Offer["condition"], string> = {
   unknown: "",
 };
 
-const availabilityLabel: Record<Offer["availability"], string> = {
-  in_stock: "In stock",
-  out_of_stock: "Out of stock",
-  unknown: "",
-};
-
 const sellerLabel: Record<Offer["seller_type"], string> = {
   official: "Official store",
   third_party: "Marketplace seller",
@@ -31,43 +25,66 @@ function safeHref(url: string): string | undefined {
   }
 }
 
-/** Ranked offers (S5): converted price first, the store's own price underneath. */
+const shown = (o: Offer) => o.converted ?? o.price;
+
+/**
+ * Ranked offers (S5). The cheapest is marked in green; the others show how much
+ * more they cost, so the list reads as steps up the ladder.
+ */
 export function OfferTable({ offers }: { offers: Offer[] }) {
+  const cheapest = offers[0] ? shown(offers[0]) : null;
   return (
-    <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-      {offers.map((o) => (
-        <li key={o.id} className="flex items-start gap-4 p-3">
-          <div className="min-w-0 flex-1">
+    <ul>
+      {offers.map((o, i) => {
+        const price = shown(o);
+        const gap = cheapest && price.currency === cheapest.currency ? price.minor - cheapest.minor : null;
+        const facts = [
+          o.source.name,
+          sellerLabel[o.seller_type],
+          conditionLabel[o.condition],
+          o.availability === "in_stock" ? "In stock" : "",
+        ].filter(Boolean);
+        return (
+          <li key={o.id} className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 border-b border-rule px-1 py-4">
             <a
               href={safeHref(o.url)}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="font-medium text-slate-900 hover:underline"
+              className="font-semibold leading-snug hover:underline"
             >
               {o.title}
             </a>
+            <span className="row-span-3 text-right tabular-nums">
+              <strong
+                className={`block font-head text-[22px] font-bold leading-tight tracking-tight ${i === 0 ? "text-drop" : ""}`}
+              >
+                {formatMoney(price)}
+              </strong>
+              <span className={`block text-[13px] ${i === 0 ? "font-semibold text-drop" : "text-muted"}`}>
+                {i === 0
+                  ? "lowest"
+                  : gap !== null && gap > 0
+                    ? `+${formatMoney({ ...price, minor: gap })}`
+                    : ""}
+              </span>
+              {o.converted && o.converted.currency !== o.price.currency && (
+                <span className="block text-[13px] text-muted">{formatMoney(o.price)}</span>
+              )}
+            </span>
             {o.title !== o.title_original && (
-              <p className="truncate text-sm text-slate-500" title={o.title_original}>
+              <span className="truncate text-[13px] text-muted" title={o.title_original}>
                 {o.title_original}
-              </p>
+              </span>
             )}
-            <p className="mt-1 text-sm text-slate-600">
-              {o.source.name} · {o.source.region}
-              {conditionLabel[o.condition] && ` · ${conditionLabel[o.condition]}`}
-              {availabilityLabel[o.availability] && ` · ${availabilityLabel[o.availability]}`}
-              {sellerLabel[o.seller_type] && ` · ${sellerLabel[o.seller_type]}`}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-lg font-semibold tabular-nums">
-              {o.converted ? formatMoney(o.converted) : formatMoney(o.price)}
-            </p>
-            {o.converted && o.converted.currency !== o.price.currency && (
-              <p className="text-sm text-slate-500 tabular-nums">{formatMoney(o.price)}</p>
-            )}
-          </div>
-        </li>
-      ))}
+            <span className="flex flex-wrap gap-x-3.5 text-[13px] text-muted">
+              {facts.map((f) => (
+                <span key={f}>{f}</span>
+              ))}
+              {o.availability === "out_of_stock" && <span className="text-warn">Out of stock</span>}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -16,7 +16,7 @@ export function SettingsView() {
     }
   }, [s.settings]);
 
-  if (s.loading) return <p className="text-slate-600">Loading…</p>;
+  if (s.loading) return <p className="text-muted">Loading…</p>;
   if (s.error || !s.settings)
     return <p className="text-rose-700">{s.error?.message ?? "Could not load settings"}</p>;
 

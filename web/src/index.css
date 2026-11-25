@@ -1,1 +1,30 @@
 @import "tailwindcss";
+
+/* Design A, "price ladder" (docs/mockups/a-price-ladder.html): quiet surfaces,
+   one green for "cheapest", prices set in the display face. */
+@theme {
+  --color-paper: #f4f7f6;
+  --color-ink: #18222e;
+  --color-muted: #5b6875;
+  --color-rule: #d5dde0;
+  --color-drop: #0b7a55;
+  --color-drop-soft: #e3f1eb;
+  --color-warn: #9a3b12;
+  --font-sans: "Public Sans", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+  --font-head: "Familjen Grotesk", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-head tracking-tight;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-drop);
+    outline-offset: 2px;
+  }
+}

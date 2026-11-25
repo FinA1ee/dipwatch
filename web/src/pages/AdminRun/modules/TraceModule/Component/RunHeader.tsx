@@ -18,7 +18,7 @@ export function RunHeader({ run }: { run: RunDetail }) {
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-5">
         {facts.map(([k, v]) => (
           <div key={k}>
-            <dt className="text-slate-500">{k}</dt>
+            <dt className="text-muted">{k}</dt>
             <dd className="font-medium tabular-nums">{v}</dd>
           </div>
         ))}

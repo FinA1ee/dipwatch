@@ -9,7 +9,7 @@ export function RunListView() {
   return (
     <div className="space-y-4">
       <RunFilterBar filter={list.filter} onChange={list.setFilter} />
-      {list.loading && <p className="text-slate-600">Loading…</p>}
+      {list.loading && <p className="text-muted">Loading…</p>}
       {list.error && <AdminError error={list.error} />}
       {!list.loading && !list.error && <RunTable runs={list.runs} />}
       <div className="flex gap-4 text-sm">

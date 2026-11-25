@@ -12,5 +12,6 @@ describe("money", () => {
     expect(formatMoney({ minor: 14699, currency: "JPY" })).toBe("¥14,699");
     // CNY and JPY must not look the same.
     expect(formatMoney({ minor: 146990, currency: "CNY" })).toBe("CN¥1,469.90");
+    expect(formatMoney({ minor: 1469900, currency: "CNY" })).toBe("CN¥14,699"); // no ".00"
   });
 });

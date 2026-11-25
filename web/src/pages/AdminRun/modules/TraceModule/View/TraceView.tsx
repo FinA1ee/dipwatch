@@ -5,7 +5,7 @@ import { useRun } from "../Model/useRun";
 
 export function TraceView() {
   const { run, loading, error } = useRun();
-  if (loading) return <p className="text-slate-600">Loading…</p>;
+  if (loading) return <p className="text-muted">Loading…</p>;
   if (error) return <AdminError error={error} />;
   if (!run) return null;
   return (
