@@ -1,0 +1,257 @@
+gateway/src/auth.ts
+  s_3313d584934833::t_49140a138e3903 1-59
+web/src/pages/AdminRuns/modules/RunListModule/Model/useRunList.ts
+  s_3313d584934833::t_71fbd76ef605c2 1-41,51-52
+  s_3313d584934833::t_70847d83ea1483 42-50
+web/src/pages/Search/modules/SearchBoxModule/Model/useSearchBox.ts
+  s_3313d584934833::t_40f63c3166a82a 1,13-17,25-29
+  s_3313d584934833::t_7c1f401aba9b6d 2-12,18-24,30
+web/src/pages/Admin/modules/MetricsModule/View/MetricsView.tsx
+  s_3313d584934833::t_3599a27063f4be 1-40
+web/src/pages/Admin/index.tsx
+  s_3313d584934833::t_39bfa564a089b8 1-16
+web/src/pages/Admin/modules/MetricsModule/Component/SourceTable.tsx
+  s_3313d584934833::t_70847d83ea1483 14-28
+  s_3313d584934833::t_99e65c9a315c4f 34
+  s_3313d584934833::t_d2c7e43462de23 1-13,29-33,35-64
+web/src/pages/Search/modules/FiltersModule/View/FiltersView.tsx
+  s_3313d584934833::t_b4595a8937b033 1-8
+core/internal/runs/runs.go
+  s_3313d584934833::t_b6a5e8bbd490de 1-68,71-72,74-169,171-188
+  s_3313d584934833::t_1806c117de086f 69-70,73,170
+core/internal/guard/gate.go
+  s_3313d584934833::t_f71fe7c63b8036 34-35,54-55
+core/internal/store/offers.sql.go
+  s_3313d584934833::t_e1f0cbe3596a2b 10-11,109-141
+core/internal/http/admin_test.go
+  s_3313d584934833::t_0f9aa75c2daf09 1-57
+web/src/services/api.ts
+  s_3313d584934833::t_021a9f6a3d1194 2,6-30
+web/src/pages/AdminRun/modules/TraceModule/View/TraceView.tsx
+  s_3313d584934833::t_1806c117de086f 16
+  s_3313d584934833::t_27a3f8c14cc10b 1-15,17-20
+core/internal/guard/quota.go
+  s_3313d584934833::t_3bf6b8c8e216a9 1-74
+web/src/pages/Search/modules/ResultsModule/Model/filterOffers.ts
+  s_3313d584934833::t_20d535ea7b59be 1-8,12-20
+  s_3313d584934833::t_70847d83ea1483 9-11
+core/internal/http/api_test.go
+  s_3313d584934833::t_ae652071acdebc 42,63
+core/internal/guard/intent_test.go
+  s_3313d584934833::t_22fc3098e39b6b 123,128,136,145,154
+web/src/pages/Product/modules/OffersModule/Model/useProductPage.ts
+  s_3313d584934833::t_5846d7f5323819 1-16
+web/src/pages/Product/index.tsx
+  s_3313d584934833::t_fa3e5def1d951f 1-11
+web/src/pages/SignIn/index.tsx
+  s_3313d584934833::t_441d924bbd3f1e 1-22
+core/internal/search/search_test.go
+  s_3313d584934833::t_22fc3098e39b6b 6,114,132,194-229
+web/src/pages/Search/modules/ResultsModule/Model/filterOffers.test.ts
+  s_3313d584934833::t_5ca084a1b7cf2a 1-5,12-53
+  s_3313d584934833::t_70847d83ea1483 6-11
+web/src/pages/SignIn/returnTo.ts
+  s_3313d584934833::t_97636d2c75d6c2 1-5,7-8
+  s_3313d584934833::t_4b9c9ceed995d3 6
+web/src/pages/Product/modules/OffersModule/View/OffersView.tsx
+  s_3313d584934833::t_05f5c657976e40 1-7,10-24,30-32
+  s_3313d584934833::t_70847d83ea1483 8-9,25-29
+gateway/src/server.ts
+  s_3313d584934833::t_5e0fca7b443027 29-34
+  s_3313d584934833::t_8aa11eca644d72 3-4,6-7,15-16,19-28,35,40-46,49-61,65
+  s_3313d584934833::t_51ae622e6be173 17-18,36-39
+web/src/pages/SignIn/returnTo.test.ts
+  s_3313d584934833::t_7e780a1745d918 1-9,18-21
+  s_3313d584934833::t_70847d83ea1483 10-17
+web/src/pages/AdminRuns/modules/RunListModule/View/RunListView.tsx
+  s_3313d584934833::t_69511c1ba12dd2 1-29
+core/internal/store/queries/offers.sql
+  s_3313d584934833::t_3d7fa9fbf5a9a6 61-71
+core/internal/store/agent_runs.sql.go
+  s_3313d584934833::t_e1f0cbe3596a2b 10-11,83-268
+contracts/openapi.yaml
+  s_3313d584934833::t_ee6862b9711088 128,193,197,282,287,318,326,352,380
+  s_3313d584934833::t_001d846e71d7ab 244
+  s_3313d584934833::t_1806c117de086f 61-62,69-72,74,81
+  s_3313d584934833::t_4a51fe9795bd2a 3-60,63-68,73,75-80,82-87,180-192,194-196,198-200,304-317,319-325,327-336,366-379,381-383,420-556,562-736,752-798,828-833
+web/src/services/auth.ts
+  s_3313d584934833::t_76f98b2773d874 1-32
+web/src/pages/AdminRuns/modules/RunListModule/Component/RunFilterBar.tsx
+  s_3313d584934833::t_70847d83ea1483 29-33
+  s_3313d584934833::t_975a67c48f0b2b 1-28,34-54
+web/src/components/OfferTable.tsx
+  s_3313d584934833::t_5bb6b660d671b8 1-16,34-41,43-57,59-73
+  s_3313d584934833::t_71490491c1bbe6 17-23,58
+  s_3313d584934833::t_ab368c61986367 24-33,42
+web/src/pages/SignIn/modules/EmailModule/Component/EmailForm.tsx
+  s_3313d584934833::t_ad1a846617821f 1-42
+web/src/pages/Admin/modules/MetricsModule/Model/useMetrics.ts
+  s_3313d584934833::t_70847d83ea1483 7-11
+  s_3313d584934833::t_0cd7260b7dd5bd 1-6,12-13
+web/src/pages/Search/modules/FiltersModule/Model/useFilters.ts
+  s_3313d584934833::t_579884bfd88fa0 1,3-14
+  s_3313d584934833::t_70847d83ea1483 2
+web/src/pages/AdminRuns/index.tsx
+  s_3313d584934833::t_52310ff11f14bc 1-16
+web/src/pages/Search/modules/ResultsModule/View/ResultsView.tsx
+  s_3313d584934833::t_fe988964d6606c 1-24,30-51
+  s_3313d584934833::t_70847d83ea1483 25-29
+web/src/services/admin.ts
+  s_3313d584934833::t_70847d83ea1483 26-28
+  s_3313d584934833::t_251702909a6447 1-25,29-37
+web/src/pages/SignIn/modules/EmailModule/View/EmailView.tsx
+  s_3313d584934833::t_656d738ce35281 1-37
+gateway/package.json
+  s_3313d584934833::t_b441017b260324 14-17,21-22
+web/src/services/search.ts
+  s_3313d584934833::t_9437b99ef5eaac 1-38
+web/src/pages/Search/modules/SearchBoxModule/Component/SearchForm.tsx
+  s_3313d584934833::t_075205fd53e536 1-34
+core/internal/agent/agent.go
+  s_3313d584934833::t_35f8f5846de7d7 23-24,147-149,177,255,288
+core/internal/store/queries/agent_runs.sql
+  s_3313d584934833::t_3d7fa9fbf5a9a6 19-60
+web/src/pages/SignIn/modules/GitHubModule/View/GitHubView.tsx
+  s_3313d584934833::t_f6c719c0ba2d2e 1-23
+web/src/utils/money.ts
+  s_3313d584934833::t_dc679c5b29f4a0 1-7,9-22
+  s_3313d584934833::t_910e6d44dfab98 8
+web/src/pages/AdminRuns/modules/RunListModule/Component/RunTable.tsx
+  s_3313d584934833::t_320ec7b405ebbe 1-22,24-43
+  s_3313d584934833::t_99e65c9a315c4f 23
+core/internal/agent/agent_test.go
+  s_3313d584934833::t_35f8f5846de7d7 231,247,416-417
+core/internal/search/product_test.go
+  s_3313d584934833::t_d316511fe4e7ca 1-28
+web/src/App.tsx
+  s_3313d584934833::t_a2c82b6bab3d1a 1-8,10-22,25
+web/src/pages/Search/modules/FiltersModule/Component/FilterBar.tsx
+  s_3313d584934833::t_7c3c6efb58bc5b 1-27,33-49
+  s_3313d584934833::t_70847d83ea1483 28-32
+web/src/pages/Product/modules/HistoryModule/Component/PriceChart.tsx
+  s_3313d584934833::t_70847d83ea1483 33-34,36-38,91-97,102-109,111-128
+  s_3313d584934833::t_001d846e71d7ab 7,18-22,25-27
+  s_3313d584934833::t_d328bdbf743d32 1-6,8-17,28-32,35,39-81,83-90,98-101,110,129-142
+  s_3313d584934833::t_71490491c1bbe6 23-24,82
+web/src/pages/Product/modules/HistoryModule/View/HistoryView.tsx
+  s_3313d584934833::t_7d6c0902749a69 1-13
+web/vite.config.ts
+  s_3313d584934833::t_99758c8dc8811c 1,8-9,14
+web/src/pages/Search/index.tsx
+  s_3313d584934833::t_65dc27f8ae4404 1-13
+web/src/hooks/useSettings.ts
+  s_3313d584934833::t_f80b8c0a9a5ec9 1-21
+core/internal/search/product.go
+  s_3313d584934833::t_25c3cb05f407de 1-93
+core/internal/http/product.go
+  s_3313d584934833::t_efd9efa8c0c849 1-47
+web/src/pages/AdminRun/modules/TraceModule/Component/StepList.tsx
+  s_3313d584934833::t_70847d83ea1483 5-6,23-25,29-31
+  s_3313d584934833::t_5f40abe14983cc 7-8,21
+  s_3313d584934833::t_7a563ab41f190d 1-4,9-20,22,26-28,32-39
+web/src/components/AdminError.tsx
+  s_3313d584934833::t_ecc1ac1512497f 1-18
+deploy/.env.example
+  s_3313d584934833::t_1cb4a86210750d 21-36
+Makefile
+  s_3313d584934833::t_dde0d7048e3a37 16
+  s_3313d584934833::t_314648f9b7e87d 52
+web/src/pages/Search/store.ts
+  s_3313d584934833::t_6ef7f930ddd997 1-48
+web/tsconfig.json
+  s_3313d584934833::t_99758c8dc8811c 13,15
+  s_3313d584934833::t_70847d83ea1483 12,14
+web/src/pages/Search/modules/SearchBoxModule/View/SearchBoxView.tsx
+  s_3313d584934833::t_85e3764ba069a8 1-53
+core/internal/search/service.go
+  s_3313d584934833::t_f71fe7c63b8036 68-73,77-81,99-102
+  s_3313d584934833::t_001d846e71d7ab 46
+web/package.json
+  s_3313d584934833::t_651a8265e29440 15,18-20,30-31
+  s_3313d584934833::t_314648f9b7e87d 10-11
+web/src/pages/AdminRun/index.tsx
+  s_3313d584934833::t_fc9d5e7ef924cc 1-17
+core/internal/store/quota.sql.go
+  s_3313d584934833::t_476913b8eb9230 1-32
+core/internal/db/migrations/00008_search_quota.sql
+  s_3313d584934833::t_c03f5694e5989b 1-13
+gateway/src/app.ts
+  s_3313d584934833::t_1fd86909e08e71 3,6-9,15-18,28,32-33,36-45,65-73
+  s_3313d584934833::t_51ae622e6be173 29-31
+web/src/app/Layout.tsx
+  s_3313d584934833::t_0df09b6ecdba97 1-53
+core/internal/store/queries/quota.sql
+  s_3313d584934833::t_476913b8eb9230 1-8
+core/internal/http/api.go
+  s_3313d584934833::t_7f28f5ae960da7 39
+  s_3313d584934833::t_ae652071acdebc 27-35,43-45
+  s_3313d584934833::t_ee6862b9711088 36-37
+web/src/utils/money.test.ts
+  s_3313d584934833::t_a3a9e7ce957e0e 1-12,15-16
+  s_3313d584934833::t_910e6d44dfab98 13-14
+web/src/pages/Search/modules/ResultsModule/Model/useResults.ts
+  s_3313d584934833::t_40f63c3166a82a 1,6-10,20-28,38-39
+  s_3313d584934833::t_c5b335fbe56af1 2-5,11-19,29-37,40-41
+web/src/pages/Admin/modules/MetricsModule/Component/SpendTable.tsx
+  s_3313d584934833::t_99e65c9a315c4f 18
+  s_3313d584934833::t_1f9d2ed8a529e8 1-17,19-27
+web/src/pages/AdminRun/modules/TraceModule/Model/useRun.ts
+  s_3313d584934833::t_1bde0eede08e4f 1-14
+core/internal/store/models.go
+  s_3313d584934833::t_381c245fd39718 103-108,136-180
+web/src/services/schema.d.ts
+  s_3313d584934833::t_1806c117de086f 172-173,177
+  s_3313d584934833::t_001d846e71d7ab 275
+  s_3313d584934833::t_314648f9b7e87d 7-57,75-94,139-171,174-176,178,248-254,257,300-307,309-311,313-316,333-340,342,363-428,438-610,638-688,729-737
+  s_3313d584934833::t_ee6862b9711088 204,255-256,291,293,308,312,325,341
+deploy/compose.yaml
+  s_3313d584934833::t_1cb4a86210750d 89-98
+core/cmd/core-api/main.go
+  s_3313d584934833::t_ae652071acdebc 30,61,103-105
+  s_3313d584934833::t_7f28f5ae960da7 153
+core/internal/db/migrations/00007_auth.sql
+  s_3313d584934833::t_58159c46b4b731 2-3,9-57
+  s_3313d584934833::t_c03f5694e5989b 1,4-8,58-60
+gateway/src/app.test.ts
+  s_3313d584934833::t_d94e81d5dfd9b8 10,14-26,31-32,60-62,71-73,78-79,83-94,99-111
+  s_3313d584934833::t_51ae622e6be173 2-9,80-82,95-98
+core/internal/http/admin.go
+  s_3313d584934833::t_bdeed2fd432f23 1-114
+web/src/hooks/useMember.ts
+  s_3313d584934833::t_6f06fa0c27463f 1-18
+docs/tasks.md
+  s_3313d584934833::t_740331e6c65f1e 225-231,233-239
+pnpm-lock.yaml
+  s_3313d584934833::t_677daac687b8f6 179-181,185-190,195-200,216-218,228-233,259-261,273-348,612-619,633-635,740-742,863-868,925-991,1005-1007,1020-1022,1082-1084,1099-1102,1192-1199,1220-1253,1269-1284,1290-1305,1319-1321,1325-1327,1332-1335,1474-1477,1485-1505,1516-1565,1733-1736,1762-1763,1818-1819,1915-1924,1959-1994,2005-2006,2015-2016,2085-2086,2097-2098,2160-2163,2188-2222,2235-2244,2250-2259,2286-2287,2290-2291,2294-2295,2367-2368,2372-2378
+web/src/pages/Search/modules/ResultsModule/Component/ResultsHeader.tsx
+  s_3313d584934833::t_ce10e1f8b04156 1-22,25-29
+  s_3313d584934833::t_70847d83ea1483 23-24
+gateway/src/mail.ts
+  s_3313d584934833::t_51ae622e6be173 24-31
+  s_3313d584934833::t_14d6fed94fdc5a 1-23,32-34
+core/internal/runs/runs_test.go
+  s_3313d584934833::t_3e5d2245e4f29e 1-88,90-92
+  s_3313d584934833::t_1806c117de086f 89
+core/internal/http/viewer.go
+  s_3313d584934833::t_fb23109aff9085 1-38
+core/internal/http/search.go
+  s_3313d584934833::t_7f28f5ae960da7 6,20,48,50-51,57-62
+web/src/pages/AdminRun/modules/TraceModule/Component/RunHeader.tsx
+  s_3313d584934833::t_cbd9ebdfc41833 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "1f74dd8532dffc001f7b4d6a5b187f5ff76d33c3",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
