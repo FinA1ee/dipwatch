@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
+	"github.com/FinA1ee/dipwatch/core/internal/pricetrust"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -34,15 +35,17 @@ type Checker struct {
 }
 
 type offer struct {
-	id    int64
-	cny   int64
-	known bool
+	id      int64
+	cny     int64
+	known   bool // has an exchange rate, and its price can be compared (pricetrust)
+	variant string
 }
 
 // Check runs every tracker's rules against one source's offers for a product
-// (T1, T4). Each rule fires for the cheapest matching offer, or only for the
-// pinned listing when the tracker has one, at most once per offer, rule and
-// channel per day (T5, enforced by the alerts table).
+// (T1, T4). Each rule fires for the cheapest matching offer of the tracker's
+// variant, or only for the pinned listing when the tracker has one, at most
+// once per offer, rule and channel per day (T5, enforced by the alerts table).
+// Offers whose price is unconfirmed or unusual never trigger an alert.
 func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, sourceID string, ch Changes) (int, error) {
 	watchers, err := q.ListProductWatchers(ctx, productID)
 	if err != nil || len(watchers) == 0 {
@@ -57,16 +60,28 @@ func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, 
 		rates = fx.Rates{} // CNY offers can still be compared
 	}
 	offers := make([]offer, 0, len(rows))
+	prices := make([]pricetrust.Price, 0, len(rows))
 	for _, r := range rows {
 		cny, err := rates.ToCNYMinor(r.PriceMinor, r.Currency)
-		offers = append(offers, offer{id: r.ID, cny: cny, known: err == nil})
+		known := err == nil && !r.PriceUnconfirmed
+		offers = append(offers, offer{id: r.ID, cny: cny, known: known, variant: r.Variant})
+		prices = append(prices, pricetrust.Price{CNY: cny, Known: known, Variant: r.Variant})
+	}
+	for i, unusual := range pricetrust.Unusual(prices) {
+		if unusual {
+			offers[i].known = false
+		}
 	}
 	var pinned *int64
+	variant := ""
 	cheapestWhere := func(match func(offer) bool) (offer, bool) {
 		var best offer
 		found := false
 		for _, o := range offers {
 			if pinned != nil && o.id != *pinned {
+				continue
+			}
+			if pinned == nil && variant != "" && o.variant != variant {
 				continue
 			}
 			if o.known && match(o) && (!found || o.cny < best.cny) {
@@ -81,7 +96,7 @@ func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, 
 		if len(w.Sources) > 0 && !slices.Contains(w.Sources, sourceID) {
 			continue // the member tracks this product at another store
 		}
-		pinned = w.OfferID
+		pinned, variant = w.OfferID, w.Variant
 		channels := c.channels(w.FeishuWebhook, w.EmailAlerts)
 		if len(channels) == 0 {
 			continue

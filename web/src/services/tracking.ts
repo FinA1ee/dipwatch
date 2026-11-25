@@ -14,7 +14,7 @@ export async function listTracked(): Promise<TrackedItem[]> {
 /**
  * Tracks a product at the given stores (used when tracking starts), or updates
  * it. With offerId the tracker follows that listing only; null follows the
- * product's cheapest offer.
+ * product's cheapest offer of the variant ("" any size).
  */
 export async function saveTracked(
   productId: number,
@@ -22,10 +22,11 @@ export async function saveTracked(
   rules: Rule[],
   stores: string[],
   offerId: number | null,
+  variant: string,
 ): Promise<TrackedItem> {
   const { data, error, response } = await api.PUT("/me/tracked/{productId}", {
     params: { path: { productId } },
-    body: { note, rules, stores, ...(offerId ? { offer_id: offerId } : {}) },
+    body: { note, rules, stores, ...(offerId ? { offer_id: offerId } : {}), ...(variant ? { variant } : {}) },
   });
   if (!data) fail(response, error);
   return data;

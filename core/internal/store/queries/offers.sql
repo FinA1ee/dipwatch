@@ -2,10 +2,10 @@
 -- One row per listing (source_id, external_id). Re-seeing a listing updates it in place.
 INSERT INTO app.offers (
     product_id, source_id, external_id, url, title_original,
-    price_minor, currency, shipping_minor, condition, availability, seller_type, raw
+    price_minor, currency, shipping_minor, condition, availability, seller_type, raw, price_unconfirmed
 ) VALUES (
     @product_id, @source_id, @external_id, @url, @title_original,
-    @price_minor, @currency, @shipping_minor, @condition, @availability, @seller_type, @raw
+    @price_minor, @currency, @shipping_minor, @condition, @availability, @seller_type, @raw, @price_unconfirmed
 )
 ON CONFLICT (source_id, external_id) DO UPDATE SET
     url = EXCLUDED.url,
@@ -17,6 +17,7 @@ ON CONFLICT (source_id, external_id) DO UPDATE SET
     availability = EXCLUDED.availability,
     seller_type = EXCLUDED.seller_type,
     raw = EXCLUDED.raw,
+    price_unconfirmed = EXCLUDED.price_unconfirmed,
     last_seen_at = now()
 RETURNING id;
 
@@ -51,7 +52,7 @@ WHERE o.product_id = @product_id;
 -- from the given stores (empty: every store).
 SELECT o.id, o.source_id, s.name AS source_name, s.region AS source_region,
        o.url, o.title_original, o.title_en, o.price_minor, o.currency, o.shipping_minor,
-       o.condition, o.availability, o.seller_type
+       o.condition, o.availability, o.seller_type, o.variant, o.price_unconfirmed
 FROM app.offers o
 JOIN app.sources s ON s.id = o.source_id
 WHERE o.product_id = @product_id
@@ -60,13 +61,16 @@ WHERE o.product_id = @product_id
 ORDER BY o.id;
 
 -- name: ListProductPricePoints :many
--- Price history for the product page: every price point of offers the matcher
--- did not reject, since a start time. Converted and reduced per day in Go.
+-- Price history for the product page: every price point of offers of one
+-- variant that the matcher did not reject and whose price the store confirms,
+-- since a start time. Converted and reduced per day in Go.
 SELECT pp.observed_at, pp.price_minor, pp.currency
 FROM app.price_points pp
 JOIN app.offers o ON o.id = pp.offer_id
 WHERE o.product_id = @product_id
   AND o.is_product IS NOT FALSE
+  AND NOT o.price_unconfirmed
+  AND o.variant = @variant
   AND pp.observed_at >= @since
 ORDER BY pp.observed_at;
 

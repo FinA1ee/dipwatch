@@ -1,26 +1,24 @@
-import { useProductPage } from "../../OffersModule/Model/useProductPage";
 import { PriceChart } from "../Component/PriceChart";
+import { useHistory } from "../Model/useHistory";
 
-/**
- * Price history of one listing. Listings of one model differ too much (48 GB
- * versions, laptops, server cards) for a product-wide line to mean anything,
- * so there is no chart until a listing is picked or tracked.
- */
+/** Price of one listing, or the lowest of one size, per day. */
 export function HistoryView() {
-  const { page } = useProductPage();
-  if (!page) return null;
-  if (!page.history_of) {
+  const { scope, history } = useHistory();
+  if (!scope) {
     return (
       <p className="text-sm text-muted">
-        To see a price over time, press "Track this listing" on the listing you want. Listings of the same
-        model differ too much in memory, edition and type for one line across all of them to be useful.
+        Pick a size above, or press "Track this listing" on one listing, to see its price over time. Listings
+        of different sizes are never drawn as one line.
       </p>
     );
   }
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-semibold">Price of this listing per day, last 30 days</h2>
-      <PriceChart history={page.history} />
+      <h2 className="text-lg font-semibold">
+        {scope.listing ? "Price of this listing per day" : `Lowest ${scope.variant} price per day`}, last 30
+        days
+      </h2>
+      <PriceChart history={history} />
     </section>
   );
 }

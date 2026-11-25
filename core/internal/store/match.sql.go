@@ -10,7 +10,7 @@ import (
 )
 
 const getMatchDecisions = `-- name: GetMatchDecisions :many
-SELECT title_hash, is_product, title_en, condition
+SELECT title_hash, is_product, title_en, condition, variant
 FROM app.match_cache
 WHERE product_id = $1 AND title_hash = ANY($2::text[])
 `
@@ -25,6 +25,7 @@ type GetMatchDecisionsRow struct {
 	IsProduct bool
 	TitleEn   string
 	Condition string
+	Variant   string
 }
 
 func (q *Queries) GetMatchDecisions(ctx context.Context, arg GetMatchDecisionsParams) ([]GetMatchDecisionsRow, error) {
@@ -41,6 +42,7 @@ func (q *Queries) GetMatchDecisions(ctx context.Context, arg GetMatchDecisionsPa
 			&i.IsProduct,
 			&i.TitleEn,
 			&i.Condition,
+			&i.Variant,
 		); err != nil {
 			return nil, err
 		}
@@ -53,12 +55,13 @@ func (q *Queries) GetMatchDecisions(ctx context.Context, arg GetMatchDecisionsPa
 }
 
 const saveMatchDecision = `-- name: SaveMatchDecision :exec
-INSERT INTO app.match_cache (product_id, title_hash, is_product, title_en, condition)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO app.match_cache (product_id, title_hash, is_product, title_en, condition, variant)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (product_id, title_hash) DO UPDATE SET
     is_product = EXCLUDED.is_product,
     title_en = EXCLUDED.title_en,
-    condition = EXCLUDED.condition
+    condition = EXCLUDED.condition,
+    variant = EXCLUDED.variant
 `
 
 type SaveMatchDecisionParams struct {
@@ -67,6 +70,7 @@ type SaveMatchDecisionParams struct {
 	IsProduct bool
 	TitleEn   string
 	Condition string
+	Variant   string
 }
 
 func (q *Queries) SaveMatchDecision(ctx context.Context, arg SaveMatchDecisionParams) error {
@@ -76,19 +80,21 @@ func (q *Queries) SaveMatchDecision(ctx context.Context, arg SaveMatchDecisionPa
 		arg.IsProduct,
 		arg.TitleEn,
 		arg.Condition,
+		arg.Variant,
 	)
 	return err
 }
 
 const setOfferMatch = `-- name: SetOfferMatch :exec
-UPDATE app.offers SET is_product = $1, title_en = $2, condition = $3
-WHERE id = $4
+UPDATE app.offers SET is_product = $1, title_en = $2, condition = $3, variant = $4
+WHERE id = $5
 `
 
 type SetOfferMatchParams struct {
 	IsProduct *bool
 	TitleEn   string
 	Condition string
+	Variant   string
 	ID        int64
 }
 
@@ -97,6 +103,7 @@ func (q *Queries) SetOfferMatch(ctx context.Context, arg SetOfferMatchParams) er
 		arg.IsProduct,
 		arg.TitleEn,
 		arg.Condition,
+		arg.Variant,
 		arg.ID,
 	)
 	return err

@@ -17,7 +17,8 @@ export function useTracked() {
       rules: Rule[];
       stores: string[];
       offerId: number | null;
-    }) => saveTracked(v.productId, v.note, v.rules, v.stores, v.offerId),
+      variant: string;
+    }) => saveTracked(v.productId, v.note, v.rules, v.stores, v.offerId, v.variant),
     onSuccess: refresh,
   });
   const remove = useMutation({

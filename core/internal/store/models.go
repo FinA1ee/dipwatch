@@ -49,27 +49,30 @@ type AppMatchCache struct {
 	TitleEn   string
 	Condition string
 	CreatedAt pgtype.Timestamptz
+	Variant   string
 }
 
 type AppOffer struct {
-	ID            int64
-	ProductID     int64
-	SourceID      string
-	ExternalID    string
-	Url           string
-	TitleOriginal string
-	TitleEn       string
-	PriceMinor    int64
-	Currency      string
-	ShippingMinor *int64
-	Condition     string
-	Availability  string
-	SellerType    string
-	Specs         []byte
-	Raw           []byte
-	FirstSeenAt   pgtype.Timestamptz
-	LastSeenAt    pgtype.Timestamptz
-	IsProduct     *bool
+	ID               int64
+	ProductID        int64
+	SourceID         string
+	ExternalID       string
+	Url              string
+	TitleOriginal    string
+	TitleEn          string
+	PriceMinor       int64
+	Currency         string
+	ShippingMinor    *int64
+	Condition        string
+	Availability     string
+	SellerType       string
+	Specs            []byte
+	Raw              []byte
+	FirstSeenAt      pgtype.Timestamptz
+	LastSeenAt       pgtype.Timestamptz
+	IsProduct        *bool
+	Variant          string
+	PriceUnconfirmed bool
 }
 
 type AppPricePoint struct {
@@ -149,6 +152,7 @@ type AppWatchItem struct {
 	CreatedAt             pgtype.Timestamptz
 	Sources               []string
 	OfferID               *int64
+	Variant               string
 }
 
 type AuthAccount struct {

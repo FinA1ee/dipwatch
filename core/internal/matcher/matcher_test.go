@@ -94,3 +94,22 @@ func TestTitleHashIgnoresCaseAndSpacing(t *testing.T) {
 		t.Fatal("hash normalization wrong")
 	}
 }
+
+func TestVariants(t *testing.T) {
+	for in, want := range map[string]string{
+		"24GB": "24GB", "24 gb": "24GB", "24G": "24GB", "1TB": "1TB", "1 t": "1TB", "0.5TB": "0.5TB",
+		"": "", "GDDR6X": "", "24GB GDDR6X": "", "Founders Edition": "",
+	} {
+		if got := NormalizeVariant(in); got != want {
+			t.Errorf("NormalizeVariant(%q) = %q, want %q", in, got, want)
+		}
+	}
+	for in, want := range map[string]string{
+		"RTX 4090 48GB": "48GB", "rtx4090 24g": "24GB", "iPhone 17 Pro 1TB": "1TB",
+		"RTX 4090": "", "RTX 5G phone": "", "Sony WH-1000XM6": "",
+	} {
+		if got := VariantInQuery(in); got != want {
+			t.Errorf("VariantInQuery(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -18,7 +18,10 @@ type Offer struct {
 	Condition     string // new, used, refurbished, unknown
 	Availability  string // in_stock, out_of_stock, unknown
 	SellerType    string // official, third_party, individual, unknown
-	Raw           json.RawMessage
+	// PriceUnconfirmed: the store only relays the price (e.g. from a shop's
+	// feed) and does not show it on a page it compares, so it may be stale.
+	PriceUnconfirmed bool
+	Raw              json.RawMessage
 }
 
 // Query is what to search for.

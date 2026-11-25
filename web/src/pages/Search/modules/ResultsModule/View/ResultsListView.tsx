@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { OfferTable } from "@/components/OfferTable";
+import { ANY_VARIANT } from "@/utils/variants";
 import { useResults } from "../Model/useResults";
 
 /** The ranked offers and the prompt to track the product. */
@@ -32,10 +33,10 @@ export function ResultsListView() {
           you pick above.
         </p>
         <Link
-          to={`/p/${r.product.id}`}
+          to={`/p/${r.product.id}${r.variant !== ANY_VARIANT && r.variant ? `?variant=${encodeURIComponent(r.variant)}` : ""}`}
           className="rounded-[10px] bg-white px-[18px] py-2.5 font-semibold text-ink hover:bg-paper"
         >
-          Track this product
+          Track {r.variant !== ANY_VARIANT && r.variant ? `the ${r.variant} version` : "this product"}
         </Link>
       </aside>
     </section>

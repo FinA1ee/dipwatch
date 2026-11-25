@@ -1,9 +1,13 @@
 import type { Offer } from "@/services/api";
+import { ofVariant } from "@/utils/variants";
 import type { Filters } from "../../../store";
 
-/** Applies the filter bar. Keeps the server's ranking (cheapest first in CNY). */
-export function filterOffers(offers: Offer[], f: Filters): Offer[] {
-  return offers.filter(
+/**
+ * Applies the filter bar for one variant (the picked or preselected one).
+ * Keeps the server's ranking: cheapest first in CNY, flagged prices last.
+ */
+export function filterOffers(offers: Offer[], f: Filters, variant: string): Offer[] {
+  return ofVariant(offers, variant).filter(
     (o) =>
       (f.condition === "any" ||
         (f.condition === "new"

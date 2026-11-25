@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Offer } from "@/services/api";
+import { ANY_VARIANT } from "@/utils/variants";
 import { NO_FILTERS } from "../../../store";
 import { filterOffers, regionsOf } from "./filterOffers";
 
@@ -13,6 +14,7 @@ function offer(
     id,
     title: `offer ${id}`,
     title_original: `offer ${id}`,
+    variant: "24GB",
     source: { id: `s${region}`, name: "Store", region },
     url: "https://example.test",
     price: { minor: 100 * id, currency: "CNY" },
@@ -34,17 +36,17 @@ const ids = (list: Offer[]) => list.map((o) => o.id);
 
 describe("filterOffers", () => {
   it("keeps everything and the ranking without filters", () => {
-    expect(ids(filterOffers(offers, NO_FILTERS))).toEqual([1, 2, 3, 4]);
+    expect(ids(filterOffers(offers, NO_FILTERS, ANY_VARIANT))).toEqual([1, 2, 3, 4]);
   });
 
   it("filters by condition, counting refurbished as used", () => {
-    expect(ids(filterOffers(offers, { ...NO_FILTERS, condition: "new" }))).toEqual([1]);
-    expect(ids(filterOffers(offers, { ...NO_FILTERS, condition: "used" }))).toEqual([2, 3]);
+    expect(ids(filterOffers(offers, { ...NO_FILTERS, condition: "new" }, ANY_VARIANT))).toEqual([1]);
+    expect(ids(filterOffers(offers, { ...NO_FILTERS, condition: "used" }, ANY_VARIANT))).toEqual([2, 3]);
   });
 
   it("filters by region and stock, keeping unknown stock", () => {
-    expect(ids(filterOffers(offers, { ...NO_FILTERS, region: "JP" }))).toEqual([2, 4]);
-    expect(ids(filterOffers(offers, { ...NO_FILTERS, inStockOnly: true }))).toEqual([1, 2, 4]);
+    expect(ids(filterOffers(offers, { ...NO_FILTERS, region: "JP" }, ANY_VARIANT))).toEqual([2, 4]);
+    expect(ids(filterOffers(offers, { ...NO_FILTERS, inStockOnly: true }, ANY_VARIANT))).toEqual([1, 2, 4]);
   });
 
   it("lists regions once, sorted", () => {

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Offer } from "@/services/api";
 import { formatMoney } from "@/utils/money";
 import { safeHref } from "@/utils/url";
+import { trusted } from "@/utils/variants";
 
 const conditionLabel: Record<Offer["condition"], string> = {
   new: "New",
@@ -27,19 +28,31 @@ type Props = {
   selected?: number | null;
 };
 
+/** Why a price is not compared, shown under it. */
+function flagNote(o: Offer): string {
+  if (o.price_unconfirmed) return "Price not confirmed at the store";
+  if (o.unusual_price) return `Unusual price for ${o.variant || "this model"}`;
+  return "";
+}
+
 /**
- * Ranked offers (S5). The cheapest is marked in green; the others show how much
- * more they cost, so the list reads as steps up the ladder.
+ * Ranked offers (S5). The cheapest comparable one is marked in green; the
+ * others show how much more they cost, so the list reads as steps up the
+ * ladder. Unconfirmed and unusual prices come last, with a note instead.
  */
 export function OfferTable({ offers, action, selected }: Props) {
-  const cheapest = offers[0] ? shown(offers[0]) : null;
+  const lowest = offers.find(trusted);
+  const cheapest = lowest ? shown(lowest) : null;
   return (
     <ul>
-      {offers.map((o, i) => {
+      {offers.map((o) => {
         const price = shown(o);
+        const isLowest = o === lowest;
+        const note = flagNote(o);
         const gap = cheapest && price.currency === cheapest.currency ? price.minor - cheapest.minor : null;
         const facts = [
           o.source.name,
+          o.variant,
           sellerLabel[o.seller_type],
           conditionLabel[o.condition],
           o.availability === "in_stock" ? "In stock" : "",
@@ -62,16 +75,20 @@ export function OfferTable({ offers, action, selected }: Props) {
             </a>
             <span className="row-span-3 text-right tabular-nums">
               <strong
-                className={`block font-head text-[22px] font-bold leading-tight tracking-tight ${i === 0 ? "text-drop" : ""}`}
+                className={`block font-head text-[22px] font-bold leading-tight tracking-tight ${isLowest ? "text-drop" : note ? "text-muted" : ""}`}
               >
                 {formatMoney(price)}
               </strong>
-              <span className={`block text-[13px] ${i === 0 ? "font-semibold text-drop" : "text-muted"}`}>
-                {i === 0
+              <span
+                className={`block text-[13px] ${isLowest ? "font-semibold text-drop" : note ? "font-medium text-warn" : "text-muted"}`}
+              >
+                {isLowest
                   ? "lowest"
-                  : gap !== null && gap > 0
-                    ? `${formatMoney({ ...price, minor: gap })} more than the lowest`
-                    : ""}
+                  : note
+                    ? note
+                    : gap !== null && gap > 0
+                      ? `${formatMoney({ ...price, minor: gap })} more than the lowest`
+                      : ""}
               </span>
               {o.converted && o.converted.currency !== o.price.currency && (
                 <span className="block text-[13px] text-muted">{formatMoney(o.price)} at the store</span>

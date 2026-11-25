@@ -456,6 +456,8 @@ export interface components {
             stores: string[];
             /** Format: date-time */
             tracked_at: string;
+            /** @description Only listings of this variant count, e.g. 24GB; empty: any variant */
+            variant: string;
         };
         Limits: {
             /**
@@ -505,6 +507,8 @@ export interface components {
             store: string;
             title: string;
             url: string;
+            /** @description The listing's variant, e.g. 24GB; empty when its title does not say */
+            variant: string;
         };
         Metrics: {
             /**
@@ -532,6 +536,8 @@ export interface components {
             id: number;
             /** @description Price in the store's currency */
             price: components["schemas"]["Money"];
+            /** @description The store relays this price from a shop's feed without showing it on its own page; it may be stale */
+            price_unconfirmed?: boolean;
             /** @enum {string} */
             seller_type: "official" | "third_party" | "individual" | "unknown";
             /**
@@ -544,8 +550,12 @@ export interface components {
             title: string;
             /** @description Title as the store shows it */
             title_original: string;
+            /** @description More than twice, or under half, the median price of listings with the same variant */
+            unusual_price?: boolean;
             /** Format: uri */
             url: string;
+            /** @description Memory or storage size the listing sells, e.g. 24GB; empty when the title does not say */
+            variant: string;
         };
         OffersEvent: {
             /** @description Cheapest first, compared in CNY */
@@ -569,9 +579,11 @@ export interface components {
             history: components["schemas"]["DayLow"][];
             /**
              * Format: int64
-             * @description Offer id the history is for; absent: the lowest of all listings
+             * @description Offer id the history is for
              */
             history_of?: number;
+            /** @description Variant the history is the daily lowest of, when no listing is given */
+            history_variant?: string;
             /** Format: date-time */
             last_refreshed?: string;
             /** @description Cheapest first, compared in CNY */
@@ -589,7 +601,7 @@ export interface components {
             readonly $schema?: string;
             /** @description true when stored offers were not refreshed because the viewer is not invited */
             invite_only?: boolean;
-            /** @description Cheapest first, compared in CNY */
+            /** @description Cheapest first, compared in CNY; offers with an unconfirmed or unusual price come after the others */
             offers: components["schemas"]["Offer"][];
             /** @description true when stored offers are older than usual because today's budget is spent */
             paused?: boolean;
@@ -599,6 +611,8 @@ export interface components {
              * @enum {string}
              */
             status: "fresh" | "refreshing";
+            /** @description Size named in the query (e.g. 48GB), for the page to preselect */
+            variant?: string;
         };
         Rule: {
             /** @description For below: alert when an offer costs less than this */
@@ -655,6 +669,8 @@ export interface components {
             rules: components["schemas"]["Rule"][];
             /** @description Stores to track at (needed when tracking starts without a listing; ignored afterwards) */
             stores?: string[];
+            /** @description Without a listing: only listings of this variant count, e.g. 24GB; omit for any variant */
+            variant?: string;
         };
         SearchInputBody: {
             /**
@@ -1654,8 +1670,10 @@ export interface operations {
         parameters: {
             query?: {
                 currency?: string;
-                /** @description Offer id: price history of this listing only; 0: the lowest of all listings */
+                /** @description Offer id: price history of this listing */
                 listing?: number;
+                /** @description Without a listing: history of the daily lowest price of this variant, e.g. 24GB */
+                variant?: string;
             };
             header?: never;
             path: {

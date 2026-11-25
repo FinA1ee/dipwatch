@@ -292,18 +292,19 @@ func save(ctx context.Context, db *pgxpool.Pool, productID int64, sourceID strin
 		ch.FirstFromSource = !seen && len(offers) > 0
 		for _, o := range offers {
 			id, err := q.UpsertOffer(ctx, store.UpsertOfferParams{
-				ProductID:     productID,
-				SourceID:      sourceID,
-				ExternalID:    o.ExternalID,
-				Url:           o.URL,
-				TitleOriginal: o.Title,
-				PriceMinor:    o.PriceMinor,
-				Currency:      o.Currency,
-				ShippingMinor: o.ShippingMinor,
-				Condition:     orUnknown(o.Condition),
-				Availability:  orUnknown(o.Availability),
-				SellerType:    orUnknown(o.SellerType),
-				Raw:           o.Raw,
+				ProductID:        productID,
+				SourceID:         sourceID,
+				ExternalID:       o.ExternalID,
+				Url:              o.URL,
+				TitleOriginal:    o.Title,
+				PriceMinor:       o.PriceMinor,
+				Currency:         o.Currency,
+				ShippingMinor:    o.ShippingMinor,
+				Condition:        orUnknown(o.Condition),
+				Availability:     orUnknown(o.Availability),
+				SellerType:       orUnknown(o.SellerType),
+				Raw:              o.Raw,
+				PriceUnconfirmed: o.PriceUnconfirmed,
 			})
 			if err != nil {
 				return fmt.Errorf("upsert offer %s: %w", o.ExternalID, err)
@@ -390,7 +391,7 @@ func (w *RefreshSourceWorker) match(ctx context.Context, product store.AppProduc
 	}
 	known := map[string]matcher.Decision{}
 	for _, c := range cached {
-		known[c.TitleHash] = matcher.Decision{IsProduct: c.IsProduct, TitleEn: c.TitleEn, Condition: c.Condition}
+		known[c.TitleHash] = matcher.Decision{IsProduct: c.IsProduct, TitleEn: c.TitleEn, Condition: c.Condition, Variant: c.Variant}
 	}
 
 	var titles []string
@@ -411,7 +412,7 @@ func (w *RefreshSourceWorker) match(ctx context.Context, product store.AppProduc
 		for i, d := range decisions {
 			known[newHashes[i]] = d
 			if err := q.SaveMatchDecision(ctx, store.SaveMatchDecisionParams{
-				ProductID: product.ID, TitleHash: newHashes[i], IsProduct: d.IsProduct, TitleEn: d.TitleEn, Condition: d.Condition,
+				ProductID: product.ID, TitleHash: newHashes[i], IsProduct: d.IsProduct, TitleEn: d.TitleEn, Condition: d.Condition, Variant: d.Variant,
 			}); err != nil {
 				return err
 			}
@@ -425,7 +426,7 @@ func (w *RefreshSourceWorker) match(ctx context.Context, product store.AppProduc
 			condition = o.Condition // keep what the source said when the title says nothing
 		}
 		isProduct := d.IsProduct
-		if err := q.SetOfferMatch(ctx, store.SetOfferMatchParams{ID: o.ID, IsProduct: &isProduct, TitleEn: d.TitleEn, Condition: condition}); err != nil {
+		if err := q.SetOfferMatch(ctx, store.SetOfferMatchParams{ID: o.ID, IsProduct: &isProduct, TitleEn: d.TitleEn, Condition: condition, Variant: d.Variant}); err != nil {
 			return err
 		}
 	}

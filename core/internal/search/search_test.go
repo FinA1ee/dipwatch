@@ -351,3 +351,32 @@ func TestSpendBreakerKeepsSearchesOnStoredData(t *testing.T) {
 		t.Fatalf("new query at 100%%: %v", err)
 	}
 }
+
+func TestFlaggedPricesComeLast(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	product, sourceID, query := fixture(t, ctx, q) // ¥50, about ¥70, ¥100
+	add := func(ext string, minor int64, unconfirmed bool) {
+		if _, err := q.UpsertOffer(ctx, store.UpsertOfferParams{
+			ProductID: product.ID, SourceID: sourceID, ExternalID: ext, Url: "https://example.test/" + ext,
+			TitleOriginal: ext, PriceMinor: minor, Currency: "CNY", Condition: "new", Availability: "in_stock",
+			SellerType: "unknown", PriceUnconfirmed: unconfirmed,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	add("feed-10", 1000, true)   // the cheapest, but only relayed by the store
+	add("cny-900", 90000, false) // more than twice the median
+	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Queue: &fakeQueue{}}
+	res, err := s.Search(ctx, guard.Viewer{Admin: true}, query, "CNY", []string{sourceID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(ids(res.Offers)); got != "[cny-50 usd-10 cny-100 feed-10 cny-900]" {
+		t.Fatalf("ranking: %s", got)
+	}
+	last := res.Offers[len(res.Offers)-2:]
+	if !last[0].PriceUnconfirmed || last[0].UnusualPrice || !last[1].UnusualPrice || res.Offers[0].UnusualPrice {
+		t.Fatalf("flags: %+v", last)
+	}
+}

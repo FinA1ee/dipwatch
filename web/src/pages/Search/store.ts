@@ -7,9 +7,10 @@ export type Filters = {
   condition: "any" | "new" | "used";
   region: string; // "any" or a source region, e.g. "JP"
   inStockOnly: boolean;
+  variant: string | null; // a size, ANY_VARIANT, or null: preselected (see defaultVariant)
 };
 
-export const NO_FILTERS: Filters = { condition: "any", region: "any", inStockOnly: false };
+export const NO_FILTERS: Filters = { condition: "any", region: "any", inStockOnly: false, variant: null };
 
 type Update<T> = T | ((prev: T) => T);
 
@@ -23,6 +24,7 @@ type SearchState = {
   timedOut: boolean;
   paused: boolean; // stored prices only: today's budget is spent
   inviteOnly: boolean; // stored prices only: the viewer is not invited
+  queryVariant: string; // size named in the query, e.g. "48GB"; "" when none
   filters: Filters;
   setQuery: (next: Update<string>) => void;
   setFilters: (next: Update<Filters>) => void;
@@ -45,6 +47,7 @@ export const useSearchStore = create<SearchState>()((set) => ({
   timedOut: false,
   paused: false,
   inviteOnly: false,
+  queryVariant: "",
   filters: NO_FILTERS,
   setQuery: (next) => set((s) => ({ query: resolve(next, s.query) })),
   setFilters: (next) => set((s) => ({ filters: resolve(next, s.filters) })),

@@ -36,6 +36,6 @@ SELECT EXISTS (
 
 -- name: ListAlertOffers :many
 -- One source's offers for the product that the matcher did not reject.
-SELECT id, price_minor, currency, availability, first_seen_at
+SELECT id, price_minor, currency, availability, first_seen_at, variant, price_unconfirmed
 FROM app.offers
 WHERE product_id = @product_id AND source_id = @source_id AND is_product IS NOT FALSE;

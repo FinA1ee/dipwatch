@@ -48,7 +48,8 @@ export function TrackedView() {
               </p>
             )}
             <p className="text-sm text-muted">
-              At {storeNames(i.stores)} · alerts: {i.rules.map(describeRule).join(", ")}
+              {!i.listing && i.variant && `${i.variant} only · `}At {storeNames(i.stores)} · alerts:{" "}
+              {i.rules.map(describeRule).join(", ")}
               {i.baseline &&
                 ` · ${i.listing ? "price" : "lowest"} when you started: ${formatMoney(i.baseline)}`}
             </p>

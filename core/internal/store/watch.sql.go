@@ -40,7 +40,7 @@ func (q *Queries) DeleteWatchItem(ctx context.Context, arg DeleteWatchItemParams
 }
 
 const getWatchItem = `-- name: GetWatchItem :one
-SELECT id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id FROM app.watch_items WHERE user_id = $1 AND product_id = $2
+SELECT id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id, variant FROM app.watch_items WHERE user_id = $1 AND product_id = $2
 `
 
 type GetWatchItemParams struct {
@@ -62,12 +62,13 @@ func (q *Queries) GetWatchItem(ctx context.Context, arg GetWatchItemParams) (App
 		&i.CreatedAt,
 		&i.Sources,
 		&i.OfferID,
+		&i.Variant,
 	)
 	return i, err
 }
 
 const listProductWatchers = `-- name: ListProductWatchers :many
-SELECT w.id, w.user_id, w.rules, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id,
+SELECT w.id, w.user_id, w.rules, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id, w.variant,
        u.email, u.feishu_webhook, u.email_alerts
 FROM app.watch_items w
 JOIN app.users u ON u.id = w.user_id
@@ -82,6 +83,7 @@ type ListProductWatchersRow struct {
 	CreatedAt             pgtype.Timestamptz
 	Sources               []string
 	OfferID               *int64
+	Variant               string
 	Email                 string
 	FeishuWebhook         string
 	EmailAlerts           bool
@@ -105,6 +107,7 @@ func (q *Queries) ListProductWatchers(ctx context.Context, productID int64) ([]L
 			&i.CreatedAt,
 			&i.Sources,
 			&i.OfferID,
+			&i.Variant,
 			&i.Email,
 			&i.FeishuWebhook,
 			&i.EmailAlerts,
@@ -120,9 +123,10 @@ func (q *Queries) ListProductWatchers(ctx context.Context, productID int64) ([]L
 }
 
 const listWatchItems = `-- name: ListWatchItems :many
-SELECT w.id, w.user_id, w.product_id, w.note, w.rules, w.channels, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id, p.canonical_name,
+SELECT w.id, w.user_id, w.product_id, w.note, w.rules, w.channels, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id, w.variant, p.canonical_name,
        o.title_original AS offer_title, o.source_id AS offer_source_id, o.url AS offer_url,
        o.price_minor AS offer_price_minor, o.currency AS offer_currency, o.last_seen_at AS offer_last_seen_at,
+       o.variant AS offer_variant,
        ps.last_refreshed_at AS offer_source_refreshed_at
 FROM app.watch_items w
 JOIN app.products p ON p.id = w.product_id
@@ -143,6 +147,7 @@ type ListWatchItemsRow struct {
 	CreatedAt              pgtype.Timestamptz
 	Sources                []string
 	OfferID                *int64
+	Variant                string
 	CanonicalName          string
 	OfferTitle             *string
 	OfferSourceID          *string
@@ -150,6 +155,7 @@ type ListWatchItemsRow struct {
 	OfferPriceMinor        *int64
 	OfferCurrency          *string
 	OfferLastSeenAt        pgtype.Timestamptz
+	OfferVariant           *string
 	OfferSourceRefreshedAt pgtype.Timestamptz
 }
 
@@ -174,6 +180,7 @@ func (q *Queries) ListWatchItems(ctx context.Context, userID string) ([]ListWatc
 			&i.CreatedAt,
 			&i.Sources,
 			&i.OfferID,
+			&i.Variant,
 			&i.CanonicalName,
 			&i.OfferTitle,
 			&i.OfferSourceID,
@@ -181,6 +188,7 @@ func (q *Queries) ListWatchItems(ctx context.Context, userID string) ([]ListWatc
 			&i.OfferPriceMinor,
 			&i.OfferCurrency,
 			&i.OfferLastSeenAt,
+			&i.OfferVariant,
 			&i.OfferSourceRefreshedAt,
 		); err != nil {
 			return nil, err
@@ -205,12 +213,12 @@ func (q *Queries) ProductTracked(ctx context.Context, productID int64) (bool, er
 }
 
 const saveWatchItem = `-- name: SaveWatchItem :one
-INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, sources, offer_id)
-VALUES ($1, $2, $3, $4, $5, $6::text[], $7)
+INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, sources, offer_id, variant)
+VALUES ($1, $2, $3, $4, $5, $6::text[], $7, $8)
 ON CONFLICT (user_id, product_id) DO UPDATE
 SET note = EXCLUDED.note, rules = EXCLUDED.rules, baseline_price_cny_minor = EXCLUDED.baseline_price_cny_minor,
-    sources = EXCLUDED.sources, offer_id = EXCLUDED.offer_id
-RETURNING id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id
+    sources = EXCLUDED.sources, offer_id = EXCLUDED.offer_id, variant = EXCLUDED.variant
+RETURNING id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id, variant
 `
 
 type SaveWatchItemParams struct {
@@ -221,6 +229,7 @@ type SaveWatchItemParams struct {
 	BaselinePriceCnyMinor *int64
 	Sources               []string
 	OfferID               *int64
+	Variant               string
 }
 
 // Creates or updates the tracker. The service decides the baseline price and
@@ -235,6 +244,7 @@ func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (A
 		arg.BaselinePriceCnyMinor,
 		arg.Sources,
 		arg.OfferID,
+		arg.Variant,
 	)
 	var i AppWatchItem
 	err := row.Scan(
@@ -248,6 +258,7 @@ func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (A
 		&i.CreatedAt,
 		&i.Sources,
 		&i.OfferID,
+		&i.Variant,
 	)
 	return i, err
 }

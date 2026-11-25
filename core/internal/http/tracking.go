@@ -17,7 +17,7 @@ import (
 // Tracker manages a member's tracked products and alert settings.
 type Tracker interface {
 	List(ctx context.Context, v guard.Viewer) ([]tracking.Item, error)
-	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64) (tracking.Item, error)
+	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64, variant string) (tracking.Item, error)
 	Delete(ctx context.Context, v guard.Viewer, productID int64) error
 	Settings(ctx context.Context, v guard.Viewer) (tracking.Settings, error)
 	SaveSettings(ctx context.Context, v guard.Viewer, feishu string, email bool) (tracking.Settings, error)
@@ -46,6 +46,7 @@ type SaveTrackedInput struct {
 		Rules   []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
 		Stores  []string      `json:"stores,omitempty" maxItems:"20" doc:"Stores to track at (needed when tracking starts without a listing; ignored afterwards)"`
 		OfferID *int64        `json:"offer_id,omitempty" doc:"Follow this listing only; omit to follow the product's cheapest offer"`
+		Variant string        `json:"variant,omitempty" maxLength:"16" doc:"Without a listing: only listings of this variant count, e.g. 24GB; omit for any variant"`
 	}
 }
 
@@ -89,7 +90,7 @@ func registerTracking(api huma.API, t Tracker, sim Simulator) {
 		Summary: "Track a product, or change its note and rules", Tags: tags,
 		Errors: append(member, http.StatusForbidden, http.StatusNotFound, http.StatusConflict),
 	}, func(ctx context.Context, in *SaveTrackedInput) (*TrackedItemOutput, error) {
-		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores, in.Body.OfferID)
+		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores, in.Body.OfferID, in.Body.Variant)
 		if errors.Is(err, guard.ErrInviteOnly) {
 			return nil, inviteError(viewerFrom(ctx))
 		}
