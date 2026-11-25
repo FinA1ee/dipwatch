@@ -1,0 +1,80 @@
+core/cmd/worker/main.go
+  s_3313d584934833::t_fd7a77a2ac8d8f 28,75
+core/internal/agent/agent.go
+  s_3313d584934833::t_f55be8ba40abb2 8-9,18,129,141,145-167,180-185,202-209
+  s_3313d584934833::t_20916ebb7dd19a 113-114,273,285-286,293,305-307,315,324,329,342,347,349,355
+core/internal/store/products.sql.go
+  s_3313d584934833::t_fd7a77a2ac8d8f 62-70
+web/src/services/schema.d.ts
+  s_3313d584934833::t_be3a4d036da435 7-26,250-275,379-384,410-413,453-457,462-470,508-567
+web/src/services/admin.ts
+  s_3313d584934833::t_37a28f57bd0080 38-61
+web/src/pages/AdminLive/modules/LiveModule/Model/applyEvent.test.ts
+  s_3313d584934833::t_8cbbb68974f3ad 1-35
+core/internal/http/live.go
+  s_3313d584934833::t_8630805012cfb8 1-79
+web/src/pages/AdminLive/modules/LiveModule/Model/useLive.ts
+  s_3313d584934833::t_96e93fc3f50202 1-15
+web/src/App.tsx
+  s_3313d584934833::t_e4642b0f9316d2 4,19
+core/internal/search/hub.go
+  s_3313d584934833::t_9b025592681c01 14,61-62,64,66-68,71
+core/internal/db/listen.go
+  s_3313d584934833::t_9b025592681c01 1-43
+core/internal/live/hub.go
+  s_3313d584934833::t_93e96a0406ed13 1-111
+core/internal/live/hub_test.go
+  s_3313d584934833::t_f596928f27f776 1-44
+core/internal/runs/runs.go
+  s_3313d584934833::t_e10c6254e2d544 13,62-63
+contracts/openapi.yaml
+  s_3313d584934833::t_be3a4d036da435 154-200,413-428,469-479,564-567,574-583,650-719
+web/src/pages/AdminLive/modules/LiveModule/Model/applyEvent.ts
+  s_3313d584934833::t_a814b447c7b404 1-18
+web/src/pages/AdminRun/modules/TraceModule/View/TraceView.tsx
+  s_3313d584934833::t_be3a4d036da435 2
+core/internal/http/api.go
+  s_3313d584934833::t_e10c6254e2d544 32,40,47
+core/internal/live/notify.go
+  s_3313d584934833::t_fd7a77a2ac8d8f 1-25
+core/internal/store/queries/products.sql
+  s_3313d584934833::t_fd7a77a2ac8d8f 24-26
+core/cmd/core-api/main.go
+  s_3313d584934833::t_e10c6254e2d544 29,104-105,107
+web/src/pages/AdminLive/modules/LiveModule/Component/LiveRunCard.tsx
+  s_3313d584934833::t_e4642b0f9316d2 21-23
+  s_3313d584934833::t_dd0286c3827ae8 1-20,24-36
+web/src/pages/AdminLive/index.tsx
+  s_3313d584934833::t_1b3ae55f4bbd51 1-21
+web/src/pages/Admin/index.tsx
+  s_3313d584934833::t_e4642b0f9316d2 9-16
+web/src/components/StepList.tsx
+  s_3313d584934833::t_1a3137faf3f7e6 3-9,11,15-27,29-34,36-44,46,54-55
+web/src/pages/AdminLive/modules/LiveModule/View/LiveView.tsx
+  s_3313d584934833::t_8374daadafe690 1-20,24-30
+  s_3313d584934833::t_e4642b0f9316d2 21-23
+core/internal/live/live.go
+  s_3313d584934833::t_99c5bf14ebfec6 1-75
+web/src/pages/AdminLive/store.ts
+  s_3313d584934833::t_b0be033d9a7b30 1-19
+core/internal/http/admin_test.go
+  s_3313d584934833::t_b87ee8029f926b 9,28,40-47
+core/internal/agent/agent_test.go
+  s_3313d584934833::t_b87ee8029f926b 11,421-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "d4297d6b210d0b51a5bca8369e76316732401550",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
