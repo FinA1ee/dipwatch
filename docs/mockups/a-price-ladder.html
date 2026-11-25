@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dipwatch mockup A: price ladder</title>
+<style>
+  @font-face { font-family: "Familjen Grotesk"; font-weight: 500; font-display: swap; src: url(fonts/familjen-grotesk-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Familjen Grotesk"; font-weight: 600; font-display: swap; src: url(fonts/familjen-grotesk-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Familjen Grotesk"; font-weight: 700; font-display: swap; src: url(fonts/familjen-grotesk-latin-700-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(fonts/public-sans-latin-400-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Public Sans"; font-weight: 500; font-display: swap; src: url(fonts/public-sans-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(fonts/public-sans-latin-600-normal.woff2) format("woff2"); }
+  :root {
+    --paper: #f4f7f6;
+    --ink: #18222e;
+    --slate: #5b6875;
+    --rule: #d5dde0;
+    --drop: #0b7a55;
+    --drop-soft: #e3f1eb;
+    --white: #ffffff;
+    --head: "Familjen Grotesk", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+    --body: "Public Sans", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--drop); outline-offset: 2px; }
+
+  .bar { display: flex; align-items: center; gap: 24px; max-width: 1040px; margin: 0 auto; padding: 18px 24px; }
+  .logo { font: 700 20px/1 var(--head); letter-spacing: -0.02em; text-decoration: none; }
+  .logo b { color: var(--drop); font-weight: 700; }
+  .bar .spacer { flex: 1; }
+  .bar select, .bar a.plain { font: 500 14px var(--body); color: var(--slate); background: none; border: 0; text-decoration: none; }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 8px 24px 64px; }
+
+  .search { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+  .search input, .search select {
+    font: 500 17px var(--body); color: var(--ink); background: var(--white);
+    border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px;
+  }
+  .search button { font: 600 16px var(--body); color: var(--white); background: var(--ink); border: 0; border-radius: 10px; padding: 0 22px; }
+
+  .product { margin-top: 36px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; }
+  .product h1 { font: 600 34px/1.1 var(--head); letter-spacing: -0.025em; margin: 0; }
+  .product p { margin: 0; color: var(--slate); }
+
+  /* The memorable element: every offer on one price axis. */
+  .ladder { margin-top: 28px; background: var(--white); border-radius: 14px; padding: 22px 26px 18px; }
+  .ladder-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .ladder-head .low { font: 700 44px/1 var(--head); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .ladder-head .low small { font: 500 15px var(--body); color: var(--slate); letter-spacing: 0; margin-left: 10px; }
+  .ladder-head .dip { font: 600 14px var(--body); color: var(--drop); background: var(--drop-soft); border-radius: 999px; padding: 5px 12px; white-space: nowrap; }
+  .axis { position: relative; height: 64px; margin-top: 20px; }
+  .axis::before { content: ""; position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: var(--rule); }
+  .tick { position: absolute; top: 18px; width: 2px; height: 26px; background: var(--slate); transform: translateX(-1px); }
+  .tick.best { background: var(--drop); width: 4px; height: 34px; top: 14px; border-radius: 2px; }
+  .tick span { position: absolute; top: 34px; left: 50%; transform: translateX(-50%); font: 500 12px var(--body); color: var(--slate); white-space: nowrap; }
+  .tick.best span { top: 40px; color: var(--drop); font-weight: 600; }
+  /* Edge labels grow inward, so they never leave the card. */
+  .tick.start span { left: 0; transform: none; }
+  .tick.end span { left: auto; right: 0; transform: none; }
+  .ends { display: flex; justify-content: space-between; font: 500 13px var(--body); color: var(--slate); font-variant-numeric: tabular-nums; margin-top: 10px; }
+
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 10px; }
+  .chip { font: 500 14px var(--body); color: var(--ink); background: var(--white); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 14px; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--white); border-color: var(--ink); }
+
+  .offers { list-style: none; margin: 0; padding: 0; }
+  .offer { display: grid; grid-template-columns: 1fr auto; gap: 4px 24px; padding: 16px 4px; border-bottom: 1px solid var(--rule); }
+  .offer:first-child { padding-top: 8px; }
+  .offer .title { font: 600 16px/1.35 var(--body); text-decoration: none; }
+  .offer .title:hover { text-decoration: underline; }
+  .offer .orig { grid-column: 1; color: var(--slate); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .offer .meta { grid-column: 1; color: var(--slate); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .offer .price { grid-column: 2; grid-row: 1 / span 3; text-align: right; font-variant-numeric: tabular-nums; }
+  .offer .price strong { display: block; font: 700 22px/1.1 var(--head); letter-spacing: -0.02em; }
+  .offer .price em { font-style: normal; color: var(--slate); font-size: 13px; }
+  .offer .gap { display: block; font-size: 13px; color: var(--slate); }
+  .offer.best .price strong { color: var(--drop); }
+  .offer.best .gap { color: var(--drop); font-weight: 600; }
+  .stock-out { color: #9a3b12; }
+
+  .track { margin-top: 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; background: var(--ink); color: var(--white); border-radius: 14px; padding: 18px 22px; }
+  .track p { margin: 0; flex: 1; min-width: 240px; }
+  .track button { font: 600 15px var(--body); color: var(--ink); background: var(--white); border: 0; border-radius: 10px; padding: 10px 18px; }
+
+  @media (max-width: 640px) {
+    .search { grid-template-columns: 1fr; }
+    .search button { padding: 12px; }
+    .ladder-head .low { font-size: 34px; }
+    .product h1 { font-size: 27px; }
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <a class="logo" href="#">dip<b>watch</b></a>
+    <span class="spacer"></span>
+    <select aria-label="Currency"><option>CNY</option><option>USD</option><option>JPY</option></select>
+    <a class="plain" href="#">My products</a>
+    <a class="plain" href="#">Sign in</a>
+  </header>
+
+  <main>
+    <form class="search" onsubmit="return false">
+      <input value="RTX 4090" aria-label="Product">
+      <select aria-label="Store"><option>SMZDM (CN)</option><option>Kakaku.com (JP)</option></select>
+      <button>Search</button>
+    </form>
+
+    <section class="product">
+      <h1>NVIDIA GeForce RTX 4090</h1>
+      <p>8 offers at SMZDM, checked 14 minutes ago</p>
+    </section>
+
+    <section class="ladder" aria-label="Price spread">
+      <div class="ladder-head">
+        <div class="low">CN¥14,699<small>lowest today</small></div>
+        <span class="dip">¥1,100 below last week</span>
+      </div>
+      <div class="axis" aria-hidden="true">
+        <div class="tick best start" style="left:0%"><span>¥14,699 Founders Edition</span></div>
+        <div class="tick" style="left:21%"></div>
+        <div class="tick" style="left:33%"></div>
+        <div class="tick" style="left:58%"></div>
+        <div class="tick" style="left:64%"></div>
+        <div class="tick" style="left:81%"></div>
+        <div class="tick end" style="left:100%"><span>¥25,999</span></div>
+      </div>
+    </section>
+
+    <div class="tools" role="group" aria-label="Filter offers">
+      <button class="chip" aria-pressed="true">All conditions</button>
+      <button class="chip" aria-pressed="false">New only</button>
+      <button class="chip" aria-pressed="false">In stock</button>
+    </div>
+
+    <ul class="offers">
+      <li class="offer best">
+        <a class="title" href="#">NVIDIA GeForce RTX 4090 Founders Edition 24GB</a>
+        <span class="orig">NVIDIA 英伟达 GeForce RTX 4090 公版显卡 24GB</span>
+        <span class="meta"><span>SMZDM · JD self-run</span><span>New</span><span>In stock</span></span>
+        <span class="price"><strong>CN¥14,699</strong><span class="gap">lowest</span></span>
+      </li>
+      <li class="offer">
+        <a class="title" href="#">NVIDIA GeForce RTX 4090 24GB Founders Edition</a>
+        <span class="orig">NVIDIA 英伟达 公版显卡 Nvidia GeForce RTX4090 24G</span>
+        <span class="meta"><span>SMZDM · Tmall</span><span>New</span><span>In stock</span></span>
+        <span class="price"><strong>CN¥16,999</strong><span class="gap">+¥2,300</span></span>
+      </li>
+      <li class="offer">
+        <a class="title" href="#">ASUS ROG Strix RTX 4090 OC 24GB</a>
+        <span class="orig">华硕 ROG STRIX RTX4090 O24G GAMING 猛禽</span>
+        <span class="meta"><span>SMZDM · JD</span><span>New</span><span class="stock-out">Out of stock</span></span>
+        <span class="price"><strong>CN¥18,299</strong><span class="gap">+¥3,600</span></span>
+      </li>
+      <li class="offer">
+        <a class="title" href="#">MSI RTX 4090 Gaming X Trio 24G, used</a>
+        <span class="orig">微星 RTX 4090 魔龙 24G 二手 99新</span>
+        <span class="meta"><span>SMZDM · Xianyu</span><span>Used</span></span>
+        <span class="price"><strong>CN¥18,880</strong><span class="gap">+¥4,181</span></span>
+      </li>
+    </ul>
+
+    <aside class="track">
+      <p>Get a Feishu message when the RTX 4090 drops below a price you choose.</p>
+      <button>Track this product</button>
+    </aside>
+  </main>
+</body>
+</html>

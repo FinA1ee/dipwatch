@@ -116,6 +116,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Today's LLM spend against the daily budget (China day) */
+        get: operations["admin-spend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -446,6 +463,11 @@ export interface components {
              */
             readonly $schema?: string;
             /**
+             * Format: double
+             * @description LLM spend per China day; at 80% only tracked products get agent runs, at 100% only stored data is served (C4)
+             */
+            daily_budget_cny: number;
+            /**
              * Format: int64
              * @description Costly searches per member per day (C1)
              */
@@ -544,6 +566,8 @@ export interface components {
             readonly $schema?: string;
             /** @description Cheapest first, compared in CNY */
             offers: components["schemas"]["Offer"][];
+            /** @description true when stored offers are older than usual because today's budget is spent */
+            paused?: boolean;
             product: components["schemas"]["Product"];
             /**
              * @description refreshing: open the events stream for new offers
@@ -686,6 +710,20 @@ export interface components {
             day: string;
             /** @enum {string} */
             kind: "browse" | "match" | "intent";
+        };
+        Status: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Status.json
+             */
+            readonly $schema?: string;
+            /** Format: double */
+            budget_cny: number;
+            /** @enum {string} */
+            level: "normal" | "tracked_only" | "stored_only";
+            /** Format: double */
+            today_cny: number;
         };
         Step: {
             arguments?: string;
@@ -1137,6 +1175,44 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

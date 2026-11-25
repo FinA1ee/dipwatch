@@ -13,6 +13,7 @@ import (
 
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/search"
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 )
 
 // Searcher answers searches and streams refresh results.
@@ -86,6 +87,8 @@ func registerSearch(api huma.API, s Searcher) {
 				return nil, huma.Error429TooManyRequests(fmt.Sprintf("You have used today's %d new searches. Sign in for more, or try a product someone searched recently.", quota.Limit))
 			}
 			return nil, huma.Error429TooManyRequests(fmt.Sprintf("You have used today's %d new searches. Recently searched products still work.", quota.Limit))
+		case errors.Is(err, spend.ErrPaused):
+			return nil, huma.Error503ServiceUnavailable("Searches for new products are paused until tomorrow. Products searched before still work.")
 		case errors.Is(err, guard.ErrNotProduct):
 			return nil, huma.Error422UnprocessableEntity("The query does not name a product. Try a model, e.g. RTX 5090.")
 		default:

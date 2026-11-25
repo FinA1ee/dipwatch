@@ -19,6 +19,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/alerts"
 	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -72,10 +73,28 @@ type RefreshProductWorker struct {
 	river.WorkerDefaults[RefreshProductArgs]
 	DB       *pgxpool.Pool
 	Adapters Adapters
+	Spend    spend.Meter // nil: no daily budget
+}
+
+// allowed applies the spend breaker (C4) to queued and scheduled refreshes,
+// which may run after the budget was reached.
+func allowed(ctx context.Context, m spend.Meter, q *store.Queries, productID int64) bool {
+	switch spend.LevelOf(ctx, m) {
+	case spend.StoredOnly:
+		return false
+	case spend.TrackedOnly:
+		tracked, err := q.ProductTracked(ctx, productID)
+		return err == nil && tracked
+	}
+	return true
 }
 
 func (w *RefreshProductWorker) Work(ctx context.Context, job *river.Job[RefreshProductArgs]) error {
 	q := store.New(w.DB)
+	if !allowed(ctx, w.Spend, q, job.Args.ProductID) {
+		slog.InfoContext(ctx, "refresh: skipped, daily budget", "product", job.Args.ProductID)
+		return nil
+	}
 	rows, err := q.ListEnabledSources(ctx)
 	if err != nil {
 		return fmt.Errorf("list sources: %w", err)
@@ -137,6 +156,8 @@ type RefreshSourceWorker struct {
 	Matcher *matcher.Matcher
 	// Alerts checks tracking rules after each source; optional.
 	Alerts *alerts.Checker
+	// Spend is the daily budget breaker (C4); optional.
+	Spend spend.Meter
 }
 
 func (w *RefreshSourceWorker) Timeout(*river.Job[RefreshSourceArgs]) time.Duration {
@@ -176,6 +197,10 @@ func (w *RefreshSourceWorker) Work(ctx context.Context, job *river.Job[RefreshSo
 // affect the others (spec S7).
 func (w *RefreshSourceWorker) refresh(ctx context.Context, args RefreshSourceArgs) bool {
 	q := store.New(w.DB)
+	if !allowed(ctx, w.Spend, q, args.ProductID) {
+		slog.InfoContext(ctx, "refresh: source skipped, daily budget", "product", args.ProductID, "source", args.SourceID)
+		return false
+	}
 	product, err := q.GetProduct(ctx, args.ProductID)
 	if err != nil {
 		slog.ErrorContext(ctx, "refresh: load product", "product", args.ProductID, "err", err)

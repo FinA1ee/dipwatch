@@ -74,3 +74,11 @@ export async function saveLimits(limits: Limits): Promise<Limits> {
   if (!data) fail(response, error);
   return data;
 }
+
+export type SpendStatus = Schemas["Status"];
+
+export async function getSpend(): Promise<SpendStatus> {
+  const { data, error, response } = await api.GET("/admin/spend");
+  if (!data) fail(response, error);
+  return data;
+}

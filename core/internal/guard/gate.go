@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -19,7 +20,8 @@ var ErrUnavailable = errors.New("intent check unavailable")
 // Gate resolves search text to a catalog product.
 type Gate struct {
 	DB      *pgxpool.Pool
-	Checker *Checker // nil: only cached queries resolve
+	Checker *Checker    // nil: only cached queries resolve
+	Breaker spend.Meter // nil: no daily budget
 }
 
 // Product is a resolved query.
@@ -50,6 +52,9 @@ func (g *Gate) Resolve(ctx context.Context, text string, charge *Charger) (Produ
 	}
 	if g.Checker == nil {
 		return Product{}, ErrUnavailable
+	}
+	if spend.LevelOf(ctx, g.Breaker) == spend.StoredOnly {
+		return Product{}, spend.ErrPaused // C4: no LLM calls until tomorrow
 	}
 	if err := charge.Charge(ctx); err != nil {
 		return Product{}, err

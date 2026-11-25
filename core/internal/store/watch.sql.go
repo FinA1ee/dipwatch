@@ -168,6 +168,17 @@ func (q *Queries) ListWatchItems(ctx context.Context, userID string) ([]ListWatc
 	return items, nil
 }
 
+const productTracked = `-- name: ProductTracked :one
+SELECT EXISTS (SELECT 1 FROM app.watch_items WHERE product_id = $1)::bool
+`
+
+func (q *Queries) ProductTracked(ctx context.Context, productID int64) (bool, error) {
+	row := q.db.QueryRow(ctx, productTracked, productID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const saveWatchItem = `-- name: SaveWatchItem :one
 INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, sources)
 VALUES ($1, $2, $3, $4, $5, $6::text[])

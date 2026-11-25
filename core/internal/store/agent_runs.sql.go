@@ -268,6 +268,18 @@ func (q *Queries) SpendByKind(ctx context.Context, since pgtype.Timestamptz) ([]
 	return items, nil
 }
 
+const spendSince = `-- name: SpendSince :one
+SELECT coalesce(sum(cost_cny_micros), 0)::bigint FROM app.agent_runs WHERE created_at >= $1
+`
+
+// LLM spend of every kind since a moment, in millionths of a yuan (C4).
+func (q *Queries) SpendSince(ctx context.Context, since pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, spendSince, since)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const spendTodayMicros = `-- name: SpendTodayMicros :one
 SELECT coalesce(sum(cost_cny_micros), 0)::bigint
 FROM app.agent_runs

@@ -38,8 +38,15 @@ healthy() {
 echo "deploy: $TAG (previous: ${PREVIOUS:-none})"
 start "$TAG"
 
+# Daily database backup at 03:30 server time; added once, kept on later deploys.
+install_backup() {
+	line="30 3 * * * sh $(pwd)/backup.sh >> $(pwd)/backups.log 2>&1"
+	(crontab -l 2>/dev/null | grep -v 'backup.sh'; echo "$line") | crontab - || echo "deploy: could not install the backup cron job" >&2
+}
+
 if healthy; then
 	echo "$TAG" > .deployed_tag
+	install_backup
 	docker image prune -f >/dev/null
 	echo "deploy: $TAG is live on port $PORT"
 	exit 0

@@ -41,6 +41,11 @@ export function ResultsView() {
         streaming={streaming}
         timedOut={r.timedOut}
       />
+      {r.paused && (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+          These prices were not re-checked: today's checks are used up. They update again tomorrow.
+        </p>
+      )}
       {r.shown.length > 0 ? (
         <OfferTable offers={r.shown} />
       ) : (

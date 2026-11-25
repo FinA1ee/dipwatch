@@ -58,3 +58,7 @@ WHERE (sqlc.narg('kind')::text IS NULL OR kind = sqlc.narg('kind')::text)
 ORDER BY id DESC
 LIMIT @row_limit::int;
 
+
+-- name: SpendSince :one
+-- LLM spend of every kind since a moment, in millionths of a yuan (C4).
+SELECT coalesce(sum(cost_cny_micros), 0)::bigint FROM app.agent_runs WHERE created_at >= @since;

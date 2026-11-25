@@ -21,6 +21,7 @@ type SearchState = {
   pending: string[]; // sources still searching
   error: string | null;
   timedOut: boolean;
+  paused: boolean; // stored prices only: today's budget is spent
   filters: Filters;
   setQuery: (next: Update<string>) => void;
   setFilters: (next: Update<Filters>) => void;
@@ -41,6 +42,7 @@ export const useSearchStore = create<SearchState>()((set) => ({
   pending: [],
   error: null,
   timedOut: false,
+  paused: false,
   filters: NO_FILTERS,
   setQuery: (next) => set((s) => ({ query: resolve(next, s.query) })),
   setFilters: (next) => set((s) => ({ filters: resolve(next, s.filters) })),
