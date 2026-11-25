@@ -1,0 +1,31 @@
+docs/harness/2026-11-25-1343-browse-v8.md
+  s_3313d584934833::t_0ebd6e3f1c6e7e 1-4,17-19,29-32
+  s_3313d584934833::t_4a42f9ab931d52 5-16,20-28
+docs/harness.md
+  s_3313d584934833::t_5bb1056cf0d12f 7,52,54-56,72,76
+docs/tasks.md
+  s_3313d584934833::t_5bb1056cf0d12f 200
+core/internal/matcher/matcher.go
+  s_3313d584934833::t_d511cc8a53ab57 19,68
+core/internal/agent/prompt.go
+  s_3313d584934833::t_d511cc8a53ab57 10,22
+docs/harness/2026-11-25-1345-match-v2.md
+  s_3313d584934833::t_0ebd6e3f1c6e7e 1-4,13-16
+  s_3313d584934833::t_4a42f9ab931d52 5-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "5dc61a367a8de8dd57c9a884b0397445958f184c",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
