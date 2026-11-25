@@ -153,3 +153,9 @@ func oneOf(v string, allowed ...string) string {
 	}
 	return "unknown"
 }
+
+// isEmptySubmission reports whether submit_offers was called with an empty list.
+func isEmptySubmission(arguments string) bool {
+	var sub submission
+	return json.Unmarshal([]byte(arguments), &sub) == nil && len(sub.Offers) == 0
+}

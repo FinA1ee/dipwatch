@@ -45,3 +45,16 @@ SELECT * FROM app.offers WHERE product_id = @product_id ORDER BY price_minor, id
 SELECT count(*) FROM app.price_points pp
 JOIN app.offers o ON o.id = pp.offer_id
 WHERE o.product_id = @product_id;
+
+-- name: ListSearchOffers :many
+-- Offers shown in search results: everything the matcher did not reject (S6).
+-- Optionally limited to one source, for the per-source stream events.
+SELECT o.id, o.source_id, s.name AS source_name, s.region AS source_region,
+       o.url, o.title_original, o.title_en, o.price_minor, o.currency, o.shipping_minor,
+       o.condition, o.availability, o.seller_type
+FROM app.offers o
+JOIN app.sources s ON s.id = o.source_id
+WHERE o.product_id = @product_id
+  AND o.is_product IS NOT FALSE
+  AND (sqlc.narg('source_id')::text IS NULL OR o.source_id = sqlc.narg('source_id')::text)
+ORDER BY o.id;

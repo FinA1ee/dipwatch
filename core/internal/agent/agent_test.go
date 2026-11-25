@@ -409,3 +409,11 @@ func TestHarnessForcesWrapUpNearBudget(t *testing.T) {
 		t.Fatal("wrap-up not recorded in the trace")
 	}
 }
+
+func TestEmptySubmissionMeansNoListings(t *testing.T) {
+	model := &scriptedModel{turns: []llm.Turn{call("1", "submit_offers", `{"offers":[]}`)}}
+	run, err := newAgent(model, &fakeBrowser{}, &memRecorder{}, DefaultBudget).Run(context.Background(), task)
+	if err == nil || run.Outcome != OutcomeNoOffers || model.calls != 1 || errors.Is(err, ErrBlocked) {
+		t.Fatalf("outcome %s after %d calls, err %v; want no_offers after 1 call", run.Outcome, model.calls, err)
+	}
+}

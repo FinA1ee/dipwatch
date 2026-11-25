@@ -21,10 +21,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search offers for a product
+         * @description Resolves the query to one product and returns its offers. When they are older than 6 hours a refresh starts; follow it with the events stream.
+         */
+        post: operations["search"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/{productId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream offers while sources finish
+         * @description Sends the full ranked offer list now and after each source finishes, then `done`.
+         */
+        get: operations["search-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DoneEvent: {
+            /** @description true when some sources did not finish in time */
+            timed_out: boolean;
+        };
+        ErrorDetail: {
+            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
+            location?: string;
+            /** @description Error message text */
+            message?: string;
+            /** @description The value at the given location */
+            value?: unknown;
+        };
+        ErrorModel: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ErrorModel.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description A human-readable explanation specific to this occurrence of the problem.
+             * @example Property foo is required but is missing.
+             */
+            detail?: string;
+            /** @description Optional list of individual error details */
+            errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * Format: uri
+             * @description A URI reference that identifies the specific occurrence of the problem.
+             * @example https://example.com/error-log/abc123
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description HTTP status code
+             * @example 400
+             */
+            status?: number;
+            /**
+             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+             * @example Bad Request
+             */
+            title?: string;
+            /**
+             * Format: uri
+             * @description A URI reference to human-readable documentation for the error.
+             * @default about:blank
+             * @example https://example.com/errors/example
+             */
+            type: string;
+        };
         HealthOutputBody: {
             /**
              * Format: uri
@@ -42,6 +133,84 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        Money: {
+            currency: string;
+            /** Format: int64 */
+            minor: number;
+        };
+        Offer: {
+            /** @enum {string} */
+            availability: "in_stock" | "out_of_stock" | "unknown";
+            /** @enum {string} */
+            condition: "new" | "used" | "refurbished" | "unknown";
+            /** @description Price in the requested currency; null when no exchange rate is stored */
+            converted: components["schemas"]["Money"];
+            /** Format: int64 */
+            id: number;
+            /** @description Price in the store's currency */
+            price: components["schemas"]["Money"];
+            /** @enum {string} */
+            seller_type: "official" | "marketplace" | "individual" | "unknown";
+            /**
+             * Format: int64
+             * @description Shipping in the store's currency, when known
+             */
+            shipping_minor?: number;
+            source: components["schemas"]["Source"];
+            /** @description English title */
+            title: string;
+            /** @description Title as the store shows it */
+            title_original: string;
+            /** Format: uri */
+            url: string;
+        };
+        OffersEvent: {
+            /** @description Cheapest first, compared in CNY */
+            offers: components["schemas"]["Offer"][] | null;
+            /** @description Ids of sources still searching */
+            pending: string[] | null;
+        };
+        Product: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+        };
+        Result: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Result.json
+             */
+            readonly $schema?: string;
+            /** @description Cheapest first, compared in CNY */
+            offers: components["schemas"]["Offer"][] | null;
+            product: components["schemas"]["Product"];
+            /**
+             * @description refreshing: open the events stream for new offers
+             * @enum {string}
+             */
+            status: "fresh" | "refreshing";
+        };
+        SearchInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SearchInputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description Currency for converted prices
+             * @default CNY
+             */
+            currency: string;
+            /** @description Product to search for, e.g. RTX 5090. At most 80 characters after trimming. */
+            query: string;
+        };
+        Source: {
+            id: string;
+            name: string;
+            region: string;
         };
     };
     responses: never;
@@ -76,6 +245,121 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "search-events": {
+        parameters: {
+            query?: {
+                currency?: string;
+            };
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": ({
+                        data: components["schemas"]["DoneEvent"];
+                        /**
+                         * @description The event name.
+                         * @constant
+                         */
+                        event: "done";
+                        /** @description The event ID. */
+                        id?: number | string;
+                        /** @description The retry time in milliseconds. */
+                        retry?: number;
+                    } | {
+                        data: components["schemas"]["OffersEvent"];
+                        /**
+                         * @description The event name.
+                         * @constant
+                         */
+                        event: "offers";
+                        /** @description The event ID. */
+                        id?: number | string;
+                        /** @description The retry time in milliseconds. */
+                        retry?: number;
+                    })[];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
             };
         };
     };

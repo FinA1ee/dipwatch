@@ -119,15 +119,23 @@ func isTitleLine(l string, terms []string) bool {
 
 func isURLLine(l string) bool { return strings.HasPrefix(strings.TrimSpace(l), "- /url:") }
 
-// productTerms are the distinctive words of the product name, e.g. "rtx", "5090".
+// productTerms are the words a listing title must contain. When the product name
+// has a model number ("5090", "wh-1000xm6"), only those words count: brands are
+// often written in another script (索尼 for Sony, 英伟达 for NVIDIA).
 func productTerms(product string) []string {
-	var terms []string
+	var model, other []string
 	for _, f := range strings.Fields(strings.ToLower(product)) {
-		if len([]rune(f)) >= 3 || strings.ContainsAny(f, "0123456789") {
-			terms = append(terms, f)
+		switch {
+		case strings.ContainsAny(f, "0123456789"):
+			model = append(model, f)
+		case len([]rune(f)) >= 3:
+			other = append(other, f)
 		}
 	}
-	return terms
+	if len(model) > 0 {
+		return model
+	}
+	return other
 }
 
 func truncateLine(l string, n int) string {

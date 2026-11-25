@@ -14,8 +14,11 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/core-api ./cmd/cor
 FROM node:24-bookworm-slim AS worker
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     PLAYWRIGHT_MCP_COMMAND="playwright-mcp --no-sandbox"
+# ca-certificates: the slim image has no CA bundle, and Go needs one for every
+# HTTPS call the worker makes (LLM, stores, FX).
 RUN npm install --global --registry=https://registry.npmjs.org/ @playwright/mcp@0.0.86 \
  && playwright-mcp install-browser chromium --with-deps \
+ && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /root/.npm /var/lib/apt/lists/* \
  && useradd --create-home --uid 10001 app
 # source-smoke lets you test a store from inside the container:

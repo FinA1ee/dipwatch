@@ -29,18 +29,19 @@ func main() {
 	limit := flag.Int("limit", 20, "maximum offers")
 	browserOnly := flag.Bool("browser-only", false, "open the store's search page in Playwright and print the snapshot size, without an LLM")
 	dump := flag.String("dump", "", "with -browser-only: also write the raw snapshot to this file")
+	wait := flag.Duration("wait", 0, "with -browser-only: wait this long after opening the page, for pages that load results by script")
 	flag.Parse()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
-	if err := run(ctx, *source, *query, *limit, *browserOnly, *dump); err != nil {
+	if err := run(ctx, *source, *query, *limit, *browserOnly, *dump, *wait); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, source, query string, limit int, browserOnly bool, dump string) error {
+func run(ctx context.Context, source, query string, limit int, browserOnly bool, dump string, wait time.Duration) error {
 	if source == "kakaku" {
 		return search(ctx, kakaku.New(&http.Client{Timeout: 30 * time.Second}, kakaku.DefaultBaseURL), source, query, limit)
 	}
@@ -49,7 +50,7 @@ func run(ctx context.Context, source, query string, limit int, browserOnly bool,
 		return fmt.Errorf("unknown source %q", source)
 	}
 	if browserOnly {
-		return openInBrowser(ctx, store, query, dump)
+		return openInBrowser(ctx, store, query, dump, wait)
 	}
 
 	cfg, err := llm.ConfigFromEnv()
@@ -80,7 +81,7 @@ func search(ctx context.Context, s sources.Strategy, source, query string, limit
 	return nil
 }
 
-func openInBrowser(ctx context.Context, store agent.Store, query, dump string) error {
+func openInBrowser(ctx context.Context, store agent.Store, query, dump string, wait time.Duration) error {
 	b, err := agent.StartPlaywright(ctx, agent.PlaywrightCommand())
 	if err != nil {
 		return err
@@ -90,6 +91,11 @@ func openInBrowser(ctx context.Context, store agent.Store, query, dump string) e
 	target := strings.Replace(store.SearchURL, "%s", url.QueryEscape(query), 1)
 	if _, err := b.Call(ctx, "browser_navigate", map[string]any{"url": target}); err != nil {
 		return err
+	}
+	if wait > 0 {
+		if _, err := b.Call(ctx, "browser_wait_for", map[string]any{"time": wait.Seconds()}); err != nil {
+			return err
+		}
 	}
 	snap, err := b.Call(ctx, "browser_snapshot", map[string]any{})
 	if err != nil {

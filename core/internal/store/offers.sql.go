@@ -62,7 +62,7 @@ func (q *Queries) InsertPricePointIfChanged(ctx context.Context, arg InsertPrice
 }
 
 const listOffersByProduct = `-- name: ListOffersByProduct :many
-SELECT id, product_id, source_id, external_id, url, title_original, title_en, price_minor, currency, shipping_minor, condition, availability, seller_type, specs, raw, first_seen_at, last_seen_at FROM app.offers WHERE product_id = $1 ORDER BY price_minor, id
+SELECT id, product_id, source_id, external_id, url, title_original, title_en, price_minor, currency, shipping_minor, condition, availability, seller_type, specs, raw, first_seen_at, last_seen_at, is_product FROM app.offers WHERE product_id = $1 ORDER BY price_minor, id
 `
 
 func (q *Queries) ListOffersByProduct(ctx context.Context, productID int64) ([]AppOffer, error) {
@@ -92,6 +92,76 @@ func (q *Queries) ListOffersByProduct(ctx context.Context, productID int64) ([]A
 			&i.Raw,
 			&i.FirstSeenAt,
 			&i.LastSeenAt,
+			&i.IsProduct,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSearchOffers = `-- name: ListSearchOffers :many
+SELECT o.id, o.source_id, s.name AS source_name, s.region AS source_region,
+       o.url, o.title_original, o.title_en, o.price_minor, o.currency, o.shipping_minor,
+       o.condition, o.availability, o.seller_type
+FROM app.offers o
+JOIN app.sources s ON s.id = o.source_id
+WHERE o.product_id = $1
+  AND o.is_product IS NOT FALSE
+  AND ($2::text IS NULL OR o.source_id = $2::text)
+ORDER BY o.id
+`
+
+type ListSearchOffersParams struct {
+	ProductID int64
+	SourceID  *string
+}
+
+type ListSearchOffersRow struct {
+	ID            int64
+	SourceID      string
+	SourceName    string
+	SourceRegion  string
+	Url           string
+	TitleOriginal string
+	TitleEn       string
+	PriceMinor    int64
+	Currency      string
+	ShippingMinor *int64
+	Condition     string
+	Availability  string
+	SellerType    string
+}
+
+// Offers shown in search results: everything the matcher did not reject (S6).
+// Optionally limited to one source, for the per-source stream events.
+func (q *Queries) ListSearchOffers(ctx context.Context, arg ListSearchOffersParams) ([]ListSearchOffersRow, error) {
+	rows, err := q.db.Query(ctx, listSearchOffers, arg.ProductID, arg.SourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSearchOffersRow
+	for rows.Next() {
+		var i ListSearchOffersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.SourceName,
+			&i.SourceRegion,
+			&i.Url,
+			&i.TitleOriginal,
+			&i.TitleEn,
+			&i.PriceMinor,
+			&i.Currency,
+			&i.ShippingMinor,
+			&i.Condition,
+			&i.Availability,
+			&i.SellerType,
 		); err != nil {
 			return nil, err
 		}

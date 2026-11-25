@@ -6,7 +6,7 @@ Rules that every spec, design change, task and pull request must follow. If a ch
 
 Dipwatch lets a user name a product (for example "RTX 5090"), collects offers for it from many stores in China and overseas, ranks them by price, and alerts the user when a tracked product drops in price or comes back in stock.
 
-It is also a learning project. The owner wants hands-on experience with AI agents, Go, and a full-stack system shipped through CI/CD. When two options are otherwise equal, prefer the one that teaches more about those three things.
+It is also a learning project. The owner wants hands-on experience with AI agents, Go, and a full-stack system shipped through CI/CD. Within agents, the focus is the **harness**: how an agent is controlled, observed, evaluated and improved. When two options are otherwise equal, prefer the one that teaches more about these things.
 
 ## Principles
 

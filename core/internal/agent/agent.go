@@ -33,7 +33,7 @@ const (
 	toolBlocked = "report_blocked"
 	// Page snapshots can be 100,000+ characters. Cutting them keeps a run inside
 	// its token budget; listings are usually near the top of a results page.
-	maxToolResultChars = 8_000
+	maxToolResultChars = 12_000
 	// Every model call re-sends the whole conversation, so old page contents would be
 	// paid for again on each turn. The latest page and the latest result of any
 	// tool are kept in full; older ones are replaced with a note.
@@ -263,6 +263,14 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 			var result string
 			switch call.Name {
 			case toolSubmit:
+				if isEmptySubmission(call.Arguments) {
+					// The model looked and found no listings for the product. That is an
+					// answer, not a failure of the store, so it does not count as blocked.
+					step.Result = "no listings for the product"
+					run.Trace = append(run.Trace, step)
+					fail(OutcomeNoOffers, nil)
+					return
+				}
 				offers, problems := validateSubmission(call.Arguments, task)
 				if len(offers) > 0 {
 					run.Offers = offers

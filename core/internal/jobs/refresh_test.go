@@ -2,9 +2,12 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +16,8 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/FinA1ee/dipwatch/core/internal/db"
+	"github.com/FinA1ee/dipwatch/core/internal/llm"
+	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
@@ -51,17 +56,23 @@ func setup(t *testing.T) (context.Context, *pgxpool.Pool) {
 	return ctx, pool
 }
 
-// runJob starts a River client with the given adapters, enqueues one refresh job and
-// waits for it to finish.
+// runJob runs one product refresh on a dedicated River client and waits for the
+// fan-out job and every per-source job (one per adapter) to finish.
 func runJob(t *testing.T, ctx context.Context, pool *pgxpool.Pool, adapters Adapters, productID int64) {
 	t.Helper()
+	runJobWith(t, ctx, pool, adapters, nil, productID)
+}
+
+func runJobWith(t *testing.T, ctx context.Context, pool *pgxpool.Pool, adapters Adapters, m *matcher.Matcher, productID int64) {
+	t.Helper()
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &RefreshProductWorker{DB: pool, Registry: sources.NewRegistry(), Adapters: adapters})
+	river.AddWorker(workers, &RefreshProductWorker{DB: pool, Adapters: adapters})
+	river.AddWorker(workers, &RefreshSourceWorker{DB: pool, Registry: sources.NewRegistry(), Adapters: adapters, Matcher: m})
 	// A queue of its own, so a worker from `make dev` sharing this database does not
-	// take the test's job.
+	// take the test's jobs.
 	queue := fmt.Sprintf("test_%d", time.Now().UnixNano())
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:  map[string]river.QueueConfig{queue: {MaxWorkers: 1}},
+		Queues:  map[string]river.QueueConfig{queue: {MaxWorkers: 2}},
 		Workers: workers,
 	})
 	if err != nil {
@@ -74,23 +85,23 @@ func runJob(t *testing.T, ctx context.Context, pool *pgxpool.Pool, adapters Adap
 	}
 	defer func() { _ = client.Stop(ctx) }()
 
-	res, err := client.Insert(ctx, RefreshProductArgs{ProductID: productID}, &river.InsertOpts{Queue: queue})
-	if err != nil {
+	if _, err := client.Insert(ctx, RefreshProductArgs{ProductID: productID}, &river.InsertOpts{Queue: queue}); err != nil {
 		t.Fatal(err)
 	}
+	want := 1 + len(adapters)
 	timeout := time.After(15 * time.Second)
-	for {
+	for finished := 0; finished < want; {
 		select {
 		case ev := <-done:
-			if ev.Job.ID != res.Job.ID {
+			if ev.Job.Queue != queue {
 				continue // a job left over from another test run
 			}
 			if ev.Kind != river.EventKindJobCompleted {
-				t.Fatalf("job %s: %v", ev.Kind, ev.Job.Errors)
+				t.Fatalf("job %s %s: %v", ev.Job.Kind, ev.Kind, ev.Job.Errors)
 			}
-			return
+			finished++
 		case <-timeout:
-			t.Fatal("refresh job did not finish within 15s")
+			t.Fatalf("refresh did not finish within 15s")
 		}
 	}
 }
@@ -168,8 +179,59 @@ func TestRefreshSucceedsWhenASourceFails(t *testing.T) {
 		}}},
 		badID: {"api": failingStrategy{}},
 	}
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, "LISTEN "+OffersChannel); err != nil {
+		t.Fatal(err)
+	}
+
 	runJob(t, ctx, pool, adapters, product.ID)
 	assertCounts(t, ctx, q, product.ID, 1, 1)
+
+	// Both sources report as finished, the failed one with ok=false (S7).
+	got := map[string]SourceDone{}
+	for len(got) < 2 {
+		waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		n, err := conn.Conn().WaitForNotification(waitCtx)
+		cancel()
+		if err != nil {
+			t.Fatalf("notifications so far %+v: %v", got, err)
+		}
+		var d SourceDone
+		if err := json.Unmarshal([]byte(n.Payload), &d); err != nil {
+			t.Fatal(err)
+		}
+		if d.ProductID == product.ID {
+			got[d.SourceID] = d
+		}
+	}
+	if !got[goodID].OK || got[badID].OK || min(got[goodID].Remaining, got[badID].Remaining) != 0 {
+		t.Fatalf("notifications: %+v", got)
+	}
+	refreshed, err := q.GetProduct(ctx, product.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refreshed.RefreshingSources) != 0 || !refreshed.LastRefreshedAt.Valid {
+		t.Fatalf("refresh state: running %v, refreshed %v", refreshed.RefreshingSources, refreshed.LastRefreshedAt.Valid)
+	}
+}
+
+func TestRefreshStaysStaleWhenEverySourceFails(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	product, badID := newProductAndSource(t, ctx, q)
+	runJob(t, ctx, pool, Adapters{badID: {"api": failingStrategy{}}}, product.ID)
+	p, err := q.GetProduct(ctx, product.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.LastRefreshedAt.Valid {
+		t.Fatal("a refresh where every source failed marked the product fresh")
+	}
 }
 
 func assertCounts(t *testing.T, ctx context.Context, q *store.Queries, productID int64, wantOffers, wantPoints int) {
@@ -184,5 +246,57 @@ func assertCounts(t *testing.T, ctx context.Context, q *store.Queries, productID
 	}
 	if len(offers) != wantOffers || int(points) != wantPoints {
 		t.Fatalf("got %d offers and %d price points, want %d and %d", len(offers), points, wantOffers, wantPoints)
+	}
+}
+
+var numberedLine = regexp.MustCompile(`(?m)^(\d+)\. (.*)$`)
+
+// noCables is a scripted matcher model: every listing is the product unless its
+// title mentions a cable.
+type noCables struct{ calls int }
+
+func (m *noCables) Name() string                   { return "scripted" }
+func (m *noCables) CostMicros(in, out int64) int64 { return in + out }
+func (m *noCables) Chat(_ context.Context, msgs []llm.Message, _ []llm.Tool) (llm.Turn, error) {
+	m.calls++
+	var decisions []string
+	for _, line := range numberedLine.FindAllStringSubmatch(msgs[len(msgs)-1].Content, -1) {
+		decisions = append(decisions, fmt.Sprintf(`{"index":%s,"is_product":%t,"title_en":%q,"condition":"unknown"}`,
+			line[1], !strings.Contains(line[2], "Cable"), line[2]))
+	}
+	return llm.Turn{ToolCalls: []llm.ToolCall{{ID: "1", Name: "submit_decisions",
+		Arguments: `{"decisions":[` + strings.Join(decisions, ",") + `]}`}}}, nil
+}
+
+func TestRefreshMatchesListingsOnce(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	product, sourceID := newProductAndSource(t, ctx, q)
+	fake := &fakeStrategy{offers: []sources.Offer{
+		{ExternalID: "gpu", URL: "https://example.test/gpu", Title: "GPU 5090", PriceMinor: 100, Currency: "USD", Condition: "used"},
+		{ExternalID: "cable", URL: "https://example.test/cable", Title: "Cable for GPU 5090", PriceMinor: 10, Currency: "USD"},
+	}}
+	model := &noCables{}
+	adapters, m := Adapters{sourceID: {"api": fake}}, &matcher.Matcher{Model: model}
+
+	runJobWith(t, ctx, pool, adapters, m, product.ID)
+	runJobWith(t, ctx, pool, adapters, m, product.ID) // cached: no second LLM call
+	if model.calls != 1 {
+		t.Fatalf("LLM called %d times, want 1", model.calls)
+	}
+	offers, err := q.ListOffersByProduct(ctx, product.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]store.AppOffer{}
+	for _, o := range offers {
+		got[o.ExternalID] = o
+	}
+	gpu, cable := got["gpu"], got["cable"]
+	if gpu.IsProduct == nil || !*gpu.IsProduct || cable.IsProduct == nil || *cable.IsProduct {
+		t.Fatalf("is_product: gpu %v, cable %v", gpu.IsProduct, cable.IsProduct)
+	}
+	if gpu.Condition != "used" {
+		t.Fatalf("source condition lost: %q", gpu.Condition)
 	}
 }

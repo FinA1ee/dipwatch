@@ -24,13 +24,15 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// New builds the router and registers every operation.
-func New(db Pinger, internalToken string) (http.Handler, huma.API) {
+// New builds the router and registers every operation. searcher may be nil when
+// only the contract is needed.
+func New(db Pinger, internalToken string, searcher Searcher) (http.Handler, huma.API) {
 	router := chi.NewMux()
 	router.Use(requireInternalToken(internalToken))
 
 	api := humachi.New(router, huma.DefaultConfig(Title, Version))
 	registerHealth(api, db)
+	registerSearch(api, searcher)
 	return router, api
 }
 

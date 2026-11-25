@@ -18,9 +18,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+
 	"github.com/FinA1ee/dipwatch/core/internal/config"
 	"github.com/FinA1ee/dipwatch/core/internal/db"
+	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	httpapi "github.com/FinA1ee/dipwatch/core/internal/http"
+	"github.com/FinA1ee/dipwatch/core/internal/llm"
+	"github.com/FinA1ee/dipwatch/core/internal/search"
 )
 
 func main() {
@@ -50,7 +57,7 @@ func main() {
 
 func printOpenAPI() error {
 	// The contract does not depend on config, so no database or token is needed here.
-	_, api := httpapi.New(nil, "")
+	_, api := httpapi.New(nil, "", nil)
 	spec, err := api.OpenAPI().YAML()
 	if err != nil {
 		return err
@@ -88,7 +95,11 @@ func serve() error {
 	}
 	defer pool.Close()
 
-	handler, _ := httpapi.New(pool, cfg.InternalToken)
+	searcher, err := newSearch(ctx, pool)
+	if err != nil {
+		return err
+	}
+	handler, _ := httpapi.New(pool, cfg.InternalToken, searcher)
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           handler,
@@ -115,4 +126,26 @@ func serve() error {
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	}
+}
+
+// newSearch builds the search service: an insert-only River client for refresh
+// jobs, the LISTEN hub for streams, and the query gate. Without an LLM, only
+// queries already in the cache resolve.
+func newSearch(ctx context.Context, pool *pgxpool.Pool) (*search.Service, error) {
+	queue, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	if err != nil {
+		return nil, err
+	}
+	gate := &guard.Gate{DB: pool}
+	switch cfg, err := llm.ConfigFromEnv(); {
+	case errors.Is(err, llm.ErrNotConfigured):
+		slog.Info("LLM_API_KEY not set: only cached queries resolve")
+	case err != nil:
+		slog.Error("LLM config invalid: only cached queries resolve", "err", err)
+	default:
+		gate.Checker = &guard.Checker{Model: llm.NewOpenAI(cfg)}
+	}
+	hub := &search.Hub{DB: pool}
+	go hub.Run(ctx)
+	return &search.Service{DB: pool, Gate: gate, Queue: queue, Hub: hub}, nil
 }
