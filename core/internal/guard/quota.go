@@ -15,7 +15,7 @@ import (
 var ErrQuotaExceeded = errors.New("daily search limit reached")
 
 // ErrInviteOnly means the site is invite-only and the viewer is not invited.
-var ErrInviteOnly = errors.New("Dipwatch is invite-only for now: ask the owner to add your sign-in email")
+var ErrInviteOnly = errors.New("invite-only: the viewer is not invited")
 
 // Invited reports whether the viewer may use costly features under the invite list.
 func Invited(l limits.Limits, v Viewer) bool { return v.Admin || l.Allows(v.Email) }
