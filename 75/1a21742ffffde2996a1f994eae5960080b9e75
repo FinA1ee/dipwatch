@@ -1,0 +1,192 @@
+web/src/pages/Search/modules/SearchBoxModule/Model/useSearchBox.ts
+  s_3313d584934833::t_f36a46aa3b74ed 24
+  s_3313d584934833::t_8b13801ed7e0e3 25
+core/internal/pricetrust/pricetrust_test.go
+  s_3313d584934833::t_1c5dfdb63f5a47 1-26
+core/internal/tracking/tracking_test.go
+  s_3313d584934833::t_518a15f545ae13 57,61-63,134
+  s_3313d584934833::t_8d1d88380312e2 60,68,71,74,77,80,83,87,96,106,153,158,167
+  s_3313d584934833::t_da20f7f809844a 65,81,86,88-90,93,129-133,135-152,154-157,159-166,168-171
+  s_3313d584934833::t_da6c211911169f 92
+core/internal/sources/sources.go
+  s_3313d584934833::t_6192e9d71ee000 21-24
+core/internal/http/product.go
+  s_3313d584934833::t_4009c81bfcc4c9 16,22-23,40
+core/internal/matcher/matcher.go
+  s_3313d584934833::t_49e311b4c12623 3,13,21,31,60,62,73,75,166,182-201,204-207,213-214
+  s_3313d584934833::t_14cdabf71ec459 14,202-203,208-212
+core/internal/store/queries/alerts.sql
+  s_3313d584934833::t_9d21d0d54804dd 39
+core/internal/search/product.go
+  s_3313d584934833::t_4009c81bfcc4c9 10,25-31,34-39,69-73
+  s_3313d584934833::t_6724b024ecfcfa 17,58-68
+core/internal/store/queries/watch.sql
+  s_3313d584934833::t_900f44844e7bcc 2-5,7,10-11,22-24,27-28
+  s_3313d584934833::t_ea83c5b578116c 6,25-26,29
+  s_3313d584934833::t_9d21d0d54804dd 37
+core/internal/alerts/check.go
+  s_3313d584934833::t_9d21d0d54804dd 12,38-41,45-48,63,66-73,76,84-86,99
+  s_3313d584934833::t_7f2e38f408a803 75,81-83
+core/internal/search/service.go
+  s_3313d584934833::t_5cbadda51dcfc3 5,68-71
+  s_3313d584934833::t_fe1a762b8a8fd2 19,167
+  s_3313d584934833::t_ef8577d192641a 21,51-54,57-59,72-73,253,267-274,277-281
+  s_3313d584934833::t_fc6750814cfcc7 201-211
+core/internal/store/offers.sql.go
+  s_3313d584934833::t_6352a0e061abd8 27-59,99,105-107,111-118,120,122-137
+  s_3313d584934833::t_6724b024ecfcfa 100-104,108-110,119,121
+  s_3313d584934833::t_0223212c8b6570 141,172-173,323,326,338,344-356,374
+  s_3313d584934833::t_4009c81bfcc4c9 191-193,199,209-211,213
+  s_3313d584934833::t_ef8577d192641a 235,250-264,292-293
+web/src/pages/MyProducts/modules/TrackedModule/View/TrackedView.tsx
+  s_3313d584934833::t_d59a1a9c6c7429 6
+  s_3313d584934833::t_61cad4e3dfe985 29-30,33-34
+  s_3313d584934833::t_3e44a2e4ba110b 31-32
+  s_3313d584934833::t_768226e0c71f41 35-47
+  s_3313d584934833::t_cc2c8029d7e11c 51-52
+core/internal/db/migrations/00013_variants.sql
+  s_3313d584934833::t_f6f2c94a2882a8 1-22
+web/src/pages/Product/modules/HistoryModule/View/HistoryView.tsx
+  s_3313d584934833::t_7a05e0cbae865f 2,4,6-7,17,20-21
+  s_3313d584934833::t_a2289500dfd968 5
+  s_3313d584934833::t_dd12a66433448a 8-9,12-14
+  s_3313d584934833::t_cc2c8029d7e11c 10-11,18-19
+web/src/components/VariantPicker.tsx
+  s_3313d584934833::t_a80dc16acfd968 1-26,30-37
+  s_3313d584934833::t_cc2c8029d7e11c 27-29
+web/src/components/OfferTable.tsx
+  s_3313d584934833::t_bf760c093bc310 1,42-43,46-47,56,70-76,117
+  s_3313d584934833::t_768226e0c71f41 4,94,107-116
+  s_3313d584934833::t_775162ca1e82a3 5,31-37,39-41,44-45,50-51,55,82-85,87-89
+  s_3313d584934833::t_a46b35a08c0d18 48,78
+  s_3313d584934833::t_cc2c8029d7e11c 90-91
+core/internal/http/tracking.go
+  s_3313d584934833::t_e323d4c6a26668 6,94-96,187-193
+  s_3313d584934833::t_8d1d88380312e2 20,93
+  s_3313d584934833::t_b668e9098d3233 45-48,166
+  s_3313d584934833::t_da6c211911169f 49
+  s_3313d584934833::t_38f7af30d05c7e 91
+web/src/pages/Search/modules/FiltersModule/Model/useFilters.ts
+  s_3313d584934833::t_8b13801ed7e0e3 1,4,10,13-14
+web/src/pages/Search/modules/ResultsModule/Model/filterOffers.test.ts
+  s_3313d584934833::t_cc2c8029d7e11c 3
+  s_3313d584934833::t_b929b247544d18 17
+  s_3313d584934833::t_a80dc16acfd968 39,43-44,48-49
+core/internal/store/watch.sql.go
+  s_3313d584934833::t_0223212c8b6570 43,65,126,150,183,221,261
+  s_3313d584934833::t_6352a0e061abd8 64,85,109,127-128,130,133-134,140-149,151-157,159,162,182,185-190,192,218-219,231,235-237,246,260
+  s_3313d584934833::t_9d21d0d54804dd 71,86,110
+  s_3313d584934833::t_ea83c5b578116c 129,158,191,216-217,220,232,247
+web/src/pages/Product/modules/OffersModule/View/OffersView.tsx
+  s_3313d584934833::t_7c1998d9882eb9 4-5,8,13,17,33-35,37
+  s_3313d584934833::t_759a0b799d3ee3 6,12,36,38-53
+web/src/pages/Search/modules/ResultsModule/View/ResultsListView.tsx
+  s_3313d584934833::t_cc2c8029d7e11c 3,36,39
+  s_3313d584934833::t_759a0b799d3ee3 19-21,26-29
+  s_3313d584934833::t_3e44a2e4ba110b 22-25,32-33
+core/internal/store/queries/match.sql
+  s_3313d584934833::t_a56331f9bc12fd 2,7-8,12-13,16
+web/src/pages/Search/store.ts
+  s_3313d584934833::t_8b13801ed7e0e3 10,13,27,50
+  s_3313d584934833::t_f36a46aa3b74ed 26,49
+core/internal/pricetrust/pricetrust.go
+  s_3313d584934833::t_1c5dfdb63f5a47 1-49
+web/src/pages/Search/modules/ResultsModule/Model/useResults.ts
+  s_3313d584934833::t_8b13801ed7e0e3 4,23,43-44
+  s_3313d584934833::t_f36a46aa3b74ed 20,40
+web/src/services/search.ts
+  s_3313d584934833::t_645e5472aa0085 26-29,34,36,38
+  s_3313d584934833::t_3e44a2e4ba110b 30-33,35
+core/internal/jobs/refresh.go
+  s_3313d584934833::t_0223212c8b6570 295-307
+  s_3313d584934833::t_a56331f9bc12fd 394,415,429
+docs/tasks.md
+  s_3313d584934833::t_3ade7f7e4d5a0e 315-323,326-331
+  s_3313d584934833::t_1a7f46a1f82ece 324-325,332-333
+  s_3313d584934833::t_55733b8b9d6572 334
+contracts/openapi.yaml
+  s_3313d584934833::t_1a0a7ac8cbdc08 239-242,290-298,329-350,354-359,361,511,513-514,547-549,664-667,675,1639-1644,1692-1695,1697-1699,1759-1764
+  s_3313d584934833::t_fb92c78bf861fb 262-264,271,351-353,360,423-425,445-447,451-453,465,512,515-517,551,566-568,680-683,1691,1696,1700-1707
+web/src/services/tracking.ts
+  s_3313d584934833::t_93749854c2d0aa 4,14-16,18,24
+  s_3313d584934833::t_ae363e7aebe7c1 17,25,29
+core/internal/alerts/check_test.go
+  s_3313d584934833::t_7f2e38f408a803 174-194
+  s_3313d584934833::t_cfeb6e841d7a23 195-219
+core/internal/sources/kakaku/kakaku.go
+  s_3313d584934833::t_51e902e6575ea4 115-116,121
+web/src/hooks/useTracked.ts
+  s_3313d584934833::t_3e44a2e4ba110b 14-19
+  s_3313d584934833::t_a355bfbc28a715 20-21
+web/src/pages/Search/modules/FiltersModule/View/FiltersView.tsx
+  s_3313d584934833::t_a80dc16acfd968 1,8-13
+core/internal/matcher/matcher_test.go
+  s_3313d584934833::t_8aa61ab713ac03 97-115
+web/src/pages/Product/modules/HistoryModule/Model/useHistory.ts
+  s_3313d584934833::t_7a05e0cbae865f 1-28
+web/src/pages/Product/modules/OffersModule/Model/useProductPage.ts
+  s_3313d584934833::t_645e5472aa0085 6,11-12
+web/src/pages/Product/modules/OffersModule/Model/useVariant.ts
+  s_3313d584934833::t_7a05e0cbae865f 1-27,29-34
+  s_3313d584934833::t_7c1998d9882eb9 28
+web/src/utils/variants.ts
+  s_3313d584934833::t_83f20e59b9741e 1-39
+core/internal/tracking/tracking.go
+  s_3313d584934833::t_b97ed9cd5bfe6c 20,22,58,123,129-132,169,181,188-190,197,210,319-322,331-336,338-343
+  s_3313d584934833::t_914cf24abf2db3 38,59-60,64-70,72-74,122,128,150,155,167-168,170-180,182-186,191-196,201-202,209,215-219,223-247,249-263
+  s_3313d584934833::t_8d1d88380312e2 71,248
+  s_3313d584934833::t_8f7d6074c25818 156-158
+web/src/utils/variants.test.ts
+  s_3313d584934833::t_83f20e59b9741e 1-25
+core/internal/store/alerts.sql.go
+  s_3313d584934833::t_9d21d0d54804dd 115,126-132,151-152
+web/src/components/PriceLadder.tsx
+  s_3313d584934833::t_a46b35a08c0d18 4,7,19
+web/src/services/schema.d.ts
+  s_3313d584934833::t_1a0a7ac8cbdc08 446,448-449,474-477,499-509,512,580-581,583-584,602-603,664-668,670,1557-1565,1674,1753-1756
+  s_3313d584934833::t_fb92c78bf861fb 459-460,510-511,539-540,553-554,557-558,582,585-586,604,614-615,672-673,1673,1675-1676
+web/src/pages/Product/modules/TrackModule/View/TrackView.tsx
+  s_3313d584934833::t_b5f6562c6718f3 2,9-10,13,16,20-21,37-41,44,46,56-58,64-68,85-90,93-99,104-111
+  s_3313d584934833::t_a355bfbc28a715 8,11,22-23,100-101
+  s_3313d584934833::t_a2289500dfd968 59-60
+  s_3313d584934833::t_3e44a2e4ba110b 61-63,91-92
+  s_3313d584934833::t_cc2c8029d7e11c 73-80,102-103
+core/internal/store/models.go
+  s_3313d584934833::t_0223212c8b6570 52,56-75,155
+  s_3313d584934833::t_6352a0e061abd8 154
+web/src/pages/Search/modules/FiltersModule/Model/useVariant.ts
+  s_3313d584934833::t_8b13801ed7e0e3 1-10
+web/src/pages/Search/modules/ResultsModule/Model/filterOffers.ts
+  s_3313d584934833::t_8b13801ed7e0e3 2,5-10
+core/internal/search/search_test.go
+  s_3313d584934833::t_518a15f545ae13 205-206,240-268
+  s_3313d584934833::t_cfeb6e841d7a23 354-370,372-382
+  s_3313d584934833::t_918aac9e364782 371
+core/internal/store/queries/offers.sql
+  s_3313d584934833::t_51e902e6575ea4 5,8,20
+  s_3313d584934833::t_ef8577d192641a 55
+  s_3313d584934833::t_4009c81bfcc4c9 64-66,72-73
+  s_3313d584934833::t_840ba9e47d3465 80-87
+  s_3313d584934833::t_6724b024ecfcfa 88-93
+core/internal/store/match.sql.go
+  s_3313d584934833::t_0223212c8b6570 13,28,45,58-59,63-64,73,83,89-90,97,106
+web/src/pages/Product/modules/OffersModule/Model/useListing.ts
+  s_3313d584934833::t_e2324d3cc51825 1-18,20-25
+  s_3313d584934833::t_7c1998d9882eb9 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "751a21742ffffde2996a1f994eae5960080b9e75",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
