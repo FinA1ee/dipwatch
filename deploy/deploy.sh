@@ -35,21 +35,32 @@ healthy() {
 	return 1
 }
 
-echo "deploy: $TAG (previous: ${PREVIOUS:-none})"
-start "$TAG"
+# Daily database backup at 03:30 server time; added once, kept on later deploys.
+install_backup() {
+	line="30 3 * * * sh $(pwd)/backup.sh >> $(pwd)/backups.log 2>&1"
+	(crontab -l 2>/dev/null | grep -v 'backup.sh'; echo "$line") | crontab - || echo "deploy: could not install the backup cron job" >&2
+}
 
-if healthy; then
+echo "deploy: $TAG (previous: ${PREVIOUS:-none})"
+
+# Inside `if`, a failing start does not end the script under `set -e`: a release
+# whose containers cannot even start must roll back like an unhealthy one.
+if start "$TAG" && healthy; then
 	echo "$TAG" > .deployed_tag
+	install_backup
 	docker image prune -f >/dev/null
 	echo "deploy: $TAG is live on port $PORT"
 	exit 0
 fi
 
-echo "deploy: $TAG failed its health check" >&2
-docker compose -f compose.yaml ps >&2
+echo "deploy: $TAG did not become healthy" >&2
+docker compose -f compose.yaml ps >&2 || true
 if [ -n "$PREVIOUS" ] && [ "$PREVIOUS" != "$TAG" ]; then
 	echo "deploy: rolling back to $PREVIOUS" >&2
-	start "$PREVIOUS"
-	healthy && echo "deploy: rolled back to $PREVIOUS" >&2
+	if start "$PREVIOUS" && healthy; then
+		echo "deploy: rolled back to $PREVIOUS" >&2
+	else
+		echo "deploy: rollback to $PREVIOUS is not healthy either" >&2
+	fi
 fi
 exit 1

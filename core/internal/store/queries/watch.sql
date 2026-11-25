@@ -30,3 +30,6 @@ SELECT w.id, w.user_id, w.rules, w.baseline_price_cny_minor, w.created_at, w.sou
 FROM app.watch_items w
 JOIN app.users u ON u.id = w.user_id
 WHERE w.product_id = @product_id;
+
+-- name: ProductTracked :one
+SELECT EXISTS (SELECT 1 FROM app.watch_items WHERE product_id = @product_id)::bool;

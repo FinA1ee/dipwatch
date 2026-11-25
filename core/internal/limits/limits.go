@@ -17,14 +17,15 @@ import (
 
 // Limits are the knobs that bound LLM and browser spend.
 type Limits struct {
-	SourcesPerSearch     int `json:"sources_per_search" minimum:"1" maximum:"20" doc:"Stores a member or visitor may pick for one search"`
-	TrackedPerMember     int `json:"tracked_per_member" minimum:"0" maximum:"100" doc:"Products one member may track (C2)"`
-	VisitorDailySearches int `json:"visitor_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per visitor IP per day (C1)"`
-	MemberDailySearches  int `json:"member_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per member per day (C1)"`
+	SourcesPerSearch     int     `json:"sources_per_search" minimum:"1" maximum:"20" doc:"Stores a member or visitor may pick for one search"`
+	TrackedPerMember     int     `json:"tracked_per_member" minimum:"0" maximum:"100" doc:"Products one member may track (C2)"`
+	VisitorDailySearches int     `json:"visitor_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per visitor IP per day (C1)"`
+	MemberDailySearches  int     `json:"member_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per member per day (C1)"`
+	DailyBudgetCNY       float64 `json:"daily_budget_cny" minimum:"0" maximum:"1000" doc:"LLM spend per China day; at 80% only tracked products get agent runs, at 100% only stored data is served (C4)"`
 }
 
 // Defaults keep spend low until the owner raises them.
-var Defaults = Limits{SourcesPerSearch: 1, TrackedPerMember: 1, VisitorDailySearches: 10, MemberDailySearches: 30}
+var Defaults = Limits{SourcesPerSearch: 1, TrackedPerMember: 1, VisitorDailySearches: 10, MemberDailySearches: 30, DailyBudgetCNY: 5}
 
 // Validate checks ranges, matching the API schema, for callers other than the API.
 func (l Limits) Validate() error {
@@ -35,6 +36,8 @@ func (l Limits) Validate() error {
 		return fmt.Errorf("tracked products per member must be 0 to 100")
 	case l.VisitorDailySearches < 0 || l.VisitorDailySearches > 1000, l.MemberDailySearches < 0 || l.MemberDailySearches > 1000:
 		return fmt.Errorf("daily searches must be 0 to 1000")
+	case l.DailyBudgetCNY < 0 || l.DailyBudgetCNY > 1000:
+		return fmt.Errorf("the daily budget must be 0 to 1000 yuan")
 	}
 	return nil
 }

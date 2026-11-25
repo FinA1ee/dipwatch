@@ -18,6 +18,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
 	"github.com/FinA1ee/dipwatch/core/internal/limits"
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -273,5 +274,47 @@ func TestSearchNamesItsStoresWithinTheLimit(t *testing.T) {
 	}
 	if q := s.Queue.(*fakeQueue); len(q.inserted) != 1 || len(q.inserted[0].(jobs.RefreshProductArgs).Sources) != 2 {
 		t.Fatalf("refresh: %+v", q.inserted)
+	}
+}
+
+type fixedMeter spend.Level
+
+func (m fixedMeter) Level(context.Context) spend.Level { return spend.Level(m) }
+
+func TestSpendBreakerKeepsSearchesOnStoredData(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	product, sourceID, query := fixture(t, ctx, q)
+	stores := []string{sourceID}
+
+	// 100%: stored offers only, no refresh, and the answer says so (C4).
+	queue := &fakeQueue{}
+	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Queue: queue, Spend: fixedMeter(spend.StoredOnly)}
+	res, err := s.Search(ctx, guard.Viewer{}, query, "CNY", stores)
+	if err != nil || !res.Paused || res.Status != "fresh" || len(queue.inserted) != 0 || len(res.Offers) != 3 {
+		t.Fatalf("stored only: %+v, %d jobs, %v", res, len(queue.inserted), err)
+	}
+
+	// 80%: an untracked product is not refreshed; a tracked one is.
+	s.Spend = fixedMeter(spend.TrackedOnly)
+	if res, err := s.Search(ctx, guard.Viewer{}, query, "CNY", stores); err != nil || !res.Paused || len(queue.inserted) != 0 {
+		t.Fatalf("tracked only, untracked product: %+v, %d jobs, %v", res, len(queue.inserted), err)
+	}
+	user := "spend-" + sourceID
+	if err := q.UpsertUser(ctx, store.UpsertUserParams{ID: user, Email: user + "@example.test"}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.DeleteUser(context.Background(), user) })
+	if _, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: product.ID, Rules: []byte(`[]`), Sources: stores}); err != nil {
+		t.Fatal(err)
+	}
+	if res, err := s.Search(ctx, guard.Viewer{}, query, "CNY", stores); err != nil || res.Paused || len(queue.inserted) != 1 {
+		t.Fatalf("tracked only, tracked product: %+v, %d jobs, %v", res, len(queue.inserted), err)
+	}
+
+	// 100% and a query nobody asked before: no intent call.
+	gate := &guard.Gate{DB: pool, Checker: &guard.Checker{Model: nil}, Breaker: fixedMeter(spend.StoredOnly)}
+	if _, err := gate.Resolve(ctx, "never searched "+sourceID, nil); !errors.Is(err, spend.ErrPaused) {
+		t.Fatalf("new query at 100%%: %v", err)
 	}
 }

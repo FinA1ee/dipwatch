@@ -15,18 +15,31 @@ export function LimitsView() {
 
   if (l.error) return <AdminError error={l.error} />;
   if (!draft) return <p className="text-slate-600">Loading…</p>;
+  const levelText: Record<string, string> = {
+    normal: "everything runs",
+    tracked_only: "over 80%: agent runs only for tracked products",
+    stored_only: "budget used up: stored prices only until midnight",
+  };
   return (
-    <LimitsForm
-      value={draft}
-      saving={l.save.isPending}
-      message={message}
-      onChange={setDraft}
-      onSave={() =>
-        l.save.mutate(draft, {
-          onSuccess: () => setMessage({ ok: true, text: "Saved. New limits apply to the next request." }),
-          onError: (e) => setMessage({ ok: false, text: e.message }),
-        })
-      }
-    />
+    <div className="space-y-4">
+      {l.spend && (
+        <p className="text-sm">
+          Today (China time): <strong>¥{l.spend.today_cny.toFixed(2)}</strong> of ¥
+          {l.spend.budget_cny.toFixed(2)}, {levelText[l.spend.level]}
+        </p>
+      )}
+      <LimitsForm
+        value={draft}
+        saving={l.save.isPending}
+        message={message}
+        onChange={setDraft}
+        onSave={() =>
+          l.save.mutate(draft, {
+            onSuccess: () => setMessage({ ok: true, text: "Saved. New limits apply to the next request." }),
+            onError: (e) => setMessage({ ok: false, text: e.message }),
+          })
+        }
+      />
+    </div>
   );
 }

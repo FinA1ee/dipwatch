@@ -20,6 +20,7 @@ export function useSearchBox() {
         product: result.product,
         offers: result.offers,
         pending: [],
+        paused: result.paused ?? false,
         ...(sameProduct ? {} : { filters: NO_FILTERS }),
       }),
     [patch],

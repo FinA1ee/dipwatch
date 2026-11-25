@@ -26,12 +26,15 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/db"
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/limits"
 	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
+	"github.com/FinA1ee/dipwatch/core/internal/sources/jdunion"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/kakaku"
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -57,6 +60,10 @@ func adapters(pool *pgxpool.Pool) (jobs.Adapters, *matcher.Matcher) {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	a := jobs.Adapters{
 		"kakaku": {"html": kakaku.New(httpClient, kakaku.DefaultBaseURL)},
+	}
+	if key, secret := os.Getenv("JD_UNION_APP_KEY"), os.Getenv("JD_UNION_APP_SECRET"); key != "" && secret != "" {
+		a["jd"] = map[string]sources.Strategy{"api": &jdunion.Client{HTTP: httpClient, URL: jdunion.DefaultURL, AppKey: key, AppSecret: secret}}
+		slog.Info("JD Union API enabled")
 	}
 
 	cfg, err := llm.ConfigFromEnv()
@@ -120,19 +127,21 @@ func run() error {
 		return err
 	}
 	checker := &alerts.Checker{EmailEnabled: mailer != nil, Enqueue: jobs.EnqueueNotify}
+	breaker := &spend.Breaker{DB: pool, Limits: &limits.Store{DB: pool}}
 
 	workers := river.NewWorkers()
 	sourceAdapters, listingMatcher := adapters(pool)
-	river.AddWorker(workers, &jobs.RefreshProductWorker{DB: pool, Adapters: sourceAdapters})
+	river.AddWorker(workers, &jobs.RefreshProductWorker{DB: pool, Adapters: sourceAdapters, Spend: breaker})
 	river.AddWorker(workers, &jobs.RefreshSourceWorker{
 		DB:       pool,
 		Registry: sources.NewRegistry(),
 		Adapters: sourceAdapters,
 		Matcher:  listingMatcher,
 		Alerts:   checker,
+		Spend:    breaker,
 	})
 	river.AddWorker(workers, &jobs.NotifyWorker{DB: pool, Mailer: mailer, PublicURL: os.Getenv("PUBLIC_URL")})
-	river.AddWorker(workers, &jobs.ScheduleWorker{DB: pool})
+	river.AddWorker(workers, &jobs.ScheduleWorker{DB: pool, Spend: breaker})
 	river.AddWorker(workers, &jobs.SimulateDropWorker{DB: pool, Alerts: checker})
 	river.AddWorker(workers, &jobs.FXRefreshWorker{
 		DB:     pool,

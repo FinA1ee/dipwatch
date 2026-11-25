@@ -16,6 +16,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
 	"github.com/FinA1ee/dipwatch/core/internal/limits"
 	"github.com/FinA1ee/dipwatch/core/internal/money"
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -56,6 +57,7 @@ type Product struct {
 type Result struct {
 	Product Product `json:"product"`
 	Status  string  `json:"status" enum:"fresh,refreshing" doc:"refreshing: open the events stream for new offers"`
+	Paused  bool    `json:"paused,omitempty" doc:"true when stored offers are older than usual because today's budget is spent"`
 	Offers  []Offer `json:"offers" doc:"Cheapest first, compared in CNY"`
 }
 
@@ -69,6 +71,7 @@ type Service struct {
 	Gate   *guard.Gate
 	Quotas *guard.Quotas // nil: no limits
 	Limits *limits.Store // nil: the defaults
+	Spend  spend.Meter   // nil: no daily budget
 	Queue  Inserter
 	Hub    *Hub
 	Now    func() time.Time // nil: time.Now
@@ -168,6 +171,18 @@ func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currenc
 			res.Status = "refreshing" // already running: join it for free
 		case !fresh:
 			stale = append(stale, id)
+		}
+	}
+	if len(stale) > 0 {
+		// C4: past 80% of today's budget only tracked products are refreshed; at
+		// 100% nothing is, and the stored offers are the answer.
+		switch spend.LevelOf(ctx, s.Spend) {
+		case spend.StoredOnly:
+			stale, res.Paused = nil, true
+		case spend.TrackedOnly:
+			if tracked, err := q.ProductTracked(ctx, product.ID); err != nil || !tracked {
+				stale, res.Paused = nil, true
+			}
 		}
 	}
 	if len(stale) > 0 {

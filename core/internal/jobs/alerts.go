@@ -16,6 +16,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/money"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -131,10 +132,15 @@ func SchedulePeriodicJob() *river.PeriodicJob {
 
 type ScheduleWorker struct {
 	river.WorkerDefaults[ScheduleArgs]
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Spend spend.Meter // nil: no daily budget
 }
 
 func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs]) error {
+	if spend.LevelOf(ctx, w.Spend) == spend.StoredOnly {
+		slog.InfoContext(ctx, "schedule: paused, daily budget used up")
+		return nil
+	}
 	ids, err := store.New(w.DB).DueTrackedProducts(ctx)
 	if err != nil || len(ids) == 0 {
 		return err

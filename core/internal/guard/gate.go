@@ -10,16 +10,15 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
-
-// ErrUnavailable means a query was not in the cache and no model is configured.
-var ErrUnavailable = errors.New("intent check unavailable")
 
 // Gate resolves search text to a catalog product.
 type Gate struct {
 	DB      *pgxpool.Pool
-	Checker *Checker // nil: only cached queries resolve
+	Checker *Checker    // nil: only cached queries resolve
+	Breaker spend.Meter // nil: no daily budget
 }
 
 // Product is a resolved query.
@@ -49,7 +48,12 @@ func (g *Gate) Resolve(ctx context.Context, text string, charge *Charger) (Produ
 		return Product{}, err
 	}
 	if g.Checker == nil {
-		return Product{}, ErrUnavailable
+		// No LLM (a fresh clone, or a site without a key): the text as typed names
+		// the product. Spellings are not merged, but search still works.
+		return g.withoutIntent(ctx, q, text)
+	}
+	if spend.LevelOf(ctx, g.Breaker) == spend.StoredOnly {
+		return Product{}, spend.ErrPaused // C4: no LLM calls until tomorrow
 	}
 	if err := charge.Charge(ctx); err != nil {
 		return Product{}, err
@@ -86,6 +90,16 @@ func (g *Gate) Resolve(ctx context.Context, text string, charge *Charger) (Produ
 		return Product{}, err
 	}
 	return product, nil
+}
+
+func (g *Gate) withoutIntent(ctx context.Context, q *store.Queries, text string) (Product, error) {
+	name := strings.Join(strings.Fields(text), " ")
+	p, err := q.UpsertProduct(ctx, store.UpsertProductParams{CanonicalName: name, Category: "other"})
+	if err != nil {
+		return Product{}, err
+	}
+	// Not cached in queries: once an LLM is configured, the intent check names it properly.
+	return Product{ID: p.ID, CanonicalName: p.CanonicalName}, nil
 }
 
 // catalogProduct reuses an existing product when the model returned its name

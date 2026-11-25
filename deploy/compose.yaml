@@ -75,6 +75,9 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:18080}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # JD through its affiliate API (JD Union); empty keeps the JD store off.
+      JD_UNION_APP_KEY: ${JD_UNION_APP_KEY:-}
+      JD_UNION_APP_SECRET: ${JD_UNION_APP_SECRET:-}
     depends_on:
       core-api:
         condition: service_healthy
