@@ -69,3 +69,7 @@ WHERE o.product_id = @product_id
   AND o.is_product IS NOT FALSE
   AND pp.observed_at >= @since
 ORDER BY pp.observed_at;
+
+-- name: SetOfferPrice :exec
+-- Used only by the simulated price drop (admin test of alert delivery).
+UPDATE app.offers SET price_minor = @price_minor WHERE id = @id;

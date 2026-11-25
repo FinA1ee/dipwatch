@@ -13,6 +13,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/money"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -20,10 +21,7 @@ import (
 const FreshFor = 6 * time.Hour
 
 // Money is an amount in minor units (cents; yen for JPY) of an ISO 4217 currency.
-type Money struct {
-	Minor    int64  `json:"minor"`
-	Currency string `json:"currency" minLength:"3" maxLength:"3"`
-}
+type Money = money.Money
 
 type Source struct {
 	ID     string `json:"id"`

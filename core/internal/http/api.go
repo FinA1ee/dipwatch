@@ -30,6 +30,8 @@ type Services struct {
 	Products Products
 	Runs     Runs
 	Live     LiveFeed
+	Tracking Tracker
+	Simulate Simulator
 }
 
 // New builds the router and registers every operation.
@@ -45,6 +47,7 @@ func New(db Pinger, internalToken string, s Services) (http.Handler, huma.API) {
 	registerProducts(api, s.Products)
 	registerAdmin(api, s.Runs)
 	registerLive(api, s.Live)
+	registerTracking(api, s.Tracking, s.Simulate)
 	return router, api
 }
 

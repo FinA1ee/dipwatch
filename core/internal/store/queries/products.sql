@@ -11,7 +11,7 @@ SELECT * FROM app.products WHERE id = @id;
 UPDATE app.products SET last_refreshed_at = now() WHERE id = @id;
 
 -- name: StartRefresh :exec
-UPDATE app.products SET refreshing_sources = @source_ids::text[] WHERE id = @id;
+UPDATE app.products SET refreshing_sources = @source_ids::text[], refresh_changed = false WHERE id = @id;
 
 -- name: FinishSourceRefresh :one
 -- Removes one finished source and returns how many are still running.
@@ -24,3 +24,30 @@ SELECT pg_notify('dipwatch_offers', @payload::text);
 
 -- name: NotifyAgent :exec
 SELECT pg_notify('dipwatch_agent', @payload::text);
+
+-- name: DueTrackedProducts :many
+-- Tracked products whose refresh interval has passed and that are not refreshing (T3).
+-- Untracked products are never scheduled.
+SELECT p.id FROM app.products p
+WHERE EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
+  AND cardinality(p.refreshing_sources) = 0
+  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + p.refresh_interval <= now())
+ORDER BY p.last_refreshed_at NULLS FIRST
+LIMIT 50;
+
+-- name: MarkRefreshChanged :exec
+UPDATE app.products SET refresh_changed = true WHERE id = @id;
+
+-- name: AdaptRefreshInterval :exec
+-- After a refresh: halve the interval (at least 2 hours) when a known offer
+-- changed; double it (at most 24 hours) after 4 refreshes in a row without a change.
+UPDATE app.products SET
+    refresh_interval = CASE
+        WHEN refresh_changed THEN greatest(refresh_interval / 2, interval '2 hours')
+        WHEN unchanged_checks + 1 >= 4 THEN least(refresh_interval * 2, interval '24 hours')
+        ELSE refresh_interval END,
+    unchanged_checks = CASE
+        WHEN refresh_changed OR unchanged_checks + 1 >= 4 THEN 0
+        ELSE unchanged_checks + 1 END,
+    refresh_changed = false
+WHERE id = @id;

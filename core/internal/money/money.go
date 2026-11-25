@@ -45,3 +45,26 @@ func ParseMinor(value, currency string) (int64, error) {
 	}
 	return n, nil
 }
+
+// Format writes minor units as "1469.00 CNY" or "51871 JPY", for messages.
+func Format(minor int64, currency string) string {
+	exp := Exponent(currency)
+	if exp == 0 {
+		return fmt.Sprintf("%d %s", minor, currency)
+	}
+	div := int64(1)
+	for range exp {
+		div *= 10
+	}
+	sign := ""
+	if minor < 0 {
+		sign, minor = "-", -minor
+	}
+	return fmt.Sprintf("%s%d.%0*d %s", sign, minor/div, exp, minor%div, currency)
+}
+
+// Money is an amount in minor units of an ISO 4217 currency, as the API sends it.
+type Money struct {
+	Minor    int64  `json:"minor"`
+	Currency string `json:"currency" pattern:"^[A-Z]{3}$"`
+}

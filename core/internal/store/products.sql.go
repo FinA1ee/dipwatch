@@ -9,6 +9,57 @@ import (
 	"context"
 )
 
+const adaptRefreshInterval = `-- name: AdaptRefreshInterval :exec
+UPDATE app.products SET
+    refresh_interval = CASE
+        WHEN refresh_changed THEN greatest(refresh_interval / 2, interval '2 hours')
+        WHEN unchanged_checks + 1 >= 4 THEN least(refresh_interval * 2, interval '24 hours')
+        ELSE refresh_interval END,
+    unchanged_checks = CASE
+        WHEN refresh_changed OR unchanged_checks + 1 >= 4 THEN 0
+        ELSE unchanged_checks + 1 END,
+    refresh_changed = false
+WHERE id = $1
+`
+
+// After a refresh: halve the interval (at least 2 hours) when a known offer
+// changed; double it (at most 24 hours) after 4 refreshes in a row without a change.
+func (q *Queries) AdaptRefreshInterval(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, adaptRefreshInterval, id)
+	return err
+}
+
+const dueTrackedProducts = `-- name: DueTrackedProducts :many
+SELECT p.id FROM app.products p
+WHERE EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
+  AND cardinality(p.refreshing_sources) = 0
+  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + p.refresh_interval <= now())
+ORDER BY p.last_refreshed_at NULLS FIRST
+LIMIT 50
+`
+
+// Tracked products whose refresh interval has passed and that are not refreshing (T3).
+// Untracked products are never scheduled.
+func (q *Queries) DueTrackedProducts(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, dueTrackedProducts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const finishSourceRefresh = `-- name: FinishSourceRefresh :one
 UPDATE app.products SET refreshing_sources = array_remove(refreshing_sources, $1::text)
 WHERE id = $2
@@ -29,7 +80,7 @@ func (q *Queries) FinishSourceRefresh(ctx context.Context, arg FinishSourceRefre
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at, refreshing_sources FROM app.products WHERE id = $1
+SELECT id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at, refreshing_sources, refresh_changed FROM app.products WHERE id = $1
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id int64) (AppProduct, error) {
@@ -46,6 +97,7 @@ func (q *Queries) GetProduct(ctx context.Context, id int64) (AppProduct, error) 
 		&i.UnchangedChecks,
 		&i.CreatedAt,
 		&i.RefreshingSources,
+		&i.RefreshChanged,
 	)
 	return i, err
 }
@@ -56,6 +108,15 @@ UPDATE app.products SET last_refreshed_at = now() WHERE id = $1
 
 func (q *Queries) MarkProductRefreshed(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, markProductRefreshed, id)
+	return err
+}
+
+const markRefreshChanged = `-- name: MarkRefreshChanged :exec
+UPDATE app.products SET refresh_changed = true WHERE id = $1
+`
+
+func (q *Queries) MarkRefreshChanged(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markRefreshChanged, id)
 	return err
 }
 
@@ -78,7 +139,7 @@ func (q *Queries) NotifyOffers(ctx context.Context, payload string) error {
 }
 
 const startRefresh = `-- name: StartRefresh :exec
-UPDATE app.products SET refreshing_sources = $1::text[] WHERE id = $2
+UPDATE app.products SET refreshing_sources = $1::text[], refresh_changed = false WHERE id = $2
 `
 
 type StartRefreshParams struct {
@@ -95,7 +156,7 @@ const upsertProduct = `-- name: UpsertProduct :one
 INSERT INTO app.products (canonical_name, category)
 VALUES ($1, $2)
 ON CONFLICT (canonical_name) DO UPDATE SET category = EXCLUDED.category
-RETURNING id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at, refreshing_sources
+RETURNING id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at, refreshing_sources, refresh_changed
 `
 
 type UpsertProductParams struct {
@@ -117,6 +178,7 @@ func (q *Queries) UpsertProduct(ctx context.Context, arg UpsertProductParams) (A
 		&i.UnchangedChecks,
 		&i.CreatedAt,
 		&i.RefreshingSources,
+		&i.RefreshChanged,
 	)
 	return i, err
 }

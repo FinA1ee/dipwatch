@@ -224,6 +224,40 @@ components:
         - status
         - db
       type: object
+    Item:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Item.json
+          format: uri
+          readOnly: true
+          type: string
+        baseline:
+          $ref: "#/components/schemas/Money"
+          description: Lowest price when tracking started, in CNY
+        note:
+          type: string
+        product_id:
+          format: int64
+          type: integer
+        product_name:
+          type: string
+        rules:
+          items:
+            $ref: "#/components/schemas/Rule"
+          type: array
+        tracked_at:
+          format: date-time
+          type: string
+      required:
+        - product_id
+        - product_name
+        - note
+        - rules
+        - tracked_at
+      type: object
     Metrics:
       additionalProperties: false
       properties:
@@ -250,8 +284,7 @@ components:
       additionalProperties: false
       properties:
         currency:
-          maxLength: 3
-          minLength: 3
+          pattern: ^[A-Z]{3}$
           type: string
         minor:
           format: int64
@@ -410,6 +443,28 @@ components:
         - status
         - offers
       type: object
+    Rule:
+      additionalProperties: false
+      properties:
+        below:
+          $ref: "#/components/schemas/Money"
+          description: "For below: alert when an offer costs less than this"
+        percent:
+          description: "For drop: alert at this drop from the price when tracking started"
+          format: int64
+          maximum: 90
+          minimum: 0
+          type: integer
+        type:
+          enum:
+            - below
+            - drop
+            - back_in_stock
+            - new_source
+          type: string
+      required:
+        - type
+      type: object
     Run:
       additionalProperties: false
       properties:
@@ -444,6 +499,50 @@ components:
       required:
         - runs
       type: object
+    SaveSettingsInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SaveSettingsInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        email_alerts:
+          type: boolean
+        feishu_webhook:
+          description: Feishu or Lark bot webhook URL; empty turns Feishu alerts off
+          maxLength: 500
+          type: string
+      required:
+        - feishu_webhook
+        - email_alerts
+      type: object
+    SaveTrackedInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SaveTrackedInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        note:
+          description: Up to 500 characters
+          maxLength: 2000
+          type: string
+        rules:
+          items:
+            $ref: "#/components/schemas/Rule"
+          maxItems: 8
+          minItems: 1
+          type: array
+      required:
+        - note
+        - rules
+      type: object
     SearchInputBody:
       additionalProperties: false
       properties:
@@ -465,6 +564,51 @@ components:
           type: string
       required:
         - query
+      type: object
+    Settings:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Settings.json
+          format: uri
+          readOnly: true
+          type: string
+        email:
+          type: string
+        email_alerts:
+          type: boolean
+        email_available:
+          description: "false while the site has no SMTP: email alerts are not sent yet"
+          type: boolean
+        feishu_webhook:
+          description: "Empty: no Feishu alerts"
+          type: string
+      required:
+        - feishu_webhook
+        - email_alerts
+        - email_available
+        - email
+      type: object
+    SimulateInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SimulateInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        percent:
+          default: 20
+          format: int64
+          maximum: 90
+          minimum: 1
+          type: integer
+      required:
+        - percent
       type: object
     Snapshot:
       additionalProperties: false
@@ -642,6 +786,24 @@ components:
         - duration_ms
         - created_at
       type: object
+    TrackedOutputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/TrackedOutputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        items:
+          description: Newest first
+          items:
+            $ref: "#/components/schemas/Item"
+          type: array
+      required:
+        - items
+      type: object
 info:
   title: Dipwatch Core API
   version: 0.1.0
@@ -756,6 +918,48 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Internal Server Error
       summary: Per-source agent metrics and LLM spend per day
+      tags:
+        - Admin
+  /admin/products/{productId}/simulate-drop:
+    post:
+      description: "Test of alert delivery (M6.3): changes stored prices, so use it on test products only."
+      operationId: admin-simulate-drop
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            format: int64
+            minimum: 1
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulateInputBody"
+        required: true
+      responses:
+        "202":
+          description: Accepted
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Forbidden
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Lower the cheapest offer and run the alert check
       tags:
         - Admin
   /admin/runs:
@@ -907,6 +1111,252 @@ paths:
       summary: Service health
       tags:
         - System
+  /me/settings:
+    get:
+      operationId: get-settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+          description: OK
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: My alert channels
+      tags:
+        - Tracking
+    put:
+      operationId: save-settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveSettingsInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+          description: OK
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Change my alert channels
+      tags:
+        - Tracking
+  /me/settings/test:
+    post:
+      operationId: test-feishu
+      responses:
+        "204":
+          description: No Content
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+        "502":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Gateway
+      summary: Send a test message to my Feishu webhook
+      tags:
+        - Tracking
+  /me/tracked:
+    get:
+      operationId: list-tracked
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackedOutputBody"
+          description: OK
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Products I track
+      tags:
+        - Tracking
+  /me/tracked/{productId}:
+    delete:
+      operationId: delete-tracked
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            format: int64
+            minimum: 1
+            type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Stop tracking a product
+      tags:
+        - Tracking
+    put:
+      operationId: save-tracked
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            format: int64
+            minimum: 1
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveTrackedInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+          description: OK
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Track a product, or change its note and rules
+      tags:
+        - Tracking
   /products/{productId}:
     get:
       description: Reads stored data only; it never starts a refresh.

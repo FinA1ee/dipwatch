@@ -218,6 +218,21 @@ func (q *Queries) ListSearchOffers(ctx context.Context, arg ListSearchOffersPara
 	return items, nil
 }
 
+const setOfferPrice = `-- name: SetOfferPrice :exec
+UPDATE app.offers SET price_minor = $1 WHERE id = $2
+`
+
+type SetOfferPriceParams struct {
+	PriceMinor int64
+	ID         int64
+}
+
+// Used only by the simulated price drop (admin test of alert delivery).
+func (q *Queries) SetOfferPrice(ctx context.Context, arg SetOfferPriceParams) error {
+	_, err := q.db.Exec(ctx, setOfferPrice, arg.PriceMinor, arg.ID)
+	return err
+}
+
 const upsertOffer = `-- name: UpsertOffer :one
 INSERT INTO app.offers (
     product_id, source_id, external_id, url, title_original,

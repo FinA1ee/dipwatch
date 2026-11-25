@@ -92,6 +92,7 @@ type AppProduct struct {
 	UnchangedChecks   int32
 	CreatedAt         pgtype.Timestamptz
 	RefreshingSources []string
+	RefreshChanged    bool
 }
 
 type AppQuery struct {
@@ -117,10 +118,12 @@ type AppSource struct {
 }
 
 type AppUser struct {
-	ID        string
-	Email     string
-	Currency  string
-	CreatedAt pgtype.Timestamptz
+	ID            string
+	Email         string
+	Currency      string
+	CreatedAt     pgtype.Timestamptz
+	FeishuWebhook string
+	EmailAlerts   bool
 }
 
 type AppWatchItem struct {

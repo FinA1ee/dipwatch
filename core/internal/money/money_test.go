@@ -41,3 +41,15 @@ func TestParseMinorRejectsBadInput(t *testing.T) {
 		}
 	}
 }
+
+func TestFormat(t *testing.T) {
+	for _, c := range []struct {
+		minor    int64
+		currency string
+		want     string
+	}{{146990, "CNY", "1469.90 CNY"}, {51871, "JPY", "51871 JPY"}, {5, "USD", "0.05 USD"}} {
+		if got := Format(c.minor, c.currency); got != c.want {
+			t.Errorf("Format(%d, %s) = %q, want %q", c.minor, c.currency, got, c.want)
+		}
+	}
+}

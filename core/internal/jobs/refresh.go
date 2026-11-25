@@ -4,15 +4,18 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
+	"github.com/FinA1ee/dipwatch/core/internal/alerts"
 	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
@@ -95,7 +98,7 @@ func (w *RefreshProductWorker) Work(ctx context.Context, job *river.Job[RefreshP
 		if err := q.MarkProductRefreshed(ctx, productID); err != nil {
 			return err
 		}
-		return notify(ctx, q, SourceDone{ProductID: productID, OK: true})
+		return notifySourceDone(ctx, q, SourceDone{ProductID: productID, OK: true})
 	}
 	client, err := river.ClientFromContextSafely[pgx.Tx](ctx)
 	if err != nil {
@@ -127,6 +130,8 @@ type RefreshSourceWorker struct {
 	// Matcher classifies the source's listings after they are saved. Optional:
 	// without it, offers stay unclassified (is_product null).
 	Matcher *matcher.Matcher
+	// Alerts checks tracking rules after each source; optional.
+	Alerts *alerts.Checker
 }
 
 func (w *RefreshSourceWorker) Timeout(*river.Job[RefreshSourceArgs]) time.Duration {
@@ -149,7 +154,13 @@ func (w *RefreshSourceWorker) Work(ctx context.Context, job *river.Job[RefreshSo
 			return err
 		}
 	}
-	return notify(ctx, q, SourceDone{ProductID: job.Args.ProductID, SourceID: job.Args.SourceID, OK: ok, Remaining: int(remaining)})
+	if remaining == 0 {
+		// The whole refresh is done: adapt the schedule to how much changed (T3).
+		if err := q.AdaptRefreshInterval(ctx, job.Args.ProductID); err != nil {
+			return err
+		}
+	}
+	return notifySourceDone(ctx, q, SourceDone{ProductID: job.Args.ProductID, SourceID: job.Args.SourceID, OK: ok, Remaining: int(remaining)})
 }
 
 // refresh searches one source, saves and matches its offers, and reports whether
@@ -184,9 +195,15 @@ func (w *RefreshSourceWorker) refresh(ctx context.Context, args RefreshSourceArg
 		slog.WarnContext(ctx, "refresh: source failed", "product", product.ID, "source", src.ID, "err", err)
 		return false
 	}
-	if err := save(ctx, w.DB, product.ID, src.ID, res.Offers); err != nil {
+	changes, err := save(ctx, w.DB, product.ID, src.ID, res.Offers)
+	if err != nil {
 		slog.ErrorContext(ctx, "refresh: save offers", "product", product.ID, "source", src.ID, "err", err)
 		return false
+	}
+	if changes.Changed {
+		if err := q.MarkRefreshChanged(ctx, product.ID); err != nil {
+			slog.WarnContext(ctx, "refresh: mark changed", "product", product.ID, "err", err)
+		}
 	}
 	slog.InfoContext(ctx, "refresh: source done", "product", product.ID, "source", src.ID,
 		"strategy", res.Strategy, "offers", len(res.Offers))
@@ -196,10 +213,18 @@ func (w *RefreshSourceWorker) refresh(ctx context.Context, args RefreshSourceArg
 			slog.WarnContext(ctx, "refresh: matching failed", "product", product.ID, "source", src.ID, "err", err)
 		}
 	}
+	// After matching, so accessories never trigger alerts.
+	if w.Alerts != nil {
+		if n, err := w.Alerts.Check(ctx, q, product.ID, src.ID, changes); err != nil {
+			slog.ErrorContext(ctx, "refresh: alert check failed", "product", product.ID, "source", src.ID, "err", err)
+		} else if n > 0 {
+			slog.InfoContext(ctx, "refresh: alerts queued", "product", product.ID, "source", src.ID, "alerts", n)
+		}
+	}
 	return true
 }
 
-func notify(ctx context.Context, q *store.Queries, done SourceDone) error {
+func notifySourceDone(ctx context.Context, q *store.Queries, done SourceDone) error {
 	payload, err := json.Marshal(done)
 	if err != nil {
 		return err
@@ -220,9 +245,18 @@ func sourceFor(adapters Adapters, row store.AppSource) (sources.Source, bool) {
 
 // save upserts every offer and records a price point where the price or stock changed,
 // all in one transaction per source.
-func save(ctx context.Context, db *pgxpool.Pool, productID int64, sourceID string, offers []sources.Offer) error {
-	return pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+func save(ctx context.Context, db *pgxpool.Pool, productID int64, sourceID string, offers []sources.Offer) (alerts.Changes, error) {
+	ch := alerts.Changes{BackInStock: map[int64]bool{}}
+	started := time.Now()
+	err := pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
 		q := store.New(tx)
+		seen, err := q.SourceSeenBefore(ctx, store.SourceSeenBeforeParams{
+			ProductID: productID, SourceID: sourceID, Before: pgtype.Timestamptz{Time: started, Valid: true},
+		})
+		if err != nil {
+			return err
+		}
+		ch.FirstFromSource = !seen && len(offers) > 0
 		for _, o := range offers {
 			id, err := q.UpsertOffer(ctx, store.UpsertOfferParams{
 				ProductID:     productID,
@@ -241,6 +275,20 @@ func save(ctx context.Context, db *pgxpool.Pool, productID int64, sourceID strin
 			if err != nil {
 				return fmt.Errorf("upsert offer %s: %w", o.ExternalID, err)
 			}
+			prev, err := q.LatestPricePoint(ctx, id)
+			switch {
+			case errors.Is(err, pgx.ErrNoRows): // a new listing
+			case err != nil:
+				return err
+			default:
+				now := inStock(o.Availability)
+				if prev.InStock != nil && !*prev.InStock && now != nil && *now {
+					ch.BackInStock[id] = true
+				}
+				if prev.PriceMinor != o.PriceMinor || prev.Currency != o.Currency || !sameStock(prev.InStock, now) {
+					ch.Changed = true
+				}
+			}
 			if _, err := q.InsertPricePointIfChanged(ctx, store.InsertPricePointIfChangedParams{
 				OfferID:    id,
 				PriceMinor: o.PriceMinor,
@@ -252,6 +300,11 @@ func save(ctx context.Context, db *pgxpool.Pool, productID int64, sourceID strin
 		}
 		return nil
 	})
+	return ch, err
+}
+
+func sameStock(a, b *bool) bool {
+	return (a == nil) == (b == nil) && (a == nil || *a == *b)
 }
 
 func orUnknown(s string) string {
