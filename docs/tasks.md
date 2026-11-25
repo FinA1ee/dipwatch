@@ -198,3 +198,35 @@ Order matters: the eval harness comes first, so every change after it (prompt, m
 - Bug found by the end-to-end check: the worker image had no CA certificates, so every HTTPS call from the worker failed, in production too since Day 3. Fixed in `core/Dockerfile`.
 - A refresh where every source fails no longer marks the product fresh, so the next search retries instead of showing nothing for 6 hours.
 - Open: the agent reports Amazon US "no offers" for RTX 4090 (it found none on the first page); `no_offers` still counts as a strategy failure in the registry. 4090D listings count as the RTX 4090 (decided 2026-11-25; browse-v8 and match-v2).
+
+## Day 5: accounts, quotas, web app, run viewer
+
+Goal: a visitor can search on the website and watch results arrive, sign in by email or GitHub, and the owner can see what every agent run did and cost.
+
+Decisions taken before starting (2026-11-25): web pages use clean architecture (design: Web app structure); the site address is the server IP and port until there is a domain; magic links go out through the owner's mailbox over SMTP; the three agent sources (Amazon US, Amazon Japan, SMZDM) are enabled in production only after quotas are deployed.
+
+### Success metrics
+
+| #     | Metric                           | How to check                                                                                                                                                    |
+| ----- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M5.1  | Search page                      | Typing a product shows stored offers at once, then each source's offers as it finishes, ranked by price, with source, region, original and converted price (S5) |
+| M5.2  | Filters and currency             | Results can be filtered by condition, region and stock, and shown in CNY, USD, JPY, EUR or SGD; the choice survives a reload                                    |
+| M5.3  | Product page                     | `/p/<id>` lists all offers and the lowest price per day for the last 30 days                                                                                    |
+| M5.4  | Sign-in                          | Magic link and GitHub sign-in both work against the deployed site; the same verified email by both methods is one member (A1, A2)                               |
+| M5.5  | Quotas                           | Tests: the 11th costly search from one IP in a day and the 31st from one member get 429; cached searches are never counted (C1)                                 |
+| M5.6  | Identity headers are trusted     | Tests: a client-sent `X-Dipwatch-*` header never reaches core; admin endpoints answer 403 without the admin role                                                |
+| M5.7  | Per-source metrics               | `/admin` shows, per source and day, runs, success rate, offers per run, median steps, tokens, cost per run and the most common failure outcome (H3)             |
+| M5.8  | Run inspection                   | `/admin/runs` filters by source, outcome, prompt version and day; a run's page shows each step's tool, arguments and result excerpt, with tokens and cost (H4)  |
+| M5.9  | Agent sources live               | After the quota deploy, Amazon US, Amazon Japan and SMZDM are enabled in production and a search returns offers from at least two of them                       |
+| M5.10 | An empty result is not a failure | An agent run that finds no listings does not count toward skipping the source                                                                                   |
+
+### Tasks
+
+- [ ] **5.1 Registry: empty is not failure.** `no_offers` returns zero offers without an error, so the registry does not skip the source.
+- [ ] **5.2 Auth tables and gateway auth.** Goose migration for Better Auth's `auth` schema. Gateway: Better Auth with magic link (SMTP) and GitHub, account linking, admin role from `ADMIN_EMAILS`, identity headers to core, client IP from Caddy.
+- [ ] **5.3 Quotas.** `app.search_quota`; the guard charges a search once, just before its first costly step; 429 with a clear message.
+- [ ] **5.4 Product and admin API.** `GET /products/{id}` (offers and daily lowest price), `GET /admin/metrics`, `GET /admin/runs`, `GET /admin/runs/{id}`; admin role required. Contract and web types regenerated.
+- [ ] **5.5 Web foundations.** Router, Zustand, services layer (API client, SSE, auth client), layout with sign-in state, currency setting.
+- [ ] **5.6 Search and product pages.** Search module (query, stream, results, filters) and product page, by the structure in design.
+- [ ] **5.7 Sign-in and admin pages.** Sign-in page (email link, GitHub); admin metrics, run list and run trace.
+- [ ] **5.8 Deploy and go live.** New env values on the server (the owner sets the SMTP and GitHub secrets), check the three agent sources from the server with `source-smoke -browser-only`, enable them, verify M5.4 and M5.9 on the deployed site.

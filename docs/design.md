@@ -286,7 +286,33 @@ Rules that keep the cost down:
 
 ## Accounts
 
-Better Auth runs in the gateway with the Postgres adapter, schema `auth`. Methods: email magic link, GitHub OAuth, and Google OAuth once reachability from the server is confirmed. Account linking by verified email is on (A2). Sessions are HTTP-only cookies.
+Better Auth runs in the gateway with the Postgres adapter, schema `auth`. Methods: email magic link and GitHub OAuth (Google is out of scope, see A1). Account linking by verified email is on (A2). Sessions are HTTP-only cookies.
+
+- **Tables.** The `auth` schema is created by a goose migration generated from Better Auth's schema, so core runs every migration and the gateway never alters tables.
+- **Email.** Magic links go out over SMTP (`SMTP_URL`, `MAIL_FROM`). For now that is the owner's own mailbox; switching to a domain sender changes only those two values. Without `SMTP_URL` in development, the gateway prints the link to its log; in production it refuses to start.
+- **Site address.** `PUBLIC_URL` is the server IP and port until there is a domain. It is the base for magic links and the GitHub callback (`<PUBLIC_URL>/api/auth/callback/github`).
+- **Identity to core.** The gateway resolves the session and forwards `X-Dipwatch-User-Id`, `X-Dipwatch-User-Email`, `X-Dipwatch-Role` (`admin` for emails in `ADMIN_EMAILS`) and `X-Dipwatch-Client-Ip`. It strips any `X-Dipwatch-*` header a client sends, so core can trust them.
+- **Quotas (C1).** Core counts searches that cost money, per IP for visitors and per user for members, in `app.search_quota`. A search costs money when it needs the intent call or starts a refresh; a cached, fresh answer is free and not counted. Over the limit, `POST /search` answers 429.
+
+## Web app structure
+
+Decision (Day 5): **clean architecture** (option A of the frontend rule), because the search page holds stream state that several parts read and the admin pages will grow. Each page is a folder under `web/src/pages/` made of modules:
+
+```text
+web/src/
+  pages/<Page>/
+    index.tsx                 page: assembles modules only, no API calls
+    store.ts                  Zustand store for state shared by the page's modules
+    modules/<Name>Module/
+      Model/                  hooks over the store and data fetching
+      View/                   behaviour: reads and writes state through Model, calls services
+      Component/              pure display, props only
+  components/                 shared across pages
+  services/                   the only place that calls the API (openapi-fetch, SSE, Better Auth client)
+  utils/                      pure helpers used by more than one page
+```
+
+Rules: a Component never touches a store or the API; a View changes state only through its Model; a Page never calls the API. Inside a page, imports are relative; `@/` is only for `src/` modules shared across pages.
 
 ## Deployment
 
