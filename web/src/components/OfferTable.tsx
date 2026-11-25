@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Offer } from "@/services/api";
 import { formatMoney } from "@/utils/money";
+import { safeHref } from "@/utils/url";
 
 const conditionLabel: Record<Offer["condition"], string> = {
   new: "New",
@@ -15,16 +16,6 @@ const sellerLabel: Record<Offer["seller_type"], string> = {
   individual: "Individual seller",
   unknown: "",
 };
-
-/** Store links are untrusted data: only http(s) URLs become links. */
-function safeHref(url: string): string | undefined {
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:" ? u.href : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 const shown = (o: Offer) => o.converted ?? o.price;
 
@@ -79,11 +70,11 @@ export function OfferTable({ offers, action, selected }: Props) {
                 {i === 0
                   ? "lowest"
                   : gap !== null && gap > 0
-                    ? `+${formatMoney({ ...price, minor: gap })}`
+                    ? `${formatMoney({ ...price, minor: gap })} more than the lowest`
                     : ""}
               </span>
               {o.converted && o.converted.currency !== o.price.currency && (
-                <span className="block text-[13px] text-muted">{formatMoney(o.price)}</span>
+                <span className="block text-[13px] text-muted">{formatMoney(o.price)} at the store</span>
               )}
             </span>
             {o.title !== o.title_original && (
@@ -96,6 +87,16 @@ export function OfferTable({ offers, action, selected }: Props) {
                 <span key={f}>{f}</span>
               ))}
               {o.availability === "out_of_stock" && <span className="text-warn">Out of stock</span>}
+              {safeHref(o.url) && (
+                <a
+                  href={safeHref(o.url)}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="font-medium text-ink hover:underline"
+                >
+                  Open at {o.source.name}
+                </a>
+              )}
               {o.id === selected && <span className="font-semibold text-drop">Tracked listing</span>}
               {action?.(o)}
             </span>

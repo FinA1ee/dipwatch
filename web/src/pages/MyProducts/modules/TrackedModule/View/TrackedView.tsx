@@ -3,6 +3,7 @@ import { useStores } from "@/hooks/useStores";
 import { useTracked } from "@/hooks/useTracked";
 import { formatMoney } from "@/utils/money";
 import { describeRule } from "@/utils/rules";
+import { safeHref } from "@/utils/url";
 
 /** The member's tracked products (T1, T2), each linking to its offers and price chart (T7). */
 export function TrackedView() {
@@ -31,6 +32,19 @@ export function TrackedView() {
                 Listing: <span className="font-medium">{i.listing.title}</span> at{" "}
                 {formatMoney(i.listing.price)}
                 {i.listing.gone && <span className="text-warn"> · no longer listed by the store</span>}
+                {safeHref(i.listing.url) && (
+                  <>
+                    {" · "}
+                    <a
+                      href={safeHref(i.listing.url)}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="hover:underline"
+                    >
+                      Open at {storeNames([i.listing.store])}
+                    </a>
+                  </>
+                )}
               </p>
             )}
             <p className="text-sm text-muted">
