@@ -3,7 +3,7 @@ COMPOSE := docker compose -f deploy/compose.yaml
 envval = $(shell grep ^$(1)= deploy/.env | cut -d= -f2)
 DEV_DB_URL =postgres://dipwatch:$(call envval,POSTGRES_PASSWORD)@localhost:$(call envval,PG_HOST_PORT)/dipwatch?sslmode=disable
 
-.PHONY: help env dev down logs db test test-go test-ts lint contract check-contract spike sqlc source-smoke refresh
+.PHONY: help env dev down logs db test test-go test-ts lint contract check-contract spike sqlc source-smoke refresh agent-eval
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -58,6 +58,9 @@ sqlc: ## Regenerate typed queries after changing migrations or queries
 
 source-smoke: ## Search one live source, e.g. make source-smoke SOURCE=kakaku Q="RTX 5090"
 	cd core && go run ./cmd/source-smoke -source "$(or $(SOURCE),kakaku)" -q "$(or $(Q),RTX 5090)"
+
+agent-eval: ## Run the agent eval with the real LLM (costs money), e.g. make agent-eval NOTE="what changed"
+	cd core && go run ./cmd/agent-eval -env ../deploy/.env -report ../docs/harness -note "$(NOTE)" $(ARGS)
 
 refresh: ## Enqueue a refresh in the running stack, e.g. make refresh Q="RTX 5090"
 	$(COMPOSE) exec worker worker refresh "$(or $(Q),RTX 5090)"

@@ -42,6 +42,15 @@ type AppFxRate struct {
 	Rates []byte
 }
 
+type AppMatchCache struct {
+	ProductID int64
+	TitleHash string
+	IsProduct bool
+	TitleEn   string
+	Condition string
+	CreatedAt pgtype.Timestamptz
+}
+
 type AppOffer struct {
 	ID            int64
 	ProductID     int64
@@ -60,6 +69,7 @@ type AppOffer struct {
 	Raw           []byte
 	FirstSeenAt   pgtype.Timestamptz
 	LastSeenAt    pgtype.Timestamptz
+	IsProduct     *bool
 }
 
 type AppPricePoint struct {
@@ -72,20 +82,21 @@ type AppPricePoint struct {
 }
 
 type AppProduct struct {
-	ID               int64
-	CanonicalName    string
-	Category         string
-	Aliases          []string
-	LastRefreshedAt  pgtype.Timestamptz
-	LastDiscoveredAt pgtype.Timestamptz
-	RefreshInterval  pgtype.Interval
-	UnchangedChecks  int32
-	CreatedAt        pgtype.Timestamptz
+	ID                int64
+	CanonicalName     string
+	Category          string
+	Aliases           []string
+	LastRefreshedAt   pgtype.Timestamptz
+	LastDiscoveredAt  pgtype.Timestamptz
+	RefreshInterval   pgtype.Interval
+	UnchangedChecks   int32
+	CreatedAt         pgtype.Timestamptz
+	RefreshingSources []string
 }
 
 type AppQuery struct {
 	NormalizedText string
-	ProductID      int64
+	ProductID      *int64
 	CreatedAt      pgtype.Timestamptz
 }
 

@@ -4,16 +4,16 @@ Every prompt or harness change that is kept, with the evidence for it (spec H6).
 
 Until the eval set exists (Day 4), evidence is single live runs. From Day 4 on, each row links an eval report with precision, recall, steps and cost per store.
 
-## Current version: browse-v5
+## Current version: browse-v7
 
-| Area         | Setting                                                                                         |
-| ------------ | ----------------------------------------------------------------------------------------------- |
-| Model        | DeepSeek `deepseek-flash`, temperature 0, thinking off                                          |
-| Budgets      | 15 steps, 30,000 tokens, 90 seconds per run                                                     |
-| Wrap-up      | At 70% of steps or tokens, only `submit_offers` and `report_blocked` are offered                |
-| Tools        | navigate, snapshot, click, type, press key, wait, find (max 15 results), plus submit and report |
-| Page shaping | A snapshot after every page-changing tool; `compact` then `excerpt` to 8,000 characters         |
-| History      | Only the latest page and the latest tool result stay in full; older results become a short note |
+| Area         | Setting                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| Model        | DeepSeek `deepseek-flash`, temperature 0, thinking off                                                        |
+| Budgets      | 15 steps, 30,000 tokens, 90 seconds per run                                                                   |
+| Wrap-up      | At 70% of steps or tokens, only `submit_offers` and `report_blocked` are offered                              |
+| Tools        | navigate, snapshot, click, type, press key, wait, find (max 15 results), plus submit and report               |
+| Page shaping | A snapshot after every page-changing tool; split prices joined; `compact` then `excerpt` to 12,000 characters |
+| History      | Only the latest page and the latest tool result stay in full; older results become a short note               |
 
 ## Iterations
 
@@ -38,3 +38,45 @@ Lessons:
 - **Models keep exploring when allowed.** The forced wrap-up turned "keeps searching until the budget runs out" into "submits what it has".
 
 Known gaps for the eval to measure: Amazon runs submit 1 offer although the page shows 9 to 13 (low recall); SMZDM prices may be list prices.
+
+### Day 4: the first measured iterations (browse-v5 to v7)
+
+The eval set: 10 saved results pages (Amazon US, Amazon Japan and SMZDM, for RTX 5090, RTX 4090 and Sony WH-1000XM6), one of them with an injected instruction. Labels come from `tools/eval/label_draft.py` plus hand decisions in `overrides.json`. Reports are in [harness/](harness/).
+
+| Run                     | Change                                                                                                                                                                      | Precision | Recall  | Answered     | Median cost | Report                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------- | ------------ | ----------- | ---------------------------------------------- |
+| browse-v5               | Baseline                                                                                                                                                                    | 53%       | 26%     | 8 of 10      | ¥0.057      | [report](harness/2026-11-25-1045-browse-v5.md) |
+| browse-v6               | `compact` joins prices split across lines (SMZDM shows "¥" "1640." "95"); title matching uses only the model number, because brands appear in other scripts (索尼 for Sony) | 62%       | 38%     | 9 of 10      | ¥0.058      | [report](harness/2026-11-25-1049-browse-v6.md) |
+| browse-v6, labels fixed | Same code. The labeller had missed brand-heading cards, colour variants, cards without a price and single-quoted YAML lines                                                 | 76%       | 44%     | 7 of 10      | ¥0.063      | [report](harness/2026-11-25-1055-browse-v6.md) |
+| browse-v7               | Prompt: leave out PCs, laptops, bundles and other models; list every matching listing; an empty submission means "none here". Page view 12,000 characters                   | **100%**  | **67%** | **10 of 10** | ¥0.060      | [report](harness/2026-11-25-1057-browse-v7.md) |
+
+Targets (spec H1): precision at least 90% (met), recall at least 60% (met), median cost under ¥0.08 (met). The injection case was refused in every run.
+
+Lessons:
+
+- **Check the labels before blaming the agent.** The third row moved precision from 62% to 76% without touching the agent: the "wrong" offers were real listings the labeller had missed. Every eval needs its own review step.
+- **The page view decides what the model can know.** A price split into three lines became three meaningless fragments that `compact` then deleted. No prompt could have fixed that.
+- **Say what "nothing found" looks like.** Without it, the model reported pages with no matching product as "blocked", which the registry treats as a store failure.
+- **Recall is now the gap.** On Amazon Japan the model still submits 1 of 5 cards. Likely causes for the next iteration: listings near the bottom of the 12,000-character view, and the wrap-up pushing it to submit early.
+
+### Day 4: the matcher (match-v1)
+
+After each refresh, one LLM call per 40 listings decides whether each listing is the product, and adds an English title and a condition. Decisions are cached per product and title, so an unchanged listing is never sent twice. `go run ./cmd/matcher-eval -env ../deploy/.env` scores it on the same labelled listings as the agent eval, leaving out ambiguous labels and the injection copy.
+
+| Version  | Accuracy  | Precision | Recall | Listings | Cost   | Report                                        |
+| -------- | --------- | --------- | ------ | -------- | ------ | --------------------------------------------- |
+| match-v1 | **98.9%** | 100%      | 92.5%  | 283      | ¥0.140 | [report](harness/2026-11-25-1110-match-v1.md) |
+
+Target (spec S6): accuracy at least 90% (met). An earlier run of the same prompt kept one Sony bundle (precision 97.4%), so bundles are the case to watch.
+
+Every miss is an "RTX 4090D", the China-only cut-down variant, which the labels count as the RTX 4090 and the model does not. This is a policy question, not a model error: a user searching "RTX 4090" in China probably wants to see 4090D prices, but they are a different card. Decision pending; the label stays until then.
+
+### Day 4: the intent check (intent-v1)
+
+The query gate normalizes the text (NFKC, lower case, single spaces), rejects input over 80 characters or with a URL, and otherwise asks the model once per normalized text whether it names a product and what its canonical name is. Both answers are cached in `queries`. To keep spellings on one product, the call lists existing products that share a model-number word with the query, and the model is told to reuse a listed name exactly. `go run ./cmd/intent-eval -env ../deploy/.env` runs 26 texts from `internal/guard/testdata/queries.json`.
+
+| Version   | Spelling groups on one name | Non-products rejected | Cost   | Report                                         |
+| --------- | --------------------------- | --------------------- | ------ | ---------------------------------------------- |
+| intent-v1 | 6 of 6                      | 7 of 7                | ¥0.049 | [report](harness/2026-11-25-1114-intent-v1.md) |
+
+The rejected set includes an instruction ("ignore previous instructions…"); the model can only answer through the schema, so there is nothing for it to act on. The set is small and should grow with real queries once the site is public.

@@ -9,8 +9,27 @@ import (
 	"context"
 )
 
+const finishSourceRefresh = `-- name: FinishSourceRefresh :one
+UPDATE app.products SET refreshing_sources = array_remove(refreshing_sources, $1::text)
+WHERE id = $2
+RETURNING cardinality(refreshing_sources)::int AS remaining
+`
+
+type FinishSourceRefreshParams struct {
+	SourceID string
+	ID       int64
+}
+
+// Removes one finished source and returns how many are still running.
+func (q *Queries) FinishSourceRefresh(ctx context.Context, arg FinishSourceRefreshParams) (int32, error) {
+	row := q.db.QueryRow(ctx, finishSourceRefresh, arg.SourceID, arg.ID)
+	var remaining int32
+	err := row.Scan(&remaining)
+	return remaining, err
+}
+
 const getProduct = `-- name: GetProduct :one
-SELECT id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at FROM app.products WHERE id = $1
+SELECT id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at, refreshing_sources FROM app.products WHERE id = $1
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id int64) (AppProduct, error) {
@@ -26,6 +45,7 @@ func (q *Queries) GetProduct(ctx context.Context, id int64) (AppProduct, error) 
 		&i.RefreshInterval,
 		&i.UnchangedChecks,
 		&i.CreatedAt,
+		&i.RefreshingSources,
 	)
 	return i, err
 }
@@ -39,11 +59,34 @@ func (q *Queries) MarkProductRefreshed(ctx context.Context, id int64) error {
 	return err
 }
 
+const notifyOffers = `-- name: NotifyOffers :exec
+SELECT pg_notify('dipwatch_offers', $1::text)
+`
+
+func (q *Queries) NotifyOffers(ctx context.Context, payload string) error {
+	_, err := q.db.Exec(ctx, notifyOffers, payload)
+	return err
+}
+
+const startRefresh = `-- name: StartRefresh :exec
+UPDATE app.products SET refreshing_sources = $1::text[] WHERE id = $2
+`
+
+type StartRefreshParams struct {
+	SourceIds []string
+	ID        int64
+}
+
+func (q *Queries) StartRefresh(ctx context.Context, arg StartRefreshParams) error {
+	_, err := q.db.Exec(ctx, startRefresh, arg.SourceIds, arg.ID)
+	return err
+}
+
 const upsertProduct = `-- name: UpsertProduct :one
 INSERT INTO app.products (canonical_name, category)
 VALUES ($1, $2)
 ON CONFLICT (canonical_name) DO UPDATE SET category = EXCLUDED.category
-RETURNING id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at
+RETURNING id, canonical_name, category, aliases, last_refreshed_at, last_discovered_at, refresh_interval, unchanged_checks, created_at, refreshing_sources
 `
 
 type UpsertProductParams struct {
@@ -64,6 +107,7 @@ func (q *Queries) UpsertProduct(ctx context.Context, arg UpsertProductParams) (A
 		&i.RefreshInterval,
 		&i.UnchangedChecks,
 		&i.CreatedAt,
+		&i.RefreshingSources,
 	)
 	return i, err
 }

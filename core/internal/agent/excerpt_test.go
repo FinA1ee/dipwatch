@@ -89,3 +89,16 @@ func TestExcerptFallsBackToPageStart(t *testing.T) {
 		t.Fatalf("fallback excerpt (%d chars): %.200s", len(got), got)
 	}
 }
+
+func TestCompactJoinsSplitPrices(t *testing.T) {
+	in := "a\nb\nc\nd\ne\nf\n" +
+		"    - generic [ref=e1]: ¥\n    - generic [ref=e2]: \"1640.\"\n    - generic [ref=e3]: \"95\"\n" +
+		"    - generic [ref=e4]: 原价\n    - text: ¥3999"
+	got := compact(in)
+	if !strings.Contains(got, "- text: ¥1640.95") {
+		t.Fatalf("split price not joined:\n%s", got)
+	}
+	if !strings.Contains(got, "原价") || !strings.Contains(got, "¥3999") {
+		t.Fatalf("list price lost:\n%s", got)
+	}
+}

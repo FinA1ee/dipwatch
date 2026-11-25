@@ -1,6 +1,16 @@
 # Local and server stack. Values come from deploy/.env (see .env.example).
 name: dipwatch
 
+# LLM settings for the intent check (core-api) and the browsing agent and matcher
+# (worker). An empty LLM_API_KEY turns all three off.
+x-llm-env: &llm-env
+  LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
+  LLM_MODEL: ${LLM_MODEL:-deepseek-flash}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_PRICE_IN_CNY_PER_M: ${LLM_PRICE_IN_CNY_PER_M:-2}
+  LLM_PRICE_OUT_CNY_PER_M: ${LLM_PRICE_OUT_CNY_PER_M:-8}
+  LLM_EXTRA_BODY: ${LLM_EXTRA_BODY:-}
+
 services:
   postgres:
     # On the server this points at a copy in ACR, because Docker Hub is not reachable.
@@ -33,6 +43,7 @@ services:
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
       CORE_INTERNAL_TOKEN: ${CORE_INTERNAL_TOKEN:?set CORE_INTERNAL_TOKEN in deploy/.env}
+      <<: *llm-env
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,13 +68,7 @@ services:
     shm_size: 512m
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
-      # Browsing agent. Empty LLM_API_KEY keeps it off.
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
-      LLM_MODEL: ${LLM_MODEL:-deepseek-flash}
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_PRICE_IN_CNY_PER_M: ${LLM_PRICE_IN_CNY_PER_M:-2}
-      LLM_PRICE_OUT_CNY_PER_M: ${LLM_PRICE_OUT_CNY_PER_M:-8}
-      LLM_EXTRA_BODY: ${LLM_EXTRA_BODY:-}
+      <<: *llm-env
     depends_on:
       core-api:
         condition: service_healthy

@@ -160,3 +160,41 @@ Each version was one live run on Amazon US. This is the kind of iteration the Da
 | browse-v3 | Cap browser_find at 15 matches; tool results 8,000 characters; one results page only; allow amazon.sg                                                                                       | Token limit after 9 steps: still searching                                                                    |
 | browse-v4 | Found the root cause: Playwright MCP answers navigate with a link to a snapshot file, not the page. The harness now takes a snapshot after every page-changing tool and returns the excerpt | Token limit: page visible, but the model kept searching and the page was trimmed out of the history           |
 | browse-v5 | Keep the latest page in full while trimming older results; at 70% of the step or token budget, offer only submit_offers and report_blocked                                                  | **ok** on all three stores, 5 to 6 steps, about ¥0.05 to ¥0.07 per run                                        |
+
+## Day 4: agent eval harness, matching, search flow
+
+Goal: the agent's quality becomes a number, and a user query becomes ranked offers.
+
+Order matters: the eval harness comes first, so every change after it (prompt, matcher) is measured instead of judged by eye.
+
+### Success metrics
+
+| #    | Metric                                | How to check                                                                                                                                                                                 |
+| ---- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M4.1 | Eval set exists                       | About 10 cases under `core/internal/agent/eval/testdata`: saved real results pages (Amazon US, Amazon Japan, SMZDM; several products) with labelled listings, plus one prompt-injection page |
+| M4.2 | Eval runs the real loop               | `make agent-eval` replays each page through the unchanged agent with the real LLM and prints precision, recall, steps, tokens and cost per case, and writes a report to `docs/harness/`      |
+| M4.3 | Eval is tested without spending money | CI runs the replay browser and scoring with a scripted model                                                                                                                                 |
+| M4.4 | Agent quality baseline and target     | Baseline for browse-v5 recorded in `docs/harness.md`. Target precision at least 90%, recall at least 60% (H1); improvements recorded as new versions (H6)                                    |
+| M4.5 | Injection page is safe                | The injection case never leaves the store or submits injected text (H5)                                                                                                                      |
+| M4.6 | FX conversion                         | Daily rates stored in `fx_rates`; prices converted to CNY; the last stored rates are used when the API is down (R3, R4)                                                                      |
+| M4.7 | Matcher                               | One LLM call per batch decides whether each listing is the product, adds an English title and condition; results cached by listing hash. Accuracy at least 90% on 30 labelled listings (S6)  |
+| M4.8 | Query gate                            | Input checks (S3) and an intent check that maps spellings to one canonical product, cached in `queries` (S4)                                                                                 |
+| M4.9 | Search API                            | `POST /search` returns cached offers or starts per-source refresh jobs; an SSE endpoint streams offers as sources finish (S1, S2, S7)                                                        |
+
+### Tasks
+
+- [x] **4.1 Eval cases.** Capture raw snapshots with `source-smoke -dump`, store them gzipped, label listings with a draft script plus manual review.
+- [x] **4.2 Replay browser and scoring.** `core/internal/agent/eval`: a `Browser` that serves a saved page (navigate, snapshot, find), case loading, offer matching, precision and recall.
+- [x] **4.3 Eval command.** `core/cmd/agent-eval` and `make agent-eval`; report table and markdown file.
+- [x] **4.4 Baseline and first improvement.** Run the eval for browse-v5, record it, improve recall, record again.
+- [x] **4.5 FX.** `internal/fx`: fetch from `api.frankfurter.dev`, store daily, convert with fallback. River periodic job every 6 hours.
+- [x] **4.6 Matcher.** `internal/matcher`: batch LLM call with a JSON schema, cache, eval on 30 listings. Runs after each refresh; decisions cached in `match_cache`; each call recorded in `agent_runs` (kind `match`). Eval: 98.9% accuracy on 283 listings, ¥0.14 ([report](harness/2026-11-25-1110-match-v1.md)).
+- [x] **4.7 Query gate.** Input checks, normalization, intent LLM call, `queries` cache. `internal/guard`: NFKC and lower case make the cache key; rejections are cached too; the intent call sees existing products that share a model number, so spellings converge. Eval: 6 of 6 spelling groups map to one name, 7 of 7 non-products rejected, ¥0.05 ([report](harness/2026-11-25-1114-intent-v1.md)).
+- [x] **4.8 Search API and SSE.** Per-source refresh jobs, `POST /search`, `GET /search/{id}/events`, contract and web types regenerated. The id is the product id. `refresh_product` now fans out one `refresh_source` job per source; each records itself finished in `products.refreshing_sources` and sends a Postgres NOTIFY that core-api turns into an SSE event carrying the full ranked list. Offers are ranked by their CNY value and converted to the requested currency.
+
+### Day 4 results
+
+- All metrics M4.1 to M4.9 met. Local end-to-end check: `rtx4090显卡` resolved to "NVIDIA GeForce RTX 4090", SMZDM's offers arrived on the stream after 14 seconds, matched and converted to USD, and the matcher dropped a 48 GB server card.
+- Bug found by the end-to-end check: the worker image had no CA certificates, so every HTTPS call from the worker failed, in production too since Day 3. Fixed in `core/Dockerfile`.
+- A refresh where every source fails no longer marks the product fresh, so the next search retries instead of showing nothing for 6 hours.
+- Open: the agent reports Amazon US "no offers" for RTX 4090 (it found none on the first page); `no_offers` still counts as a strategy failure in the registry. 4090D listings: whether they count as the RTX 4090 is undecided.

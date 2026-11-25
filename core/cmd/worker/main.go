@@ -23,8 +23,10 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/agent"
 	"github.com/FinA1ee/dipwatch/core/internal/config"
 	"github.com/FinA1ee/dipwatch/core/internal/db"
+	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
+	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/kakaku"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
@@ -47,7 +49,8 @@ func main() {
 	}
 }
 
-func adapters(pool *pgxpool.Pool) jobs.Adapters {
+// adapters builds the source strategies, plus the listing matcher when an LLM is configured.
+func adapters(pool *pgxpool.Pool) (jobs.Adapters, *matcher.Matcher) {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	a := jobs.Adapters{
 		"kakaku": {"html": kakaku.New(httpClient, kakaku.DefaultBaseURL)},
@@ -55,14 +58,15 @@ func adapters(pool *pgxpool.Pool) jobs.Adapters {
 
 	cfg, err := llm.ConfigFromEnv()
 	if errors.Is(err, llm.ErrNotConfigured) {
-		slog.Info("LLM_API_KEY not set: browsing agent disabled")
-		return a
+		slog.Info("LLM_API_KEY not set: browsing agent and matcher disabled")
+		return a, nil
 	} else if err != nil {
-		slog.Error("LLM config invalid: browsing agent disabled", "err", err)
-		return a
+		slog.Error("LLM config invalid: browsing agent and matcher disabled", "err", err)
+		return a, nil
 	}
+	model := llm.NewOpenAI(cfg)
 	browsing := &agent.Agent{
-		Model: llm.NewOpenAI(cfg),
+		Model: model,
 		NewBrowser: func(ctx context.Context) (agent.Browser, error) {
 			return agent.StartPlaywright(ctx, agent.PlaywrightCommand())
 		},
@@ -74,8 +78,8 @@ func adapters(pool *pgxpool.Pool) jobs.Adapters {
 		}
 		a[id]["agent"] = agent.Strategy{Agent: browsing, Store: s}
 	}
-	slog.Info("browsing agent enabled", "model", cfg.Model, "stores", len(agent.Stores))
-	return a
+	slog.Info("browsing agent and matcher enabled", "model", cfg.Model, "stores", len(agent.Stores))
+	return a, &matcher.Matcher{Model: model}
 }
 
 func open(ctx context.Context) (*pgxpool.Pool, error) {
@@ -97,14 +101,23 @@ func run() error {
 	defer pool.Close()
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &jobs.RefreshProductWorker{
+	sourceAdapters, listingMatcher := adapters(pool)
+	river.AddWorker(workers, &jobs.RefreshProductWorker{DB: pool, Adapters: sourceAdapters})
+	river.AddWorker(workers, &jobs.RefreshSourceWorker{
 		DB:       pool,
 		Registry: sources.NewRegistry(),
-		Adapters: adapters(pool),
+		Adapters: sourceAdapters,
+		Matcher:  listingMatcher,
+	})
+	river.AddWorker(workers, &jobs.FXRefreshWorker{
+		DB:     pool,
+		Client: &http.Client{Timeout: 20 * time.Second},
+		URL:    fx.DefaultURL,
 	})
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues:          map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: maxWorkers}},
 		Workers:         workers,
+		PeriodicJobs:    []*river.PeriodicJob{jobs.FXPeriodicJob()},
 		SoftStopTimeout: 20 * time.Second,
 	})
 	if err != nil {

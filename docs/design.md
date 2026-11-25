@@ -73,8 +73,11 @@ core/                       Go module github.com/FinA1ee/dipwatch/core
   internal/sources/         adapter interface, registry, adapters
   internal/agent/           browsing agent: MCP client + tool loop
   internal/llm/             OpenAI-compatible client, budgets, cost log
-  internal/matcher/         normalize, filter, extract, rank, FX
+  internal/matcher/         LLM listing matcher: is it the product, English title, condition
+  internal/fx/              daily exchange rates, CNY conversion
   internal/guard/           input checks, intent gate, quotas, spend breaker
+  internal/search/          search results, ranking, SSE stream (LISTEN hub)
+  internal/jobs/            River jobs: product refresh fan-out, per-source refresh, FX
   internal/notify/          email, Feishu
 gateway/                    Hono app
 web/                        React app
@@ -245,13 +248,14 @@ sequenceDiagram
   alt fresh cache (S1)
     C-->>W: offers
   else stale or missing
-    C->>Q: enqueue refresh(product, source) per source
-    C-->>W: cached offers + stream id
+    C->>Q: enqueue refresh(product)
+    C-->>W: cached offers + product id
     W->>G: GET /api/search/{id}/events (SSE)
-    K->>Q: take refresh job
+    K->>Q: refresh(product) enqueues refresh(product, source) per source
     K->>K: strategies in order, then matcher
-    K->>C: offers stored (Postgres NOTIFY)
-    C-->>W: SSE: offers for one source
+    K->>C: source finished (Postgres NOTIFY)
+    C-->>W: SSE: full ranked offer list, sources still pending
+    C-->>W: SSE: done when no source is pending
   end
 ```
 

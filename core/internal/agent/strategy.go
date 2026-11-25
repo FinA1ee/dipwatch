@@ -39,7 +39,16 @@ type Strategy struct {
 func (s Strategy) Name() string { return "agent" }
 
 func (s Strategy) Search(ctx context.Context, q sources.Query) ([]sources.Offer, error) {
-	run, err := s.Agent.Run(ctx, Task{
+	run, err := s.Run(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return run.Offers, nil
+}
+
+// Run is Search with the full run record (trace, tokens, outcome), for evaluation.
+func (s Strategy) Run(ctx context.Context, q sources.Query) (Run, error) {
+	return s.Agent.Run(ctx, Task{
 		SourceID:     s.Store.SourceID,
 		StoreName:    s.Store.Name,
 		StartURL:     strings.Replace(s.Store.SearchURL, "%s", url.QueryEscape(q.Product), 1),
@@ -48,10 +57,6 @@ func (s Strategy) Search(ctx context.Context, q sources.Query) ([]sources.Offer,
 		Product:      q.Product,
 		MaxOffers:    q.Limit,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return run.Offers, nil
 }
 
 // PlaywrightCommand is how the worker starts Playwright MCP. The worker image
