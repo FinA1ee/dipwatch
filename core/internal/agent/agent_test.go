@@ -228,7 +228,7 @@ func TestInvalidSubmissionIsSentBackOnce(t *testing.T) {
 
 	model = &scriptedModel{turns: []llm.Turn{call("1", "submit_offers", bad)}}
 	run, err = newAgent(model, &fakeBrowser{}, &memRecorder{}, DefaultBudget).Run(context.Background(), task)
-	if err == nil || run.Outcome != OutcomeNoOffers || model.calls != 2 {
+	if err == nil || run.Outcome != OutcomeNoAnswer || model.calls != 2 {
 		t.Fatalf("repeated bad submission: outcome %s after %d calls, err %v", run.Outcome, model.calls, err)
 	}
 }
@@ -244,7 +244,7 @@ func TestBlockedStoreFailsTheStrategy(t *testing.T) {
 func TestModelThatNeverCallsToolsGetsOneNudge(t *testing.T) {
 	model := &scriptedModel{turns: []llm.Turn{{Content: "I cannot browse."}}}
 	run, err := newAgent(model, &fakeBrowser{}, &memRecorder{}, DefaultBudget).Run(context.Background(), task)
-	if err == nil || run.Outcome != OutcomeNoOffers || model.calls != 2 {
+	if err == nil || run.Outcome != OutcomeNoAnswer || model.calls != 2 {
 		t.Fatalf("outcome %s after %d calls", run.Outcome, model.calls)
 	}
 }
@@ -413,7 +413,7 @@ func TestHarnessForcesWrapUpNearBudget(t *testing.T) {
 func TestEmptySubmissionMeansNoListings(t *testing.T) {
 	model := &scriptedModel{turns: []llm.Turn{call("1", "submit_offers", `{"offers":[]}`)}}
 	run, err := newAgent(model, &fakeBrowser{}, &memRecorder{}, DefaultBudget).Run(context.Background(), task)
-	if err == nil || run.Outcome != OutcomeNoOffers || model.calls != 1 || errors.Is(err, ErrBlocked) {
-		t.Fatalf("outcome %s after %d calls, err %v; want no_offers after 1 call", run.Outcome, model.calls, err)
+	if err != nil || run.Outcome != OutcomeNoOffers || model.calls != 1 || len(run.Offers) != 0 {
+		t.Fatalf("outcome %s after %d calls, err %v; want no_offers without an error after 1 call", run.Outcome, model.calls, err)
 	}
 }

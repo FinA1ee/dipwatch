@@ -11,10 +11,15 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.11",
-    "hono": "^4.13.20"
+    "better-auth": "^1.7.27",
+    "hono": "^4.13.20",
+    "nodemailer": "^10.6.1",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.1.1"

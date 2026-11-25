@@ -10,10 +10,6 @@
 		}
 	}
 
-	handle /auth/* {
-		reverse_proxy gateway:3000
-	}
-
 	handle {
 		root * /srv
 		try_files {path} /index.html

@@ -27,6 +27,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	httpapi "github.com/FinA1ee/dipwatch/core/internal/http"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
+	"github.com/FinA1ee/dipwatch/core/internal/runs"
 	"github.com/FinA1ee/dipwatch/core/internal/search"
 )
 
@@ -57,7 +58,7 @@ func main() {
 
 func printOpenAPI() error {
 	// The contract does not depend on config, so no database or token is needed here.
-	_, api := httpapi.New(nil, "", nil)
+	_, api := httpapi.New(nil, "", httpapi.Services{})
 	spec, err := api.OpenAPI().YAML()
 	if err != nil {
 		return err
@@ -99,7 +100,9 @@ func serve() error {
 	if err != nil {
 		return err
 	}
-	handler, _ := httpapi.New(pool, cfg.InternalToken, searcher)
+	handler, _ := httpapi.New(pool, cfg.InternalToken, httpapi.Services{
+		Search: searcher, Products: searcher, Runs: &runs.Reader{DB: pool},
+	})
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           handler,
@@ -147,5 +150,5 @@ func newSearch(ctx context.Context, pool *pgxpool.Pool) (*search.Service, error)
 	}
 	hub := &search.Hub{DB: pool}
 	go hub.Run(ctx)
-	return &search.Service{DB: pool, Gate: gate, Queue: queue, Hub: hub}, nil
+	return &search.Service{DB: pool, Gate: gate, Quotas: &guard.Quotas{DB: pool}, Queue: queue, Hub: hub}, nil
 }

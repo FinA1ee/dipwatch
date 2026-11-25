@@ -20,7 +20,8 @@ import (
 // Outcomes recorded in agent_runs.outcome.
 const (
 	OutcomeOK         = "ok"
-	OutcomeNoOffers   = "no_offers"
+	OutcomeNoOffers   = "no_offers" // the model looked and found no listings: an answer, not a failure
+	OutcomeNoAnswer   = "no_answer" // the model never produced a usable submission
 	OutcomeBlocked    = "blocked"
 	OutcomeStepLimit  = "step_limit"
 	OutcomeTokenLimit = "token_limit"
@@ -143,7 +144,9 @@ type Agent struct {
 // ErrBlocked means the store showed a captcha, a login wall or similar.
 var ErrBlocked = errors.New("agent: store blocked the browser")
 
-// Run executes one task and returns its offers. The error is nil only for OutcomeOK.
+// Run executes one task and returns its offers. The error is nil for OutcomeOK and
+// OutcomeNoOffers: a store with no matching listings is working, so the registry
+// must not count it as a failure.
 func (a *Agent) Run(ctx context.Context, task Task) (Run, error) {
 	budget := a.Budget
 	if budget == (Budget{}) {
@@ -171,7 +174,7 @@ func (a *Agent) Run(ctx context.Context, task Task) (Run, error) {
 		"steps", run.Steps, "tokens_in", run.TokensIn, "tokens_out", run.TokensOut, "cost_micro_cny", run.CostMicros,
 		"duration_ms", run.Duration.Milliseconds())
 
-	if run.Outcome == OutcomeOK {
+	if run.Outcome == OutcomeOK || run.Outcome == OutcomeNoOffers {
 		return run, nil
 	}
 	if run.Err == nil {
@@ -249,7 +252,7 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 		if len(turn.ToolCalls) == 0 {
 			run.Trace = append(run.Trace, Step{Note: "no tool call: " + truncate(turn.Content, 200)})
 			if nudged {
-				fail(OutcomeNoOffers, nil)
+				fail(OutcomeNoAnswer, nil)
 				return
 			}
 			nudged = true
@@ -282,7 +285,7 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 				if rejectedSubmission {
 					step.Result = "rejected again: " + strings.Join(problems, "; ")
 					run.Trace = append(run.Trace, step)
-					fail(OutcomeNoOffers, nil)
+					fail(OutcomeNoAnswer, nil)
 					return
 				}
 				rejectedSubmission = true

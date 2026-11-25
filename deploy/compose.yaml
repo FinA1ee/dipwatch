@@ -86,6 +86,16 @@ services:
       CORE_URL: http://core-api:8000
       CORE_INTERNAL_TOKEN: ${CORE_INTERNAL_TOKEN}
       PORT: "3000"
+      NODE_ENV: ${NODE_ENV:-production}
+      # Sign-in (Better Auth). Empty BETTER_AUTH_SECRET turns sign-in off.
+      DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:18080}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
     depends_on:
       core-api:
         condition: service_healthy

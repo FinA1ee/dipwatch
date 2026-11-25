@@ -222,11 +222,18 @@ Decisions taken before starting (2026-11-25): web pages use clean architecture (
 
 ### Tasks
 
-- [ ] **5.1 Registry: empty is not failure.** `no_offers` returns zero offers without an error, so the registry does not skip the source.
-- [ ] **5.2 Auth tables and gateway auth.** Goose migration for Better Auth's `auth` schema. Gateway: Better Auth with magic link (SMTP) and GitHub, account linking, admin role from `ADMIN_EMAILS`, identity headers to core, client IP from Caddy.
-- [ ] **5.3 Quotas.** `app.search_quota`; the guard charges a search once, just before its first costly step; 429 with a clear message.
-- [ ] **5.4 Product and admin API.** `GET /products/{id}` (offers and daily lowest price), `GET /admin/metrics`, `GET /admin/runs`, `GET /admin/runs/{id}`; admin role required. Contract and web types regenerated.
-- [ ] **5.5 Web foundations.** Router, Zustand, services layer (API client, SSE, auth client), layout with sign-in state, currency setting.
-- [ ] **5.6 Search and product pages.** Search module (query, stream, results, filters) and product page, by the structure in design.
-- [ ] **5.7 Sign-in and admin pages.** Sign-in page (email link, GitHub); admin metrics, run list and run trace.
+- [x] **5.1 Registry: empty is not failure.** `no_offers` returns zero offers without an error, so the registry does not skip the source. A model that never submits a usable answer is now `no_answer`, which still counts as a failure.
+- [x] **5.2 Auth tables and gateway auth.** Goose migration for Better Auth's `auth` schema. Gateway: Better Auth with magic link (SMTP) and GitHub, account linking, admin role from `ADMIN_EMAILS`, identity headers to core, client IP from Caddy.
+- [x] **5.3 Quotas.** `app.search_quota`; the guard charges a search once, just before its first costly step; 429 with a clear message.
+- [x] **5.4 Product and admin API.** `GET /products/{id}` (offers and daily lowest price), `GET /admin/metrics`, `GET /admin/runs`, `GET /admin/runs/{id}`; admin role required. Contract and web types regenerated.
+- [x] **5.5 Web foundations.** Router, Zustand, services layer (API client, SSE, auth client), layout with sign-in state, currency setting.
+- [x] **5.6 Search and product pages.** Search module (query, stream, results, filters) and product page, by the structure in design.
+- [x] **5.7 Sign-in and admin pages.** Sign-in page (email link, GitHub); admin metrics, run list and run trace.
 - [ ] **5.8 Deploy and go live.** New env values on the server (the owner sets the SMTP and GitHub secrets), check the three agent sources from the server with `source-smoke -browser-only`, enable them, verify M5.4 and M5.9 on the deployed site.
+
+### Day 5 notes
+
+- **Local end-to-end check (Playwright):** searching "Sony WH-1000XM6" showed stored offers at once, then Kakaku's and SMZDM's as each finished (one stream connection); the matcher removed Kakaku's cases, cables and ear pads. Magic-link sign-in with a local admin email reached `/admin`; metrics, the filtered run list and a run's trace all rendered.
+- **Bugs found by the check:** the stream reconnected about 3,000 times in a few seconds because the Model's handlers were new functions on every render (now stable); the run detail's step list overwrote the step count in JSON (renamed to `trace`); `¥` was ambiguous between CNY and JPY (now `CN¥`).
+- **Quotas count once per search,** just before its first costly step (the intent call or starting a refresh). Joining a refresh that is already running is free.
+- **Identity:** the gateway forwards the user id, email, admin role and client IP; core's tests check that admin endpoints answer 403 without the role, and the gateway's tests that client-sent identity headers never reach core.

@@ -7,6 +7,8 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getAgentRun = `-- name: GetAgentRun :one
@@ -76,6 +78,194 @@ func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) 
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listAgentRuns = `-- name: ListAgentRuns :many
+SELECT id, kind, source_id, product_id, model, steps, tokens_in, tokens_out, cost_cny_micros,
+       duration_ms, outcome, coalesce(trace->>'prompt_version', '')::text AS prompt_version,
+       coalesce((trace->>'offers')::int, 0)::int AS offers, created_at
+FROM app.agent_runs
+WHERE ($1::text IS NULL OR kind = $1::text)
+  AND ($2::text IS NULL OR source_id = $2::text)
+  AND ($3::text IS NULL OR outcome = $3::text)
+  AND ($4::text IS NULL OR trace->>'prompt_version' = $4::text)
+  AND ($5::date IS NULL OR (created_at AT TIME ZONE 'UTC')::date = $5::date)
+  AND ($6::bigint IS NULL OR id < $6::bigint)
+ORDER BY id DESC
+LIMIT $7::int
+`
+
+type ListAgentRunsParams struct {
+	Kind          *string
+	SourceID      *string
+	Outcome       *string
+	PromptVersion *string
+	Day           pgtype.Date
+	BeforeID      *int64
+	RowLimit      int32
+}
+
+type ListAgentRunsRow struct {
+	ID            int64
+	Kind          string
+	SourceID      *string
+	ProductID     *int64
+	Model         string
+	Steps         int32
+	TokensIn      int32
+	TokensOut     int32
+	CostCnyMicros int64
+	DurationMs    int32
+	Outcome       string
+	PromptVersion string
+	Offers        int32
+	CreatedAt     pgtype.Timestamptz
+}
+
+// Run list for the admin page (spec H4), newest first; filters are optional.
+func (q *Queries) ListAgentRuns(ctx context.Context, arg ListAgentRunsParams) ([]ListAgentRunsRow, error) {
+	rows, err := q.db.Query(ctx, listAgentRuns,
+		arg.Kind,
+		arg.SourceID,
+		arg.Outcome,
+		arg.PromptVersion,
+		arg.Day,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAgentRunsRow
+	for rows.Next() {
+		var i ListAgentRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.SourceID,
+			&i.ProductID,
+			&i.Model,
+			&i.Steps,
+			&i.TokensIn,
+			&i.TokensOut,
+			&i.CostCnyMicros,
+			&i.DurationMs,
+			&i.Outcome,
+			&i.PromptVersion,
+			&i.Offers,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sourceRunMetrics = `-- name: SourceRunMetrics :many
+SELECT r.source_id::text AS source_id,
+       (r.created_at AT TIME ZONE 'UTC')::date AS day,
+       count(*)::int AS runs,
+       (count(*) FILTER (WHERE r.outcome IN ('ok', 'no_offers')))::int AS answered,
+       coalesce(avg((r.trace->>'offers')::int), 0)::float8 AS offers_per_run,
+       (percentile_cont(0.5) WITHIN GROUP (ORDER BY r.steps))::float8 AS median_steps,
+       avg(r.tokens_in + r.tokens_out)::float8 AS tokens_per_run,
+       avg(r.cost_cny_micros)::float8 AS cost_micros_per_run,
+       coalesce(mode() WITHIN GROUP (ORDER BY r.outcome) FILTER (WHERE r.outcome NOT IN ('ok', 'no_offers')), '')::text AS top_failure
+FROM app.agent_runs r
+WHERE r.kind = 'browse' AND r.source_id IS NOT NULL AND r.created_at >= $1
+GROUP BY 1, 2
+ORDER BY 2 DESC, 1
+`
+
+type SourceRunMetricsRow struct {
+	SourceID         string
+	Day              pgtype.Date
+	Runs             int32
+	Answered         int32
+	OffersPerRun     float64
+	MedianSteps      float64
+	TokensPerRun     float64
+	CostMicrosPerRun float64
+	TopFailure       string
+}
+
+// Per-source browsing-agent metrics per UTC day (spec H3). Success means the
+// run answered: offers, or a confirmed "no listings".
+func (q *Queries) SourceRunMetrics(ctx context.Context, since pgtype.Timestamptz) ([]SourceRunMetricsRow, error) {
+	rows, err := q.db.Query(ctx, sourceRunMetrics, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SourceRunMetricsRow
+	for rows.Next() {
+		var i SourceRunMetricsRow
+		if err := rows.Scan(
+			&i.SourceID,
+			&i.Day,
+			&i.Runs,
+			&i.Answered,
+			&i.OffersPerRun,
+			&i.MedianSteps,
+			&i.TokensPerRun,
+			&i.CostMicrosPerRun,
+			&i.TopFailure,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const spendByKind = `-- name: SpendByKind :many
+SELECT kind, (created_at AT TIME ZONE 'UTC')::date AS day, count(*)::int AS calls,
+       sum(cost_cny_micros)::bigint AS cost_micros
+FROM app.agent_runs
+WHERE created_at >= $1
+GROUP BY 1, 2
+ORDER BY 2 DESC, 1
+`
+
+type SpendByKindRow struct {
+	Kind       string
+	Day        pgtype.Date
+	Calls      int32
+	CostMicros int64
+}
+
+// LLM spend per kind (browse, match, intent) per UTC day.
+func (q *Queries) SpendByKind(ctx context.Context, since pgtype.Timestamptz) ([]SpendByKindRow, error) {
+	rows, err := q.db.Query(ctx, spendByKind, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SpendByKindRow
+	for rows.Next() {
+		var i SpendByKindRow
+		if err := rows.Scan(
+			&i.Kind,
+			&i.Day,
+			&i.Calls,
+			&i.CostMicros,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const spendTodayMicros = `-- name: SpendTodayMicros :one
