@@ -1,0 +1,115 @@
+docs/tasks.md
+  s_3313d584934833::t_3ade7f7e4d5a0e 315-329
+core/internal/tracking/tracking_test.go
+  s_3313d584934833::t_da20f7f809844a 65,80-81,86-90,92-93,106,129-133,135-171
+  s_3313d584934833::t_39d29cef721a4c 68,71,74,77,83,96
+  s_3313d584934833::t_518a15f545ae13 57,60-63,134
+core/internal/store/watch.sql.go
+  s_3313d584934833::t_6352a0e061abd8 43,64,70,84,107,123-126,129-130,136-153,156,176,178-184,208-213,223,226-228,237,250
+core/internal/alerts/check_test.go
+  s_3313d584934833::t_7f2e38f408a803 174-194
+README.md
+  s_3313d584934833::t_3ade7f7e4d5a0e 15,23,25
+core/internal/limits/limits.go
+  s_3313d584934833::t_e73cfa767dca30 10-12,23-50,54-56,69-75,121
+core/internal/search/service.go
+  s_3313d584934833::t_fc6750814cfcc7 191-201
+  s_3313d584934833::t_5cbadda51dcfc3 5,59-63
+core/internal/db/migrations/00012_pin_listing.sql
+  s_3313d584934833::t_5410a05cded4e8 1-17
+core/internal/alerts/check.go
+  s_3313d584934833::t_7f2e38f408a803 43-45,64,69-71,84
+web/src/pages/Product/modules/OffersModule/View/OffersView.tsx
+  s_3313d584934833::t_759a0b799d3ee3 4,9,30-47
+web/src/pages/Product/modules/OffersModule/Model/useProductPage.ts
+  s_3313d584934833::t_e2324d3cc51825 5,11,13-14
+  s_3313d584934833::t_bf760c093bc310 15
+  s_3313d584934833::t_3e44a2e4ba110b 16-17
+core/internal/search/search_test.go
+  s_3313d584934833::t_518a15f545ae13 205-206,240-268
+core/internal/store/models.go
+  s_3313d584934833::t_6352a0e061abd8 151
+web/src/pages/Search/modules/ResultsModule/View/ResultsSummaryView.tsx
+  s_3313d584934833::t_f36a46aa3b74ed 55-60
+core/internal/store/offers.sql.go
+  s_3313d584934833::t_6352a0e061abd8 27-59,99,105-107,111-118,120,122-137
+  s_3313d584934833::t_6724b024ecfcfa 100-104,108-110,119,121
+core/internal/http/search.go
+  s_3313d584934833::t_5cbadda51dcfc3 72,85
+  s_3313d584934833::t_e323d4c6a26668 86
+web/src/pages/MyProducts/modules/TrackedModule/View/TrackedView.tsx
+  s_3313d584934833::t_61cad4e3dfe985 29-30,33-35,38-39
+  s_3313d584934833::t_3e44a2e4ba110b 31-32
+web/src/pages/Product/modules/HistoryModule/View/HistoryView.tsx
+  s_3313d584934833::t_7be268b3eb6993 11
+  s_3313d584934833::t_a2289500dfd968 9-10,12-13
+contracts/openapi.yaml
+  s_3313d584934833::t_1a0a7ac8cbdc08 239-242,286-294,325-353,493-496,526-528,640-643,651,1611-1616,1663-1671,1723-1728
+web/src/pages/Product/modules/OffersModule/Model/useListing.ts
+  s_3313d584934833::t_e2324d3cc51825 1-24
+core/internal/store/queries/watch.sql
+  s_3313d584934833::t_900f44844e7bcc 2-6,9-10,21-28,36
+web/src/services/search.ts
+  s_3313d584934833::t_3e44a2e4ba110b 27-31
+  s_3313d584934833::t_93749854c2d0aa 26,33
+core/internal/search/product.go
+  s_3313d584934833::t_6724b024ecfcfa 16,29,32-35,54-65
+core/internal/guard/quota.go
+  s_3313d584934833::t_8f7d6074c25818 17-22,73-74,76-80
+web/src/pages/Product/modules/TrackModule/View/TrackView.tsx
+  s_3313d584934833::t_a2289500dfd968 55-56
+  s_3313d584934833::t_3e44a2e4ba110b 57-59,80-81
+  s_3313d584934833::t_b5f6562c6718f3 2,8-9,11,14,18-19,33-37,40,42,52-54,60-64,69,74-79,82-99
+core/internal/http/product.go
+  s_3313d584934833::t_6724b024ecfcfa 16,22,39
+core/internal/store/queries/offers.sql
+  s_3313d584934833::t_840ba9e47d3465 76-83
+  s_3313d584934833::t_6724b024ecfcfa 84-89
+web/src/components/OfferTable.tsx
+  s_3313d584934833::t_bf760c093bc310 1,31-38,43,57-63,99-100
+web/src/pages/Search/modules/SearchBoxModule/Model/useSearchBox.ts
+  s_3313d584934833::t_f36a46aa3b74ed 24
+web/src/pages/Search/modules/ResultsModule/Model/useResults.ts
+  s_3313d584934833::t_f36a46aa3b74ed 19,38
+web/src/services/tracking.ts
+  s_3313d584934833::t_93749854c2d0aa 4,14-18,24,28
+core/internal/limits/limits_test.go
+  s_3313d584934833::t_392fb77672b200 1-28
+web/src/pages/Search/modules/ResultsModule/View/ResultsListView.tsx
+  s_3313d584934833::t_3e44a2e4ba110b 21-24,31-32
+  s_3313d584934833::t_759a0b799d3ee3 18-20,25-28
+web/src/hooks/useTracked.ts
+  s_3313d584934833::t_3e44a2e4ba110b 14-20
+web/src/pages/Search/store.ts
+  s_3313d584934833::t_f36a46aa3b74ed 25,47
+web/src/services/schema.d.ts
+  s_3313d584934833::t_1a0a7ac8cbdc08 446,448-449,472-475,497-508,570-574,590-591,650-654,656,1541-1549,1657-1658,1735-1738
+core/internal/http/tracking.go
+  s_3313d584934833::t_e323d4c6a26668 6,93-95,186-192
+  s_3313d584934833::t_b668e9098d3233 20,45-48,92,165
+  s_3313d584934833::t_38f7af30d05c7e 90
+core/internal/tracking/tracking.go
+  s_3313d584934833::t_914cf24abf2db3 36,56-57,61-70,118,123-127,145,150,162-179,181-188,192-193,200-201,206-210,214-253
+  s_3313d584934833::t_8f7d6074c25818 151-153
+web/src/pages/Admin/modules/LimitsModule/Component/LimitsForm.tsx
+  s_3313d584934833::t_e491cb298845f8 3,62-72,75-85,88-90,97
+  s_3313d584934833::t_3e44a2e4ba110b 73-74,86-87
+web/src/components/RuleEditor.tsx
+  s_3313d584934833::t_24f42d8246913e 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "ae023d7e12574b26e32f0d25ff4bbc6d2709160f",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
