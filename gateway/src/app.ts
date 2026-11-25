@@ -25,6 +25,10 @@ export function createApp(config: GatewayConfig) {
 
   app.get("/healthz", (c) => c.json({ status: "ok" }));
 
+  // Which sign-in methods are on, for the sign-in page. Outside /api/auth/*,
+  // which belongs to Better Auth.
+  app.get("/api/sign-in-methods", (c) => c.json(config.auth?.methods ?? { email: false, github: false }));
+
   // Better Auth owns /api/auth/*: sign-in, callbacks, session and sign-out.
   app.all("/api/auth/*", (c) =>
     config.auth ? config.auth.handler(c.req.raw) : c.json({ error: "sign-in is not configured" }, 503),

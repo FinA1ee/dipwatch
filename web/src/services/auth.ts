@@ -10,6 +10,15 @@ const client = createAuthClient({
 
 export type Member = { id: string; email: string };
 
+export type SignInMethods = { email: boolean; github: boolean };
+
+/** Which sign-in methods the gateway has configured. */
+export async function signInMethods(): Promise<SignInMethods> {
+  const res = await fetch("/api/sign-in-methods");
+  if (!res.ok) return { email: false, github: false };
+  return res.json();
+}
+
 export async function currentMember(): Promise<Member | null> {
   const { data } = await client.getSession();
   return data ? { id: data.user.id, email: data.user.email } : null;

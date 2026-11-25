@@ -19,30 +19,30 @@ function secret(name: string): string {
   return value;
 }
 
-/** Sign-in is on when the auth secret is set; without it the site works for visitors only. */
+/**
+ * Sign-in needs the auth secret and at least one method: GitHub (client id and
+ * secret) or email (SMTP). Without them the site works for visitors only.
+ */
 function loadAuth(): Auth | null {
   if (!process.env.BETTER_AUTH_SECRET) {
     console.warn(JSON.stringify({ msg: "BETTER_AUTH_SECRET not set: sign-in disabled" }));
     return null;
   }
-  const smtpUrl = process.env.SMTP_URL;
-  if (!smtpUrl && production) {
-    // Printing magic links to the log is for development only. Keep the site up
-    // for visitors rather than failing the deploy.
-    console.warn(JSON.stringify({ msg: "SMTP_URL not set in production: sign-in disabled" }));
+  const { GITHUB_CLIENT_ID: clientId, GITHUB_CLIENT_SECRET: clientSecret, SMTP_URL: smtpUrl } = process.env;
+  const github = clientId && clientSecret ? { clientId, clientSecret } : undefined;
+  // Printing magic links to the log is for development only.
+  const mailer = smtpUrl ? smtpMailer(smtpUrl, required("MAIL_FROM")) : production ? undefined : logMailer();
+  if (!github && !mailer) {
+    console.warn(JSON.stringify({ msg: "no sign-in method configured (GitHub or SMTP): sign-in disabled" }));
     return null;
   }
-  const { GITHUB_CLIENT_ID: clientId, GITHUB_CLIENT_SECRET: clientSecret } = process.env;
-  if (!clientId || !clientSecret)
-    console.warn(
-      JSON.stringify({ msg: "GitHub sign-in disabled: GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET not set" }),
-    );
+  console.info(JSON.stringify({ msg: "sign-in methods", github: Boolean(github), email: Boolean(mailer) }));
   return createAuth({
     databaseUrl: required("DATABASE_URL"),
     publicUrl: required("PUBLIC_URL"),
     secret: secret("BETTER_AUTH_SECRET"),
-    github: clientId && clientSecret ? { clientId, clientSecret } : undefined,
-    mailer: smtpUrl ? smtpMailer(smtpUrl, required("MAIL_FROM")) : logMailer(),
+    github,
+    mailer,
   });
 }
 

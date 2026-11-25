@@ -20,6 +20,7 @@ function fakeAuth(user: SessionUser | null): Auth & { handled: Request[] } {
       return Response.json({ ok: true });
     },
     sessionUser: async () => user,
+    methods: { email: false, github: true },
   };
 }
 
@@ -109,5 +110,16 @@ describe("gateway", () => {
 
     const disabled = appWithCapture(null);
     expect((await disabled.app.request("/api/auth/get-session")).status).toBe(503);
+  });
+
+  it("reports the sign-in methods without calling core", async () => {
+    const { app, seen } = appWithCapture(fakeAuth(null));
+    expect(await (await app.request("/api/sign-in-methods")).json()).toEqual({ email: false, github: true });
+    const none = appWithCapture(null);
+    expect(await (await none.app.request("/api/sign-in-methods")).json()).toEqual({
+      email: false,
+      github: false,
+    });
+    expect(seen).toHaveLength(0);
   });
 });

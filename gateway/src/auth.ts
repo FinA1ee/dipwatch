@@ -9,20 +9,26 @@ export type AuthConfig = {
   publicUrl: string;
   secret: string;
   github?: { clientId: string; clientSecret: string };
-  mailer: Mailer;
+  /** Sends magic links. Without one, email sign-in is off. */
+  mailer?: Mailer;
 };
 
 /** The parts of Better Auth the app uses, so tests can pass a fake. */
 export type Auth = {
   handler: (request: Request) => Promise<Response>;
   sessionUser: (headers: Headers) => Promise<SessionUser | null>;
+  methods: SignInMethods;
 };
+
+/** Which sign-in buttons the web app shows. */
+export type SignInMethods = { email: boolean; github: boolean };
 
 export type SessionUser = { id: string; email: string };
 
 const MAGIC_LINK_MINUTES = 15;
 
 export function createAuth(config: AuthConfig): Auth {
+  const { mailer } = config;
   const auth = betterAuth({
     baseURL: config.publicUrl,
     basePath: "/api/auth",
@@ -35,18 +41,20 @@ export function createAuth(config: AuthConfig): Auth {
       // link joins the same member instead of creating a second one.
       accountLinking: { enabled: true, trustedProviders: ["github"] },
     },
-    plugins: [
-      magicLink({
-        expiresIn: MAGIC_LINK_MINUTES * 60,
-        sendMagicLink: async ({ email, url }) => {
-          await config.mailer.send({
-            to: email,
-            subject: "Your Dipwatch sign-in link",
-            text: `Open this link to sign in to Dipwatch:\n\n${url}\n\nIt works once and expires in ${MAGIC_LINK_MINUTES} minutes. If you did not ask for it, ignore this email.`,
-          });
-        },
-      }),
-    ],
+    plugins: mailer
+      ? [
+          magicLink({
+            expiresIn: MAGIC_LINK_MINUTES * 60,
+            sendMagicLink: async ({ email, url }) => {
+              await mailer.send({
+                to: email,
+                subject: "Your Dipwatch sign-in link",
+                text: `Open this link to sign in to Dipwatch:\n\n${url}\n\nIt works once and expires in ${MAGIC_LINK_MINUTES} minutes. If you did not ask for it, ignore this email.`,
+              });
+            },
+          }),
+        ]
+      : [],
   });
 
   return {
@@ -55,5 +63,6 @@ export function createAuth(config: AuthConfig): Auth {
       const session = await auth.api.getSession({ headers });
       return session ? { id: session.user.id, email: session.user.email } : null;
     },
+    methods: { email: Boolean(mailer), github: Boolean(config.github) },
   };
 }
