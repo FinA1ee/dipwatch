@@ -58,3 +58,14 @@ WHERE o.product_id = @product_id
   AND o.is_product IS NOT FALSE
   AND (sqlc.narg('source_id')::text IS NULL OR o.source_id = sqlc.narg('source_id')::text)
 ORDER BY o.id;
+
+-- name: ListProductPricePoints :many
+-- Price history for the product page: every price point of offers the matcher
+-- did not reject, since a start time. Converted and reduced per day in Go.
+SELECT pp.observed_at, pp.price_minor, pp.currency
+FROM app.price_points pp
+JOIN app.offers o ON o.id = pp.offer_id
+WHERE o.product_id = @product_id
+  AND o.is_product IS NOT FALSE
+  AND pp.observed_at >= @since
+ORDER BY pp.observed_at;

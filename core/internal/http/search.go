@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -16,7 +17,7 @@ import (
 
 // Searcher answers searches and streams refresh results.
 type Searcher interface {
-	Search(ctx context.Context, text, currency string) (search.Result, error)
+	Search(ctx context.Context, viewer guard.Viewer, text, currency string) (search.Result, error)
 	Stream(ctx context.Context, productID int64, currency string, emit search.Emit) error
 }
 
@@ -44,14 +45,21 @@ func registerSearch(api huma.API, s Searcher) {
 		Summary:     "Search offers for a product",
 		Description: "Resolves the query to one product and returns its offers. When they are older than 6 hours a refresh starts; follow it with the events stream.",
 		Tags:        []string{"Search"},
-		Errors:      []int{http.StatusBadRequest, http.StatusUnprocessableEntity, http.StatusServiceUnavailable},
+		Errors:      []int{http.StatusBadRequest, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable},
 	}, func(ctx context.Context, in *SearchInput) (*SearchOutput, error) {
-		res, err := s.Search(ctx, in.Body.Query, in.Body.Currency)
+		viewer := viewerFrom(ctx)
+		res, err := s.Search(ctx, viewer, in.Body.Query, in.Body.Currency)
 		switch {
 		case err == nil:
 			return &SearchOutput{Body: res}, nil
 		case errors.Is(err, guard.ErrEmpty), errors.Is(err, guard.ErrTooLong), errors.Is(err, guard.ErrURL):
 			return nil, huma.Error400BadRequest(err.Error())
+		case errors.Is(err, guard.ErrQuotaExceeded):
+			if viewer.UserID == "" {
+				return nil, huma.Error429TooManyRequests(fmt.Sprintf("You have used today's %d new searches. Sign in for %d a day, or try a product someone searched recently.",
+					guard.VisitorDailySearches, guard.MemberDailySearches))
+			}
+			return nil, huma.Error429TooManyRequests(fmt.Sprintf("You have used today's %d new searches. Recently searched products still work.", guard.MemberDailySearches))
 		case errors.Is(err, guard.ErrNotProduct):
 			return nil, huma.Error422UnprocessableEntity("The query does not name a product. Try a model, e.g. RTX 5090.")
 		default:

@@ -39,7 +39,7 @@ func TestHealthReportsDatabaseStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, _ := New(fakePinger{err: tt.pingErr}, testToken, nil)
+			h, _ := New(fakePinger{err: tt.pingErr}, testToken, Services{})
 			rec := do(t, h, "/healthz", "")
 
 			if rec.Code != tt.wantCode {
@@ -60,7 +60,7 @@ func TestHealthReportsDatabaseStatus(t *testing.T) {
 }
 
 func TestInternalTokenRequiredExceptHealth(t *testing.T) {
-	h, _ := New(fakePinger{}, testToken, nil)
+	h, _ := New(fakePinger{}, testToken, Services{})
 
 	tests := []struct {
 		name     string

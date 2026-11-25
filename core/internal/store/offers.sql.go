@@ -7,6 +7,8 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countPricePointsByProduct = `-- name: CountPricePointsByProduct :one
@@ -94,6 +96,49 @@ func (q *Queries) ListOffersByProduct(ctx context.Context, productID int64) ([]A
 			&i.LastSeenAt,
 			&i.IsProduct,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductPricePoints = `-- name: ListProductPricePoints :many
+SELECT pp.observed_at, pp.price_minor, pp.currency
+FROM app.price_points pp
+JOIN app.offers o ON o.id = pp.offer_id
+WHERE o.product_id = $1
+  AND o.is_product IS NOT FALSE
+  AND pp.observed_at >= $2
+ORDER BY pp.observed_at
+`
+
+type ListProductPricePointsParams struct {
+	ProductID int64
+	Since     pgtype.Timestamptz
+}
+
+type ListProductPricePointsRow struct {
+	ObservedAt pgtype.Timestamptz
+	PriceMinor int64
+	Currency   string
+}
+
+// Price history for the product page: every price point of offers the matcher
+// did not reject, since a start time. Converted and reduced per day in Go.
+func (q *Queries) ListProductPricePoints(ctx context.Context, arg ListProductPricePointsParams) ([]ListProductPricePointsRow, error) {
+	rows, err := q.db.Query(ctx, listProductPricePoints, arg.ProductID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductPricePointsRow
+	for rows.Next() {
+		var i ListProductPricePointsRow
+		if err := rows.Scan(&i.ObservedAt, &i.PriceMinor, &i.Currency); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -100,6 +100,12 @@ type AppQuery struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type AppSearchQuotum struct {
+	Subject string
+	Day     pgtype.Date
+	Used    int32
+}
+
 type AppSource struct {
 	ID         string
 	Name       string
@@ -126,4 +132,50 @@ type AppWatchItem struct {
 	Channels              []byte
 	BaselinePriceCnyMinor *int64
 	CreatedAt             pgtype.Timestamptz
+}
+
+type AuthAccount struct {
+	ID                    string
+	AccountId             string
+	ProviderId            string
+	UserId                string
+	AccessToken           *string
+	RefreshToken          *string
+	IdToken               *string
+	AccessTokenExpiresAt  pgtype.Timestamptz
+	RefreshTokenExpiresAt pgtype.Timestamptz
+	Scope                 *string
+	Password              *string
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+}
+
+type AuthSession struct {
+	ID        string
+	ExpiresAt pgtype.Timestamptz
+	Token     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	IpAddress *string
+	UserAgent *string
+	UserId    string
+}
+
+type AuthUser struct {
+	ID            string
+	Name          string
+	Email         string
+	EmailVerified bool
+	Image         *string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type AuthVerification struct {
+	ID         string
+	Identifier string
+	Value      string
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }

@@ -13,6 +13,7 @@ env: deploy/.env ## Create deploy/.env with random secrets if missing
 deploy/.env:
 	@sed -e "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$(openssl rand -hex 16)/" \
 	     -e "s/^CORE_INTERNAL_TOKEN=.*/CORE_INTERNAL_TOKEN=$$(openssl rand -hex 32)/" \
+	     -e "s/^BETTER_AUTH_SECRET=.*/BETTER_AUTH_SECRET=$$(openssl rand -hex 32)/" \
 	     deploy/.env.example > deploy/.env
 	@echo "created deploy/.env"
 
@@ -48,7 +49,7 @@ contract: ## Regenerate the OpenAPI contract and the web client types
 	pnpm --filter @dipwatch/web contract
 
 check-contract: contract ## Fail if generated contract files differ from the committed ones
-	git diff --exit-code -- contracts web/src/api/schema.d.ts
+	git diff --exit-code -- contracts web/src/services/schema.d.ts
 
 spike: ## Run the Day 1 source feasibility spike
 	cd tools/spike && go run ./sources

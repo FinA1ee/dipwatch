@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -110,7 +111,7 @@ func TestSearchRanksInCNYAndStartsRefresh(t *testing.T) {
 	queue := &fakeQueue{}
 	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Queue: queue}
 
-	res, err := s.Search(ctx, "  "+query+" ", "USD")
+	res, err := s.Search(ctx, guard.Viewer{}, "  "+query+" ", "USD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +129,7 @@ func TestSearchRanksInCNYAndStartsRefresh(t *testing.T) {
 	if err := q.MarkProductRefreshed(ctx, product.ID); err != nil {
 		t.Fatal(err)
 	}
-	res, err = s.Search(ctx, query, "CNY")
+	res, err = s.Search(ctx, guard.Viewer{}, query, "CNY")
 	if err != nil || res.Status != "fresh" || len(queue.inserted) != 1 {
 		t.Fatalf("fresh search: status %s, %d jobs, %v", res.Status, len(queue.inserted), err)
 	}
@@ -188,5 +189,43 @@ func TestStreamSendsOffersUntilSourcesFinish(t *testing.T) {
 	}
 	if err := <-errc; err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestQuotaCountsOnlyCostlySearches(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	product, _, query := fixture(t, ctx, q)
+	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Quotas: &guard.Quotas{DB: pool}, Queue: &fakeQueue{}}
+	unique := fmt.Sprint(time.Now().UnixNano())
+
+	// The product is stale and the fake queue never starts the refresh, so every
+	// search is costly.
+	visitor := guard.Viewer{IP: "198.51.100." + unique}
+	for i := range guard.VisitorDailySearches {
+		if _, err := s.Search(ctx, visitor, query, "CNY"); err != nil {
+			t.Fatalf("visitor search %d: %v", i+1, err)
+		}
+	}
+	if _, err := s.Search(ctx, visitor, query, "CNY"); !errors.Is(err, guard.ErrQuotaExceeded) {
+		t.Fatalf("visitor search %d: %v, want quota exceeded", guard.VisitorDailySearches+1, err)
+	}
+
+	member := guard.Viewer{UserID: "quota-test-" + unique, IP: visitor.IP} // same IP, own quota
+	for i := range guard.MemberDailySearches {
+		if _, err := s.Search(ctx, member, query, "CNY"); err != nil {
+			t.Fatalf("member search %d: %v", i+1, err)
+		}
+	}
+	if _, err := s.Search(ctx, member, query, "CNY"); !errors.Is(err, guard.ErrQuotaExceeded) {
+		t.Fatalf("member search %d: %v, want quota exceeded", guard.MemberDailySearches+1, err)
+	}
+
+	// A fresh product is answered from the database: free even over the limit.
+	if err := q.MarkProductRefreshed(ctx, product.ID); err != nil {
+		t.Fatal(err)
+	}
+	if res, err := s.Search(ctx, visitor, query, "CNY"); err != nil || res.Status != "fresh" {
+		t.Fatalf("cached search over the limit: %+v, %v", res, err)
 	}
 }

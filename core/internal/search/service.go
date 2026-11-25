@@ -43,7 +43,7 @@ type Offer struct {
 	ShippingMinor *int64 `json:"shipping_minor,omitempty" doc:"Shipping in the store's currency, when known"`
 	Condition     string `json:"condition" enum:"new,used,refurbished,unknown"`
 	Availability  string `json:"availability" enum:"in_stock,out_of_stock,unknown"`
-	SellerType    string `json:"seller_type" enum:"official,marketplace,individual,unknown"`
+	SellerType    string `json:"seller_type" enum:"official,third_party,individual,unknown"`
 }
 
 // Product is the resolved search target.
@@ -65,17 +65,20 @@ type Inserter interface {
 }
 
 type Service struct {
-	DB    *pgxpool.Pool
-	Gate  *guard.Gate
-	Queue Inserter
-	Hub   *Hub
-	Now   func() time.Time // nil: time.Now
+	DB     *pgxpool.Pool
+	Gate   *guard.Gate
+	Quotas *guard.Quotas // nil: no limits
+	Queue  Inserter
+	Hub    *Hub
+	Now    func() time.Time // nil: time.Now
 }
 
 // Search resolves text to a product, returns its stored offers and, when they
-// are older than FreshFor, starts a refresh (S1, S2).
-func (s *Service) Search(ctx context.Context, text, currency string) (Result, error) {
-	p, err := s.Gate.Resolve(ctx, text)
+// are older than FreshFor, starts a refresh (S1, S2). A search that needs the
+// intent call or a refresh counts once against the viewer's daily quota (C1).
+func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currency string) (Result, error) {
+	charge := &guard.Charger{Quotas: s.Quotas, Viewer: viewer}
+	p, err := s.Gate.Resolve(ctx, text, charge)
 	if err != nil {
 		return Result{}, err
 	}
@@ -93,7 +96,10 @@ func (s *Service) Search(ctx context.Context, text, currency string) (Result, er
 	if !fresh || len(product.RefreshingSources) > 0 {
 		res.Status = "refreshing"
 	}
-	if !fresh {
+	if !fresh && len(product.RefreshingSources) == 0 {
+		if err := charge.Charge(ctx); err != nil {
+			return Result{}, err
+		}
 		// Unique per product while queued or running, so concurrent searches share it.
 		if _, err := s.Queue.Insert(ctx, jobs.RefreshProductArgs{ProductID: product.ID}, nil); err != nil {
 			return Result{}, err

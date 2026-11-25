@@ -120,12 +120,12 @@ func TestGateCachesAndSharesOneProduct(t *testing.T) {
 	model := &byModelNumber{suffix: suffix}
 	gate := &Gate{DB: pool, Checker: &Checker{Model: model}}
 
-	first, err := gate.Resolve(ctx, "card 7"+suffix)
+	first, err := gate.Resolve(ctx, "card 7"+suffix, nil)
 	if err != nil || first.Cached {
 		t.Fatalf("first: %+v, %v", first, err)
 	}
 	// A different spelling: the model sees the existing product and reuses it.
-	second, err := gate.Resolve(ctx, "TEST card 7"+suffix)
+	second, err := gate.Resolve(ctx, "TEST card 7"+suffix, nil)
 	if err != nil || second.ID != first.ID {
 		t.Fatalf("second spelling: %+v, %v (first %+v)", second, err, first)
 	}
@@ -133,7 +133,7 @@ func TestGateCachesAndSharesOneProduct(t *testing.T) {
 		t.Fatalf("candidates not offered: %q", model.seen[1])
 	}
 	// Same text again, with different spacing: answered from the cache.
-	again, err := gate.Resolve(ctx, "  card   7"+suffix)
+	again, err := gate.Resolve(ctx, "  card   7"+suffix, nil)
 	if err != nil || !again.Cached || again.ID != first.ID || model.calls != 2 {
 		t.Fatalf("cached: %+v, %v after %d calls", again, err, model.calls)
 	}
@@ -142,7 +142,7 @@ func TestGateCachesAndSharesOneProduct(t *testing.T) {
 	letters := strings.Map(func(r rune) rune { return 'a' + (r - '0') }, suffix) // unique, digit-free
 	nonsense := "how to cook rice " + letters
 	for range 2 {
-		if _, err := gate.Resolve(ctx, nonsense); !errors.Is(err, ErrNotProduct) {
+		if _, err := gate.Resolve(ctx, nonsense, nil); !errors.Is(err, ErrNotProduct) {
 			t.Fatalf("nonsense: %v", err)
 		}
 	}
@@ -151,7 +151,7 @@ func TestGateCachesAndSharesOneProduct(t *testing.T) {
 	}
 
 	// Bad input never reaches the model.
-	if _, err := gate.Resolve(ctx, "http://x.example"); !errors.Is(err, ErrURL) || model.calls != 3 {
+	if _, err := gate.Resolve(ctx, "http://x.example", nil); !errors.Is(err, ErrURL) || model.calls != 3 {
 		t.Fatalf("URL: %v after %d calls", err, model.calls)
 	}
 }

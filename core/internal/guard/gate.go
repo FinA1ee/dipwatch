@@ -31,7 +31,8 @@ type Product struct {
 
 // Resolve checks the input, then answers from the queries cache or, on a miss,
 // with one intent call whose verdict is cached for every later identical query.
-func (g *Gate) Resolve(ctx context.Context, text string) (Product, error) {
+// The intent call is charged to the viewer's quota first; charge may be nil.
+func (g *Gate) Resolve(ctx context.Context, text string, charge *Charger) (Product, error) {
 	query, err := Normalize(text)
 	if err != nil {
 		return Product{}, err
@@ -49,6 +50,9 @@ func (g *Gate) Resolve(ctx context.Context, text string) (Product, error) {
 	}
 	if g.Checker == nil {
 		return Product{}, ErrUnavailable
+	}
+	if err := charge.Charge(ctx); err != nil {
+		return Product{}, err
 	}
 
 	candidates, err := q.FindProductCandidates(ctx, CandidatePatterns(query))
