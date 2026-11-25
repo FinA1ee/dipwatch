@@ -4,7 +4,7 @@ Every prompt or harness change that is kept, with the evidence for it (spec H6).
 
 Until the eval set exists (Day 4), evidence is single live runs. From Day 4 on, each row links an eval report with precision, recall, steps and cost per store.
 
-## Current version: browse-v7
+## Current version: browse-v8
 
 | Area         | Setting                                                                                                       |
 | ------------ | ------------------------------------------------------------------------------------------------------------- |
@@ -49,8 +49,11 @@ The eval set: 10 saved results pages (Amazon US, Amazon Japan and SMZDM, for RTX
 | browse-v6               | `compact` joins prices split across lines (SMZDM shows "¥" "1640." "95"); title matching uses only the model number, because brands appear in other scripts (索尼 for Sony) | 62%       | 38%     | 9 of 10      | ¥0.058      | [report](harness/2026-11-25-1049-browse-v6.md) |
 | browse-v6, labels fixed | Same code. The labeller had missed brand-heading cards, colour variants, cards without a price and single-quoted YAML lines                                                 | 76%       | 44%     | 7 of 10      | ¥0.063      | [report](harness/2026-11-25-1055-browse-v6.md) |
 | browse-v7               | Prompt: leave out PCs, laptops, bundles and other models; list every matching listing; an empty submission means "none here". Page view 12,000 characters                   | **100%**  | **67%** | **10 of 10** | ¥0.060      | [report](harness/2026-11-25-1057-browse-v7.md) |
+| browse-v8               | Prompt: China-market "D" editions (RTX 4090D) count as the product                                                                                                          | 95%       | 56%     | 10 of 10     | ¥0.061      | [report](harness/2026-11-25-1343-browse-v8.md) |
 
-Targets (spec H1): precision at least 90% (met), recall at least 60% (met), median cost under ¥0.08 (met). The injection case was refused in every run.
+Targets (spec H1): precision at least 90% (met), recall at least 60% (met by v7; v8 56%), median cost under ¥0.08 (met). The injection case was refused in every run.
+
+v8 against v7: every SMZDM case, where the 4090D listings are, scored the same. The whole recall difference is Amazon Japan, which submits one card per run under both prompts (v7's injection run happened to submit 4). The difference is within run-to-run noise; Amazon Japan recall is the next thing to fix.
 
 Lessons:
 
@@ -66,10 +69,11 @@ After each refresh, one LLM call per 40 listings decides whether each listing is
 | Version  | Accuracy  | Precision | Recall | Listings | Cost   | Report                                        |
 | -------- | --------- | --------- | ------ | -------- | ------ | --------------------------------------------- |
 | match-v1 | **98.9%** | 100%      | 92.5%  | 283      | ¥0.140 | [report](harness/2026-11-25-1110-match-v1.md) |
+| match-v2 | **99.6%** | 97.6%     | 100%   | 283      | ¥0.139 | [report](harness/2026-11-25-1345-match-v2.md) |
 
 Target (spec S6): accuracy at least 90% (met). An earlier run of the same prompt kept one Sony bundle (precision 97.4%), so bundles are the case to watch.
 
-Every miss is an "RTX 4090D", the China-only cut-down variant, which the labels count as the RTX 4090 and the model does not. This is a policy question, not a model error: a user searching "RTX 4090" in China probably wants to see 4090D prices, but they are a different card. Decision pending; the label stays until then.
+Every match-v1 miss was an "RTX 4090D", the China-only cut-down variant. Decision (2026-11-25): D editions count as the product, since a shopper searching "RTX 4090" in China wants those prices too. match-v2 says so in the prompt and recall went to 100%. The one miss left is a Sony bundle (headphones plus a stand), which earlier runs also kept sometimes.
 
 ### Day 4: the intent check (intent-v1)
 

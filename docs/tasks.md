@@ -197,4 +197,4 @@ Order matters: the eval harness comes first, so every change after it (prompt, m
 - All metrics M4.1 to M4.9 met. Local end-to-end check: `rtx4090显卡` resolved to "NVIDIA GeForce RTX 4090", SMZDM's offers arrived on the stream after 14 seconds, matched and converted to USD, and the matcher dropped a 48 GB server card.
 - Bug found by the end-to-end check: the worker image had no CA certificates, so every HTTPS call from the worker failed, in production too since Day 3. Fixed in `core/Dockerfile`.
 - A refresh where every source fails no longer marks the product fresh, so the next search retries instead of showing nothing for 6 hours.
-- Open: the agent reports Amazon US "no offers" for RTX 4090 (it found none on the first page); `no_offers` still counts as a strategy failure in the registry. 4090D listings: whether they count as the RTX 4090 is undecided.
+- Open: the agent reports Amazon US "no offers" for RTX 4090 (it found none on the first page); `no_offers` still counts as a strategy failure in the registry. 4090D listings count as the RTX 4090 (decided 2026-11-25; browse-v8 and match-v2).
