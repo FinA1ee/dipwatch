@@ -215,7 +215,7 @@ func (s *Service) TestFeishu(ctx context.Context, v guard.Viewer) error {
 	if set.FeishuWebhook == "" {
 		return ErrNoWebhook
 	}
-	return s.Feishu.Send(ctx, set.FeishuWebhook, "Dipwatch: test message. Price alerts for your tracked products will arrive here.")
+	return s.Feishu.Send(ctx, set.FeishuWebhook, "dipwatch: test message. Price alerts for your tracked products will arrive here.")
 }
 
 // lowestCNY is the cheapest current offer in CNY at the stores, the baseline of drop rules.

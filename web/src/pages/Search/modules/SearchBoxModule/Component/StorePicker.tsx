@@ -12,20 +12,18 @@ export function StorePicker({ stores, selected, perSearch, onChange }: Props) {
   if (stores.length === 0) return null;
   if (perSearch === 1) {
     return (
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        Store
-        <select
-          value={selected[0] ?? ""}
-          onChange={(e) => onChange([e.target.value])}
-          className="rounded border border-slate-300 px-2 py-1"
-        >
-          {stores.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.region})
-            </option>
-          ))}
-        </select>
-      </label>
+      <select
+        aria-label="Store"
+        value={selected[0] ?? ""}
+        onChange={(e) => onChange([e.target.value])}
+        className="rounded-[10px] border border-rule bg-white px-3.5 py-3 text-[17px] font-medium"
+      >
+        {stores.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name} ({s.region})
+          </option>
+        ))}
+      </select>
     );
   }
   const toggle = (id: string, on: boolean) => {
@@ -33,7 +31,7 @@ export function StorePicker({ stores, selected, perSearch, onChange }: Props) {
     if (next.length >= 1 && next.length <= perSearch) onChange(next);
   };
   return (
-    <fieldset className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+    <fieldset className="flex flex-wrap items-center gap-3 rounded-[10px] border border-rule bg-white px-3.5 py-2 text-sm">
       <legend className="sr-only">Stores</legend>
       <span>Stores (up to {perSearch})</span>
       {stores.map((s) => {

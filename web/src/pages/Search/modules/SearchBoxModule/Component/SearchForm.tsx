@@ -1,14 +1,17 @@
+import type { ReactNode } from "react";
+
 type Props = {
   query: string;
   busy: boolean;
   onChange: (query: string) => void;
   onSubmit: () => void;
+  store: ReactNode; // the store picker, between the box and the button
 };
 
-export function SearchForm({ query, busy, onChange, onSubmit }: Props) {
+export function SearchForm({ query, busy, onChange, onSubmit, store }: Props) {
   return (
     <form
-      className="flex gap-2"
+      className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -20,12 +23,13 @@ export function SearchForm({ query, busy, onChange, onSubmit }: Props) {
         placeholder="A product, e.g. RTX 5090 or Sony WH-1000XM6"
         maxLength={80}
         aria-label="Product to search for"
-        className="flex-1 rounded-lg border border-slate-300 px-3 py-2"
+        className="rounded-[10px] border border-rule bg-white px-3.5 py-3 text-[17px] font-medium"
       />
+      {store}
       <button
         type="submit"
         disabled={busy || query.trim() === ""}
-        className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50"
+        className="rounded-[10px] bg-ink px-[22px] py-3 font-semibold text-white disabled:opacity-50"
       >
         {busy ? "Searching…" : "Search"}
       </button>

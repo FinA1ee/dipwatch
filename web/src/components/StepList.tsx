@@ -8,7 +8,7 @@ const tokens = (s: RunStep) =>
  * are untrusted page text, so everything renders as text only.
  */
 export function StepList({ steps }: { steps: RunStep[] }) {
-  if (steps.length === 0) return <p className="text-slate-600">No steps yet.</p>;
+  if (steps.length === 0) return <p className="text-muted">No steps yet.</p>;
   // Notes are harness events between tool calls; only tool calls are numbered.
   let call = 0;
   return (
@@ -26,7 +26,7 @@ export function StepList({ steps }: { steps: RunStep[] }) {
         call++;
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: steps are an ordered log without ids
-          <li key={i} className="space-y-1 rounded border border-slate-200 p-2 text-sm">
+          <li key={i} className="space-y-1 rounded border border-rule p-2 text-sm">
             {s.thought && (
               <p className="rounded bg-sky-50 px-2 py-1 text-sky-900">
                 <span className="font-medium">Model: </span>
@@ -37,15 +37,15 @@ export function StepList({ steps }: { steps: RunStep[] }) {
               <span className="font-mono font-medium">
                 {call}. {s.tool}
               </span>
-              <span className="text-xs text-slate-500 tabular-nums">
+              <span className="text-xs text-muted tabular-nums">
                 {[tokens(s), s.ms ? `${(s.ms / 1000).toFixed(1)} s` : ""].filter(Boolean).join(" · ")}
               </span>
             </p>
-            {s.arguments && <pre className="whitespace-pre-wrap break-all text-slate-700">{s.arguments}</pre>}
+            {s.arguments && <pre className="whitespace-pre-wrap break-all text-muted">{s.arguments}</pre>}
             {s.result && (
               <details>
-                <summary className="cursor-pointer text-slate-500">Result</summary>
-                <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-all text-slate-700">
+                <summary className="cursor-pointer text-muted">Result</summary>
+                <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-all text-muted">
                   {s.result}
                 </pre>
               </details>

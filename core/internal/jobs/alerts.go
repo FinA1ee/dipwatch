@@ -107,7 +107,9 @@ func (w *NotifyWorker) message(a store.GetAlertToSendRow) (subject, text string)
 	if title == "" {
 		title = a.TitleOriginal
 	}
-	subject = fmt.Sprintf("Dipwatch: %s, %s", a.CanonicalName, alerts.DescribeKey(a.Rule, format))
+	// Starts with "dipwatch" in lower case: Feishu bots often filter on that
+	// keyword, and the match is case-sensitive.
+	subject = fmt.Sprintf("dipwatch: %s, %s", a.CanonicalName, alerts.DescribeKey(a.Rule, format))
 	lines := []string{
 		fmt.Sprintf("%s at %s: %s", money.Format(a.PriceMinor, a.Currency), a.SourceName, title),
 		a.Url,

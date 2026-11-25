@@ -14,7 +14,7 @@ export function LimitsView() {
   }, [l.limits]);
 
   if (l.error) return <AdminError error={l.error} />;
-  if (!draft) return <p className="text-slate-600">Loading…</p>;
+  if (!draft) return <p className="text-muted">Loading…</p>;
   const levelText: Record<string, string> = {
     normal: "everything runs",
     tracked_only: "over 80%: agent runs only for tracked products",

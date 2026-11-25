@@ -3,7 +3,7 @@ import type { FilterKey } from "../Model/useRunList";
 
 type Props = { filter: RunFilter; onChange: (key: FilterKey, value: string) => void };
 
-const input = "rounded border border-slate-300 px-2 py-1";
+const input = "rounded border border-rule px-2 py-1";
 
 export function RunFilterBar({ filter, onChange }: Props) {
   // Text fields apply on blur or Enter, so typing does not fire a request per key.
@@ -23,7 +23,7 @@ export function RunFilterBar({ filter, onChange }: Props) {
     </label>
   );
   return (
-    <div className="flex flex-wrap items-center gap-4 text-sm text-slate-700">
+    <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
       <label className="flex items-center gap-2">
         Kind
         <select

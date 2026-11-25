@@ -14,14 +14,14 @@ type Props = { history: DayLow[] };
 export function PriceChart({ history }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
-  if (history.length === 0) return <p className="text-slate-600">No price history yet.</p>;
+  if (history.length === 0) return <p className="text-muted">No price history yet.</p>;
   const first = history[0];
   if (history.length === 1 && first) {
     // One point is not a line: say it instead of drawing an empty plot.
     return (
-      <p className="text-slate-600">
-        Lowest so far: <strong className="text-slate-900">{formatMoney(first.converted)}</strong> on{" "}
-        {first.day}. The chart appears once there are prices from a second day.
+      <p className="text-muted">
+        Lowest so far: <strong className="text-ink">{formatMoney(first.converted)}</strong> on {first.day}.
+        The chart appears once there are prices from a second day.
       </p>
     );
   }
@@ -49,28 +49,28 @@ export function PriceChart({ history }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between text-sm">
-        <p className="text-slate-600" aria-live="polite">
+        <p className="text-muted" aria-live="polite">
           {shown && (
             <>
-              <strong className="text-slate-900">{formatMoney(shown.converted)}</strong> on {shown.day}
+              <strong className="text-ink">{formatMoney(shown.converted)}</strong> on {shown.day}
             </>
           )}
         </p>
-        <button type="button" onClick={() => setTable((t) => !t)} className="text-slate-600 hover:underline">
+        <button type="button" onClick={() => setTable((t) => !t)} className="text-muted hover:underline">
           {table ? "Show chart" : "Show table"}
         </button>
       </div>
       {table ? (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-slate-500">
+            <tr className="text-left text-muted">
               <th className="py-1 font-normal">Day</th>
               <th className="py-1 text-right font-normal">Lowest price</th>
             </tr>
           </thead>
           <tbody>
             {history.map((d) => (
-              <tr key={d.day} className="border-t border-slate-100">
+              <tr key={d.day} className="border-t border-rule">
                 <td className="py-1">{d.day}</td>
                 <td className="py-1 text-right tabular-nums">{formatMoney(d.converted)}</td>
               </tr>
@@ -82,7 +82,7 @@ export function PriceChart({ history }: Props) {
           {[...new Set([hi, lo])].map((v) => (
             <g key={v}>
               <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke={GRID} strokeWidth={1} />
-              <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" className="fill-slate-500 text-[11px]">
+              <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" className="fill-muted text-[11px]">
                 {formatMoney({ minor: v, currency: history[0]?.converted.currency ?? "CNY" })}
               </text>
             </g>
@@ -93,7 +93,7 @@ export function PriceChart({ history }: Props) {
               x={x(i)}
               y={H - 6}
               textAnchor={i ? "end" : "start"}
-              className="fill-slate-500 text-[11px]"
+              className="fill-muted text-[11px]"
             >
               {history[i]?.day}
             </text>

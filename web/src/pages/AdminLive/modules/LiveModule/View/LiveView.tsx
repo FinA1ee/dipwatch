@@ -14,13 +14,11 @@ export function LiveView() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600" aria-live="polite">
+      <p className="text-sm text-muted" aria-live="polite">
         {live.connected ? "Connected. New runs appear here as they start." : "Connecting… (admins only)"}
       </p>
       {live.runs.length === 0 && (
-        <p className="text-slate-600">
-          No agent runs since core-api started. Search for a product to start one.
-        </p>
+        <p className="text-muted">No agent runs since core-api started. Search for a product to start one.</p>
       )}
       {live.runs.map((r) => (
         <LiveRunCard key={r.start.run} run={r} />

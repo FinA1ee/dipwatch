@@ -44,23 +44,23 @@ export function SearchBoxView() {
   }, [urlQuery, currency, picked, run, setQuery]);
 
   return (
-    <div className="space-y-3">
-      <SearchForm
-        query={box.query}
-        busy={box.phase === "searching"}
-        onChange={setQuery}
-        onSubmit={() => {
-          const q = box.query.trim();
-          if (q === urlQuery) void run(q);
-          else setParams({ q });
-        }}
-      />
-      <StorePicker
-        stores={stores.all}
-        selected={stores.selected}
-        perSearch={stores.perSearch}
-        onChange={stores.setStores}
-      />
-    </div>
+    <SearchForm
+      query={box.query}
+      busy={box.phase === "searching"}
+      onChange={setQuery}
+      onSubmit={() => {
+        const q = box.query.trim();
+        if (q === urlQuery) void run(q);
+        else setParams({ q });
+      }}
+      store={
+        <StorePicker
+          stores={stores.all}
+          selected={stores.selected}
+          perSearch={stores.perSearch}
+          onChange={stores.setStores}
+        />
+      }
+    />
   );
 }

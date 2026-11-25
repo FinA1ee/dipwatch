@@ -11,7 +11,7 @@ export function EmailView({ next }: { next: string | null }) {
 
   if (state === "sent") {
     return (
-      <p className="rounded-lg bg-emerald-50 p-3 text-emerald-900">
+      <p className="rounded-lg bg-drop-soft p-3 text-drop">
         Check {email} for a sign-in link. It works once and expires in 15 minutes.
       </p>
     );

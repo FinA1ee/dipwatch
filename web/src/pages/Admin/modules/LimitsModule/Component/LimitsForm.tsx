@@ -53,9 +53,9 @@ export function LimitsForm({ value, saving, message, onChange, onSave }: Props) 
               step={f.key === "daily_budget_cny" ? 0.5 : 1}
               value={value[f.key]}
               onChange={(e) => onChange({ ...value, [f.key]: Number(e.target.value) })}
-              className="block w-28 rounded border border-slate-300 px-2 py-1"
+              className="block w-28 rounded border border-rule px-2 py-1"
             />
-            <span className="block text-slate-500">{f.hint}</span>
+            <span className="block text-muted">{f.hint}</span>
           </label>
         ))}
       </div>
@@ -63,11 +63,11 @@ export function LimitsForm({ value, saving, message, onChange, onSave }: Props) 
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-[14px] bg-white px-3 py-1.5 font-medium hover:bg-paper disabled:opacity-50"
         >
           Save limits
         </button>
-        {message && <span className={message.ok ? "text-emerald-700" : "text-rose-700"}>{message.text}</span>}
+        {message && <span className={message.ok ? "text-drop" : "text-rose-700"}>{message.text}</span>}
       </div>
     </form>
   );

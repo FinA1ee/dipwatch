@@ -13,8 +13,7 @@ type Props = {
   onTest: () => void;
 };
 
-const button =
-  "rounded-lg border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-50";
+const button = "rounded-[14px] bg-white px-3 py-1.5 font-medium hover:bg-paper disabled:opacity-50";
 
 export function SettingsForm(p: Props) {
   return (
@@ -31,9 +30,9 @@ export function SettingsForm(p: Props) {
           value={p.webhook}
           onChange={(e) => p.onWebhook(e.target.value)}
           placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/…"
-          className="block w-full rounded border border-slate-300 px-2 py-1 font-mono"
+          className="block w-full rounded border border-rule px-2 py-1 font-mono"
         />
-        <span className="block text-slate-500">
+        <span className="block text-muted">
           In a Feishu group: Settings → Bots → Add bot → Custom bot, then copy its webhook address. Leave
           empty to turn Feishu alerts off.
         </span>
@@ -46,7 +45,7 @@ export function SettingsForm(p: Props) {
           onChange={(e) => p.onEmail(e.target.checked)}
         />
         Email alerts to {p.address}
-        {!p.emailAvailable && <span className="text-slate-500">(not available yet on this site)</span>}
+        {!p.emailAvailable && <span className="text-muted">(not available yet on this site)</span>}
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={p.saving} className={button}>
@@ -55,9 +54,7 @@ export function SettingsForm(p: Props) {
         <button type="button" onClick={p.onTest} disabled={!p.canTest || p.testing} className={button}>
           Send a test message
         </button>
-        {p.message && (
-          <span className={p.message.ok ? "text-emerald-700" : "text-rose-700"}>{p.message.text}</span>
-        )}
+        {p.message && <span className={p.message.ok ? "text-drop" : "text-rose-700"}>{p.message.text}</span>}
       </div>
     </form>
   );

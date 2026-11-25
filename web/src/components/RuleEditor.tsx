@@ -8,7 +8,7 @@ type Props = {
   onNote: (note: string) => void;
 };
 
-const box = "rounded border border-slate-300 px-2 py-1";
+const box = "rounded border border-rule px-2 py-1";
 
 /** Tracking rules (T1) and note (T2). Pure form: the caller saves. */
 export function RuleEditor({ draft, note, currency, onDraft, onNote }: Props) {

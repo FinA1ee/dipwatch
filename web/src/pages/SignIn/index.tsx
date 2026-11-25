@@ -15,11 +15,11 @@ export function SignInPage() {
     <div className="mx-auto max-w-sm space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="mt-1 text-slate-600">Members get 30 new searches a day instead of 10.</p>
+        <p className="mt-1 text-muted">Members get 30 new searches a day instead of 10.</p>
       </div>
-      {none && <p className="text-slate-600">Sign-in is not available yet.</p>}
+      {none && <p className="text-muted">Sign-in is not available yet.</p>}
       {methods?.email && <EmailView next={next} />}
-      {methods?.email && methods.github && <div className="text-center text-sm text-slate-500">or</div>}
+      {methods?.email && methods.github && <div className="text-center text-sm text-muted">or</div>}
       {methods?.github && <GitHubView next={next} />}
     </div>
   );

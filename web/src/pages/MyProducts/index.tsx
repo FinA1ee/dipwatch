@@ -8,7 +8,7 @@ export function MyProductsPage() {
   if (loading) return null;
   if (!member) {
     return (
-      <p className="text-slate-600">
+      <p className="text-muted">
         <Link to="/signin?next=%2Fme" className="font-medium hover:underline">
           Sign in
         </Link>{" "}
