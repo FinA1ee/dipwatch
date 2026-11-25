@@ -1,0 +1,132 @@
+web/src/pages/Admin/index.tsx
+  s_3313d584934833::t_7c2879176bef0d 20
+  s_3313d584934833::t_853e5b857350fa 2,24-30
+web/src/pages/Admin/modules/LimitsModule/Component/LimitsForm.tsx
+  s_3313d584934833::t_4a367f38c57de2 56,58,70
+  s_3313d584934833::t_7c2879176bef0d 66
+web/src/components/RuleEditor.tsx
+  s_3313d584934833::t_4a367f38c57de2 11
+core/internal/jobs/alerts.go
+  s_3313d584934833::t_b484653db37049 110-112
+web/src/pages/AdminLive/modules/LiveModule/Component/LiveRunCard.tsx
+  s_3313d584934833::t_7c2879176bef0d 13
+  s_3313d584934833::t_4a367f38c57de2 5-6,18
+web/src/pages/Search/modules/ResultsModule/Component/ResultsHeader.tsx
+  s_3313d584934833::t_d544bdf302d808 15-16,20-21
+web/src/pages/Search/modules/SearchBoxModule/Component/SearchForm.tsx
+  s_3313d584934833::t_d544bdf302d808 1-2,8,11,14,26,28,32
+web/src/pages/SignIn/index.tsx
+  s_3313d584934833::t_4a367f38c57de2 18,20,22
+web/src/pages/SignIn/modules/GitHubModule/View/GitHubView.tsx
+  s_3313d584934833::t_7c2879176bef0d 16
+web/src/pages/MyProducts/index.tsx
+  s_3313d584934833::t_4a367f38c57de2 11
+web/src/pages/Search/modules/ResultsModule/View/ResultsSummaryView.tsx
+  s_3313d584934833::t_b00a95901246b9 2,9-10,24,28-36,40,51,55
+web/src/pages/Admin/modules/LimitsModule/View/LimitsView.tsx
+  s_3313d584934833::t_4a367f38c57de2 17
+web/src/utils/money.ts
+  s_3313d584934833::t_1b55827fff105d 19-21,23-36
+web/src/services/admin.ts
+  s_3313d584934833::t_853e5b857350fa 85-93
+web/src/pages/Search/modules/SearchBoxModule/Component/StorePicker.tsx
+  s_3313d584934833::t_d544bdf302d808 15-26,34
+web/src/pages/AdminRuns/modules/RunListModule/View/RunListView.tsx
+  s_3313d584934833::t_4a367f38c57de2 12
+web/src/pages/Product/modules/TrackModule/View/TrackView.tsx
+  s_3313d584934833::t_4a367f38c57de2 53,67,76
+  s_3313d584934833::t_7c2879176bef0d 30,51
+web/src/pages/SignIn/modules/EmailModule/View/EmailView.tsx
+  s_3313d584934833::t_4a367f38c57de2 14
+web/src/index.css
+  s_3313d584934833::t_7c2879176bef0d 21-25
+  s_3313d584934833::t_7c5cd008af3079 2-20,26-30
+pnpm-lock.yaml
+  s_3313d584934833::t_9ab7cf60b9a2d8 213-218,589-594,1715-1717
+web/src/pages/SignIn/modules/EmailModule/Component/EmailForm.tsx
+  s_3313d584934833::t_4a367f38c57de2 34
+  s_3313d584934833::t_7c2879176bef0d 29
+web/src/pages/Product/modules/HistoryModule/Component/PriceChart.tsx
+  s_3313d584934833::t_4a367f38c57de2 17,22,52,55,59,66,73,85,96
+  s_3313d584934833::t_b00a95901246b9 23-24
+web/src/pages/MyProducts/modules/TrackedModule/View/TrackedView.tsx
+  s_3313d584934833::t_7c2879176bef0d 22
+  s_3313d584934833::t_4a367f38c57de2 13,16,29,33
+core/internal/tracking/tracking.go
+  s_3313d584934833::t_b484653db37049 218
+web/src/pages/AdminRuns/modules/RunListModule/Component/RunTable.tsx
+  s_3313d584934833::t_4a367f38c57de2 7,11,22
+web/src/pages/Search/modules/FiltersModule/Component/FilterBar.tsx
+  s_3313d584934833::t_b00a95901246b9 42-46
+  s_3313d584934833::t_d544bdf302d808 9-22,28-41,47-49
+  s_3313d584934833::t_b3c600e3f672cd 26-27,50
+web/src/pages/Admin/modules/MetricsModule/Component/SourceTable.tsx
+  s_3313d584934833::t_4a367f38c57de2 8,12,33
+web/src/pages/Admin/modules/MetricsModule/View/MetricsView.tsx
+  s_3313d584934833::t_4a367f38c57de2 10,15,24
+web/src/pages/Search/modules/SearchBoxModule/View/SearchBoxView.tsx
+  s_3313d584934833::t_d544bdf302d808 47-64
+web/package.json
+  s_3313d584934833::t_05959f7c7ae145 14-15
+web/src/app/Layout.tsx
+  s_3313d584934833::t_b00a95901246b9 14-18,21-22,26,51
+  s_3313d584934833::t_4a367f38c57de2 38-39
+web/src/components/PriceLadder.tsx
+  s_3313d584934833::t_87e22b92f9a453 1-16,20-32,36-80
+  s_3313d584934833::t_b00a95901246b9 17-19,33-35
+web/src/pages/MyProducts/modules/SettingsModule/Component/SettingsForm.tsx
+  s_3313d584934833::t_4a367f38c57de2 33,35,48
+  s_3313d584934833::t_7c2879176bef0d 16
+  s_3313d584934833::t_b00a95901246b9 57
+web/src/components/StepList.tsx
+  s_3313d584934833::t_4a367f38c57de2 11,29,40,44,47-48
+web/src/pages/AdminRun/modules/TraceModule/View/TraceView.tsx
+  s_3313d584934833::t_4a367f38c57de2 8
+biome.json
+  s_3313d584934833::t_b3c600e3f672cd 30-34
+web/src/pages/AdminRuns/modules/RunListModule/Component/RunFilterBar.tsx
+  s_3313d584934833::t_4a367f38c57de2 6,26
+web/src/components/OfferTable.tsx
+  s_3313d584934833::t_a7e66840c6d7d7 28-33,35,37-48,53,57-63,69-73,75,77,79-87
+  s_3313d584934833::t_b00a95901246b9 64-68
+web/src/main.tsx
+  s_3313d584934833::t_7c5cd008af3079 5-10
+web/src/pages/Admin/modules/AlertTestModule/View/AlertTestView.tsx
+  s_3313d584934833::t_853e5b857350fa 1-53
+docs/tasks.md
+  s_3313d584934833::t_32345c9d5e6426 302,314
+web/src/pages/MyProducts/modules/SettingsModule/View/SettingsView.tsx
+  s_3313d584934833::t_4a367f38c57de2 19
+web/src/pages/Search/modules/ResultsModule/View/ResultsListView.tsx
+  s_3313d584934833::t_b00a95901246b9 1-32
+web/src/pages/AdminRun/modules/TraceModule/Component/RunHeader.tsx
+  s_3313d584934833::t_4a367f38c57de2 21
+web/src/utils/money.test.ts
+  s_3313d584934833::t_1b55827fff105d 15
+web/src/pages/AdminLive/modules/LiveModule/View/LiveView.tsx
+  s_3313d584934833::t_b00a95901246b9 21
+  s_3313d584934833::t_4a367f38c57de2 17
+web/src/pages/Product/modules/OffersModule/View/OffersView.tsx
+  s_3313d584934833::t_7c2879176bef0d 3,12,14,26
+  s_3313d584934833::t_4a367f38c57de2 8,15,30
+web/src/pages/Admin/modules/MetricsModule/Component/SpendTable.tsx
+  s_3313d584934833::t_4a367f38c57de2 4,7,17
+web/src/pages/Search/index.tsx
+  s_3313d584934833::t_b00a95901246b9 2-3,8,10,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "27fd4ffb8aa84ca8c03556c712c325d18f8d3f96",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
