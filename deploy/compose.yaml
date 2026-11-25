@@ -43,6 +43,8 @@ services:
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
       CORE_INTERNAL_TOKEN: ${CORE_INTERNAL_TOKEN:?set CORE_INTERNAL_TOKEN in deploy/.env}
+      # Tells members whether email alerts can be sent; the worker sends them.
+      EMAIL_ALERTS_AVAILABLE: ${SMTP_URL:+true}
       <<: *llm-env
     depends_on:
       postgres:
@@ -69,6 +71,10 @@ services:
     environment:
       DATABASE_URL: postgres://dipwatch:${POSTGRES_PASSWORD}@postgres:5432/dipwatch?sslmode=disable
       <<: *llm-env
+      # Alerts: links in messages, and email once SMTP is set (Feishu needs nothing).
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:18080}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     depends_on:
       core-api:
         condition: service_healthy

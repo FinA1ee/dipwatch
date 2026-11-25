@@ -32,6 +32,9 @@ export function Layout() {
           </label>
           {!loading && member && (
             <span className="flex items-center gap-3 text-sm">
+              <Link to="/me" className="hover:underline">
+                My products
+              </Link>
               <span className="text-slate-600">{member.email}</span>
               <button type="button" onClick={signOut} className="text-slate-900 hover:underline">
                 Sign out

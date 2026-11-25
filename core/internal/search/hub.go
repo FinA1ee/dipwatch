@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/FinA1ee/dipwatch/core/internal/db"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
 )
 
@@ -58,39 +58,15 @@ func (h *Hub) publish(d jobs.SourceDone) {
 	}
 }
 
-// Run listens until ctx ends, reconnecting after errors. Streams also poll the
-// database, so notifications lost while reconnecting only delay them.
+// Run listens until ctx ends. Streams also poll the database, so notifications
+// lost while reconnecting only delay them.
 func (h *Hub) Run(ctx context.Context) {
-	for ctx.Err() == nil {
-		if err := h.listen(ctx); err != nil && ctx.Err() == nil {
-			slog.WarnContext(ctx, "search hub: listen failed, retrying", "err", err)
-			select {
-			case <-time.After(2 * time.Second):
-			case <-ctx.Done():
-			}
-		}
-	}
-}
-
-func (h *Hub) listen(ctx context.Context) error {
-	conn, err := h.DB.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Release()
-	if _, err := conn.Exec(ctx, "LISTEN "+jobs.OffersChannel); err != nil {
-		return err
-	}
-	for {
-		n, err := conn.Conn().WaitForNotification(ctx)
-		if err != nil {
-			return err
-		}
+	db.Listen(ctx, h.DB, jobs.OffersChannel, func(payload string) {
 		var d jobs.SourceDone
-		if err := json.Unmarshal([]byte(n.Payload), &d); err != nil {
-			slog.WarnContext(ctx, "search hub: bad payload", "payload", n.Payload, "err", err)
-			continue
+		if err := json.Unmarshal([]byte(payload), &d); err != nil {
+			slog.WarnContext(ctx, "search hub: bad payload", "payload", payload, "err", err)
+			return
 		}
 		h.publish(d)
-	}
+	})
 }

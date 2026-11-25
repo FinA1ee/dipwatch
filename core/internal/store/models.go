@@ -92,6 +92,13 @@ type AppProduct struct {
 	UnchangedChecks   int32
 	CreatedAt         pgtype.Timestamptz
 	RefreshingSources []string
+	RefreshChanged    bool
+}
+
+type AppProductSource struct {
+	ProductID       int64
+	SourceID        string
+	LastRefreshedAt pgtype.Timestamptz
 }
 
 type AppQuery struct {
@@ -106,6 +113,12 @@ type AppSearchQuotum struct {
 	Used    int32
 }
 
+type AppSetting struct {
+	Key       string
+	Value     []byte
+	UpdatedAt pgtype.Timestamptz
+}
+
 type AppSource struct {
 	ID         string
 	Name       string
@@ -117,10 +130,12 @@ type AppSource struct {
 }
 
 type AppUser struct {
-	ID        string
-	Email     string
-	Currency  string
-	CreatedAt pgtype.Timestamptz
+	ID            string
+	Email         string
+	Currency      string
+	CreatedAt     pgtype.Timestamptz
+	FeishuWebhook string
+	EmailAlerts   bool
 }
 
 type AppWatchItem struct {
@@ -132,6 +147,7 @@ type AppWatchItem struct {
 	Channels              []byte
 	BaselinePriceCnyMinor *int64
 	CreatedAt             pgtype.Timestamptz
+	Sources               []string
 }
 
 type AuthAccount struct {

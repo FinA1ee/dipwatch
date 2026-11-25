@@ -5,6 +5,8 @@ package agent
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
 )
@@ -107,12 +110,8 @@ func (t Task) hostAllowed(host string) bool {
 }
 
 // Step is one model turn, kept in the run's trace for debugging.
-type Step struct {
-	Tool      string `json:"tool,omitempty"`
-	Arguments string `json:"arguments,omitempty"`
-	Result    string `json:"result,omitempty"`
-	Note      string `json:"note,omitempty"`
-}
+// Step is one trace entry; the same type travels to the live admin log.
+type Step = live.Step
 
 // Run is the result of one agent run, successful or not.
 type Run struct {
@@ -127,6 +126,7 @@ type Run struct {
 	Duration   time.Duration
 	Trace      []Step
 	Err        error
+	Key        string // identifies the run in live events
 }
 
 // Recorder stores every run (spec C5).
@@ -138,7 +138,31 @@ type Agent struct {
 	Model      llm.Model
 	NewBrowser func(ctx context.Context) (Browser, error)
 	Recorder   Recorder // optional
+	Observer   Observer // optional: receives each step while the run is in progress
 	Budget     Budget
+}
+
+// Observer receives live events. It must not block the run: errors are its own.
+type Observer interface {
+	Observe(ctx context.Context, e live.Event)
+}
+
+// add records a trace step and tells the observer.
+func (a *Agent) add(ctx context.Context, run *Run, step Step) {
+	run.Trace = append(run.Trace, step)
+	if a.Observer != nil {
+		fitted := step.Fit()
+		a.Observer.Observe(ctx, live.Event{
+			Run: run.Key, Kind: live.KindStep, At: time.Now(), SourceID: run.Task.SourceID,
+			Index: len(run.Trace), Step: &fitted,
+		})
+	}
+}
+
+func newRunKey() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // ErrBlocked means the store showed a captcha, a login wall or similar.
@@ -153,7 +177,12 @@ func (a *Agent) Run(ctx context.Context, task Task) (Run, error) {
 		budget = DefaultBudget
 	}
 	start := time.Now()
-	run := Run{Task: task, Model: a.Model.Name()}
+	run := Run{Task: task, Model: a.Model.Name(), Key: newRunKey()}
+	if a.Observer != nil {
+		a.Observer.Observe(ctx, live.Event{
+			Run: run.Key, Kind: live.KindStart, At: start, SourceID: task.SourceID, Store: task.StoreName, Product: task.Product,
+		})
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, budget.Timeout)
 	defer cancel()
@@ -169,6 +198,15 @@ func (a *Agent) Run(ctx context.Context, task Task) (Run, error) {
 			slog.WarnContext(ctx, "agent: recording run failed", "err", err)
 		}
 		recCancel()
+	}
+	if a.Observer != nil {
+		// The run's context may have expired; the end event must still go out.
+		obsCtx, obsCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		a.Observer.Observe(obsCtx, live.Event{
+			Run: run.Key, Kind: live.KindEnd, At: time.Now(), SourceID: task.SourceID, Outcome: run.Outcome,
+			Offers: len(run.Offers), TokensIn: run.TokensIn, TokensOut: run.TokensOut, CostCNY: float64(run.CostMicros) / 1e6,
+		})
+		obsCancel()
 	}
 	slog.InfoContext(ctx, "agent run", "source", task.SourceID, "outcome", run.Outcome, "offers", len(run.Offers),
 		"steps", run.Steps, "tokens_in", run.TokensIn, "tokens_out", run.TokensOut, "cost_micro_cny", run.CostMicros,
@@ -232,7 +270,7 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 		if !wrappingUp && (float64(run.Steps) >= wrapUpAt*float64(budget.MaxSteps) ||
 			float64(run.TokensIn+run.TokensOut) >= wrapUpAt*float64(budget.MaxTokens)) {
 			wrappingUp = true
-			run.Trace = append(run.Trace, Step{Note: "harness: budget 70% used, asking the model to submit"})
+			a.add(ctx, run, Step{Note: "harness: budget 70% used, asking the model to submit"})
 			messages = append(messages, llm.Message{Role: llm.RoleUser, Content: "Budget nearly used. Call submit_offers now " +
 				"with the listings you have seen (use the latest page content), or report_blocked if you saw none."})
 		}
@@ -244,13 +282,15 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 			fail(OutcomeError, err)
 			return
 		}
+		// The first step of a turn carries the model's text and the call's tokens.
+		turnStep := Step{Thought: strings.TrimSpace(turn.Content), TokensIn: turn.TokensIn, TokensOut: turn.TokensOut}
 		run.Steps++
 		run.TokensIn += turn.TokensIn
 		run.TokensOut += turn.TokensOut
 		messages = append(messages, llm.Message{Role: llm.RoleAssistant, Content: turn.Content, ToolCalls: turn.ToolCalls})
 
 		if len(turn.ToolCalls) == 0 {
-			run.Trace = append(run.Trace, Step{Note: "no tool call: " + truncate(turn.Content, 200)})
+			a.add(ctx, run, Step{Note: "no tool call: " + truncate(turn.Content, 200), TokensIn: turn.TokensIn, TokensOut: turn.TokensOut})
 			if nudged {
 				fail(OutcomeNoAnswer, nil)
 				return
@@ -262,7 +302,9 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 		}
 
 		for _, call := range turn.ToolCalls {
-			step := Step{Tool: call.Name, Arguments: truncate(call.Arguments, 500)}
+			step := turnStep
+			turnStep = Step{}
+			step.Tool, step.Arguments = call.Name, truncate(call.Arguments, 500)
 			var result string
 			switch call.Name {
 			case toolSubmit:
@@ -270,7 +312,7 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 					// The model looked and found no listings for the product. That is an
 					// answer, not a failure of the store, so it does not count as blocked.
 					step.Result = "no listings for the product"
-					run.Trace = append(run.Trace, step)
+					a.add(ctx, run, step)
 					fail(OutcomeNoOffers, nil)
 					return
 				}
@@ -279,12 +321,12 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 					run.Offers = offers
 					run.Outcome = OutcomeOK
 					step.Result = fmt.Sprintf("accepted %d offers, dropped %d", len(offers), len(problems))
-					run.Trace = append(run.Trace, step)
+					a.add(ctx, run, step)
 					return
 				}
 				if rejectedSubmission {
 					step.Result = "rejected again: " + strings.Join(problems, "; ")
-					run.Trace = append(run.Trace, step)
+					a.add(ctx, run, step)
 					fail(OutcomeNoAnswer, nil)
 					return
 				}
@@ -297,18 +339,20 @@ func (a *Agent) loop(ctx context.Context, task Task, budget Budget, run *Run) {
 				}
 				_ = json.Unmarshal([]byte(call.Arguments), &args)
 				step.Result = "blocked: " + truncate(args.Reason, 200)
-				run.Trace = append(run.Trace, step)
+				a.add(ctx, run, step)
 				fail(OutcomeBlocked, fmt.Errorf("%w: %s", ErrBlocked, truncate(args.Reason, 200)))
 				return
 
 			default:
+				started := time.Now()
 				result = a.callBrowser(ctx, browser, task, call)
+				step.Ms = time.Since(started).Milliseconds()
 				if pageChangingTools[call.Name] || call.Name == "browser_snapshot" {
 					pageResultIDs[call.ID] = true
 				}
 			}
 			step.Result = truncate(result, 300)
-			run.Trace = append(run.Trace, step)
+			a.add(ctx, run, step)
 			messages = append(messages, llm.Message{Role: llm.RoleTool, ToolCallID: call.ID, Content: result})
 			trimOldToolResults(messages, keepFullToolResults, pageResultIDs)
 		}

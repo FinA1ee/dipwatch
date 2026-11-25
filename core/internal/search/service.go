@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/limits"
+	"github.com/FinA1ee/dipwatch/core/internal/money"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -20,10 +23,7 @@ import (
 const FreshFor = 6 * time.Hour
 
 // Money is an amount in minor units (cents; yen for JPY) of an ISO 4217 currency.
-type Money struct {
-	Minor    int64  `json:"minor"`
-	Currency string `json:"currency" minLength:"3" maxLength:"3"`
-}
+type Money = money.Money
 
 type Source struct {
 	ID     string `json:"id"`
@@ -68,15 +68,77 @@ type Service struct {
 	DB     *pgxpool.Pool
 	Gate   *guard.Gate
 	Quotas *guard.Quotas // nil: no limits
+	Limits *limits.Store // nil: the defaults
 	Queue  Inserter
 	Hub    *Hub
 	Now    func() time.Time // nil: time.Now
 }
 
-// Search resolves text to a product, returns its stored offers and, when they
-// are older than FreshFor, starts a refresh (S1, S2). A search that needs the
-// intent call or a refresh counts once against the viewer's daily quota (C1).
-func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currency string) (Result, error) {
+// StoreError is a problem with the stores a search names; the API answers 400.
+type StoreError string
+
+func (e StoreError) Error() string { return string(e) }
+
+// Store is one store a search can use.
+type Store struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Region string `json:"region"`
+}
+
+// Stores lists the enabled stores and how many one search may use.
+func (s *Service) Stores(ctx context.Context) ([]Store, int, error) {
+	rows, err := store.New(s.DB).ListEnabledSources(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]Store, len(rows))
+	for i, r := range rows {
+		out[i] = Store{ID: r.ID, Name: r.Name, Region: r.Region}
+	}
+	return out, s.limits(ctx).SourcesPerSearch, nil
+}
+
+func (s *Service) limits(ctx context.Context) limits.Limits {
+	if s.Limits == nil {
+		return limits.Defaults
+	}
+	return s.Limits.Get(ctx)
+}
+
+// checkStores keeps only enabled stores and enforces the per-search limit.
+func (s *Service) checkStores(ctx context.Context, ids []string) ([]string, error) {
+	enabled, max, err := s.Stores(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, StoreError("pick a store to search")
+	}
+	if len(ids) > max {
+		return nil, StoreError(fmt.Sprintf("you can search up to %d store(s) at a time", max))
+	}
+	var out []string
+	for _, id := range ids {
+		if !slices.ContainsFunc(enabled, func(e Store) bool { return e.ID == id }) {
+			return nil, StoreError(fmt.Sprintf("store %q is not available", id))
+		}
+		if !slices.Contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
+// Search resolves text to a product and returns its stored offers from the
+// chosen stores. Stores whose offers are older than FreshFor are refreshed (S1,
+// S2); only the chosen stores are searched, to bound spend (task 6.7). A search
+// that needs the intent call or a refresh counts once against the daily quota (C1).
+func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currency string, stores []string) (Result, error) {
+	stores, err := s.checkStores(ctx, stores)
+	if err != nil {
+		return Result{}, err
+	}
 	charge := &guard.Charger{Quotas: s.Quotas, Viewer: viewer}
 	p, err := s.Gate.Resolve(ctx, text, charge)
 	if err != nil {
@@ -92,27 +154,43 @@ func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currenc
 	if s.Now != nil {
 		now = s.Now
 	}
-	fresh := product.LastRefreshedAt.Valid && now().Sub(product.LastRefreshedAt.Time) < FreshFor
-	if !fresh || len(product.RefreshingSources) > 0 {
-		res.Status = "refreshing"
+	freshness, err := q.SourceFreshness(ctx, store.SourceFreshnessParams{ProductID: product.ID, SourceIds: stores})
+	if err != nil {
+		return Result{}, err
 	}
-	if !fresh && len(product.RefreshingSources) == 0 {
+	var stale []string
+	for _, id := range stores {
+		fresh := slices.ContainsFunc(freshness, func(f store.SourceFreshnessRow) bool {
+			return f.SourceID == id && now().Sub(f.LastRefreshedAt.Time) < FreshFor
+		})
+		switch {
+		case slices.Contains(product.RefreshingSources, id):
+			res.Status = "refreshing" // already running: join it for free
+		case !fresh:
+			stale = append(stale, id)
+		}
+	}
+	if len(stale) > 0 {
 		if err := charge.Charge(ctx); err != nil {
 			return Result{}, err
 		}
-		// Unique per product while queued or running, so concurrent searches share it.
-		if _, err := s.Queue.Insert(ctx, jobs.RefreshProductArgs{ProductID: product.ID}, nil); err != nil {
+		// Unique while queued or running, so concurrent searches share it.
+		if _, err := s.Queue.Insert(ctx, jobs.RefreshProductArgs{ProductID: product.ID, Sources: stale}, nil); err != nil {
 			return Result{}, err
 		}
+		res.Status = "refreshing"
 	}
-	res.Offers, err = s.offers(ctx, q, product.ID, nil, currency)
+	res.Offers, err = s.offers(ctx, q, product.ID, stores, currency)
 	return res, err
 }
 
-// offers lists the product's offers (optionally one source's), converted to
+// offers lists the product's offers (from the given stores; nil: all), converted to
 // currency and ranked cheapest first by their CNY value.
-func (s *Service) offers(ctx context.Context, q *store.Queries, productID int64, sourceID *string, currency string) ([]Offer, error) {
-	rows, err := q.ListSearchOffers(ctx, store.ListSearchOffersParams{ProductID: productID, SourceID: sourceID})
+func (s *Service) offers(ctx context.Context, q *store.Queries, productID int64, stores []string, currency string) ([]Offer, error) {
+	if stores == nil {
+		stores = []string{} // every store
+	}
+	rows, err := q.ListSearchOffers(ctx, store.ListSearchOffersParams{ProductID: productID, SourceIds: stores})
 	if err != nil {
 		return nil, err
 	}

@@ -21,12 +21,15 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/FinA1ee/dipwatch/core/internal/agent"
+	"github.com/FinA1ee/dipwatch/core/internal/alerts"
 	"github.com/FinA1ee/dipwatch/core/internal/config"
 	"github.com/FinA1ee/dipwatch/core/internal/db"
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/matcher"
+	"github.com/FinA1ee/dipwatch/core/internal/notify"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/kakaku"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
@@ -71,6 +74,7 @@ func adapters(pool *pgxpool.Pool) (jobs.Adapters, *matcher.Matcher) {
 			return agent.StartPlaywright(ctx, agent.PlaywrightCommand())
 		},
 		Recorder: agent.DBRecorder{Queries: store.New(pool)},
+		Observer: live.Notifier{Queries: store.New(pool)},
 	}
 	for id, s := range agent.Stores {
 		if a[id] == nil {
@@ -80,6 +84,17 @@ func adapters(pool *pgxpool.Pool) (jobs.Adapters, *matcher.Matcher) {
 	}
 	slog.Info("browsing agent and matcher enabled", "model", cfg.Model, "stores", len(agent.Stores))
 	return a, &matcher.Matcher{Model: model}
+}
+
+// loadMailer returns the SMTP mailer for email alerts, or nil when SMTP_URL is
+// not set: alerts then go to Feishu only.
+func loadMailer() (*notify.Mailer, error) {
+	smtpURL := os.Getenv("SMTP_URL")
+	if smtpURL == "" {
+		slog.Info("SMTP_URL not set: email alerts off")
+		return nil, nil
+	}
+	return notify.NewMailer(smtpURL, os.Getenv("MAIL_FROM"))
 }
 
 func open(ctx context.Context) (*pgxpool.Pool, error) {
@@ -100,6 +115,12 @@ func run() error {
 	}
 	defer pool.Close()
 
+	mailer, err := loadMailer()
+	if err != nil {
+		return err
+	}
+	checker := &alerts.Checker{EmailEnabled: mailer != nil, Enqueue: jobs.EnqueueNotify}
+
 	workers := river.NewWorkers()
 	sourceAdapters, listingMatcher := adapters(pool)
 	river.AddWorker(workers, &jobs.RefreshProductWorker{DB: pool, Adapters: sourceAdapters})
@@ -108,16 +129,23 @@ func run() error {
 		Registry: sources.NewRegistry(),
 		Adapters: sourceAdapters,
 		Matcher:  listingMatcher,
+		Alerts:   checker,
 	})
+	river.AddWorker(workers, &jobs.NotifyWorker{DB: pool, Mailer: mailer, PublicURL: os.Getenv("PUBLIC_URL")})
+	river.AddWorker(workers, &jobs.ScheduleWorker{DB: pool})
+	river.AddWorker(workers, &jobs.SimulateDropWorker{DB: pool, Alerts: checker})
 	river.AddWorker(workers, &jobs.FXRefreshWorker{
 		DB:     pool,
 		Client: &http.Client{Timeout: 20 * time.Second},
 		URL:    fx.DefaultURL,
 	})
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:          map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: maxWorkers}},
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {MaxWorkers: maxWorkers},
+			jobs.NotifyQueue:   {MaxWorkers: 2},
+		},
 		Workers:         workers,
-		PeriodicJobs:    []*river.PeriodicJob{jobs.FXPeriodicJob()},
+		PeriodicJobs:    []*river.PeriodicJob{jobs.FXPeriodicJob(), jobs.SchedulePeriodicJob()},
 		SoftStopTimeout: 20 * time.Second,
 	})
 	if err != nil {

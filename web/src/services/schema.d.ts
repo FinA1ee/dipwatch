@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+    "/admin/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Budget limits */
+        get: operations["admin-limits"];
+        /**
+         * Change budget limits
+         * @description Applies to the next request in core-api and within 10 seconds in the worker.
+         */
+        put: operations["admin-save-limits"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream browsing-agent steps as they happen
+         * @description Sends `snapshot` with recent runs, then an `event` per start, step and end.
+         */
+        get: operations["admin-live"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/metrics": {
         parameters: {
             query?: never;
@@ -15,6 +56,26 @@ export interface paths {
         get: operations["admin-metrics"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{productId}/simulate-drop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lower the cheapest offer and run the alert check
+         * @description Test of alert delivery (M6.3): changes stored prices, so use it on test products only.
+         */
+        post: operations["admin-simulate-drop"];
         delete?: never;
         options?: never;
         head?: never;
@@ -72,6 +133,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My alert channels */
+        get: operations["get-settings"];
+        /** Change my alert channels */
+        put: operations["save-settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/settings/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a test message to my Feishu webhook */
+        post: operations["test-feishu"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/tracked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Products I track */
+        get: operations["list-tracked"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/tracked/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Track a product, or change its note and rules */
+        put: operations["save-tracked"];
+        post?: never;
+        /** Stop tracking a product */
+        delete: operations["delete-tracked"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products/{productId}": {
         parameters: {
             query?: never;
@@ -124,6 +255,23 @@ export interface paths {
          * @description Sends the full ranked offer list now and after each source finishes, then `done`.
          */
         get: operations["search-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stores a search can use */
+        get: operations["list-stores"];
         put?: never;
         post?: never;
         delete?: never;
@@ -227,6 +375,32 @@ export interface components {
              */
             type: string;
         };
+        Event: {
+            /** Format: date-time */
+            at: string;
+            /** Format: double */
+            cost_cny?: number;
+            /**
+             * Format: int64
+             * @description Step number, from 1
+             */
+            index?: number;
+            /** @enum {string} */
+            kind: "start" | "step" | "end";
+            /** Format: int64 */
+            offers?: number;
+            outcome?: string;
+            product?: string;
+            /** @description Run key, unique per run */
+            run: string;
+            source_id: string;
+            step?: components["schemas"]["Step"];
+            store?: string;
+            /** Format: int64 */
+            tokens_in?: number;
+            /** Format: int64 */
+            tokens_out?: number;
+        };
         HealthOutputBody: {
             /**
              * Format: uri
@@ -244,6 +418,53 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        Item: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Item.json
+             */
+            readonly $schema?: string;
+            /** @description Lowest price when tracking started, in CNY */
+            baseline?: components["schemas"]["Money"];
+            note: string;
+            /** Format: int64 */
+            product_id: number;
+            product_name: string;
+            rules: components["schemas"]["Rule"][];
+            /** @description Stores refreshed and alerted on; empty: every store */
+            stores: string[];
+            /** Format: date-time */
+            tracked_at: string;
+        };
+        Limits: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Limits.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Costly searches per member per day (C1)
+             */
+            member_daily_searches: number;
+            /**
+             * Format: int64
+             * @description Stores a member or visitor may pick for one search
+             */
+            sources_per_search: number;
+            /**
+             * Format: int64
+             * @description Products one member may track (C2)
+             */
+            tracked_per_member: number;
+            /**
+             * Format: int64
+             * @description Costly searches per visitor IP per day (C1)
+             */
+            visitor_daily_searches: number;
         };
         Metrics: {
             /**
@@ -330,6 +551,23 @@ export interface components {
              */
             status: "fresh" | "refreshing";
         };
+        Rule: {
+            /** @description For below: alert when an offer costs less than this */
+            below?: components["schemas"]["Money"];
+            /**
+             * Format: int64
+             * @description For drop: alert at this drop from the price when tracking started
+             */
+            percent?: number;
+            /** @enum {string} */
+            type: "below" | "drop" | "back_in_stock" | "new_source";
+        };
+        Run: {
+            /** @description Missing while the run is in progress */
+            end?: components["schemas"]["Event"];
+            start: components["schemas"]["Event"];
+            steps: components["schemas"]["Event"][];
+        };
         RunsOutputBody: {
             /**
              * Format: uri
@@ -339,6 +577,30 @@ export interface components {
             readonly $schema?: string;
             /** @description Newest first */
             runs: components["schemas"]["Summary"][];
+        };
+        SaveSettingsInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SaveSettingsInputBody.json
+             */
+            readonly $schema?: string;
+            email_alerts: boolean;
+            /** @description Feishu or Lark bot webhook URL; empty turns Feishu alerts off */
+            feishu_webhook: string;
+        };
+        SaveTrackedInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SaveTrackedInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Up to 500 characters */
+            note: string;
+            rules: components["schemas"]["Rule"][];
+            /** @description Stores to track at (needed when tracking starts; ignored afterwards) */
+            stores?: string[];
         };
         SearchInputBody: {
             /**
@@ -354,6 +616,39 @@ export interface components {
             currency: string;
             /** @description Product to search for, e.g. RTX 5090. At most 80 characters after trimming. */
             query: string;
+            /** @description Store ids to search, from GET /stores; at most the per-search limit */
+            stores: string[];
+        };
+        Settings: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Settings.json
+             */
+            readonly $schema?: string;
+            email: string;
+            email_alerts: boolean;
+            /** @description false while the site has no SMTP: email alerts are not sent yet */
+            email_available: boolean;
+            /** @description Empty: no Feishu alerts */
+            feishu_webhook: string;
+        };
+        SimulateInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SimulateInputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @default 20
+             */
+            percent: number;
+        };
+        Snapshot: {
+            /** @description Newest first */
+            runs: components["schemas"]["Run"][];
         };
         Source: {
             id: string;
@@ -394,11 +689,44 @@ export interface components {
         };
         Step: {
             arguments?: string;
+            /**
+             * Format: int64
+             * @description Time the tool took
+             */
+            ms?: number;
             /** @description Harness event, e.g. the budget wrap-up */
             note?: string;
             /** @description Excerpt of what the tool returned */
             result?: string;
+            /** @description Text the model wrote with this turn's tool calls */
+            thought?: string;
+            /**
+             * Format: int64
+             * @description Tokens of the model call that chose this step (first step of a turn only)
+             */
+            tokens_in?: number;
+            /** Format: int64 */
+            tokens_out?: number;
             tool?: string;
+        };
+        Store: {
+            id: string;
+            name: string;
+            region: string;
+        };
+        StoresOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StoresOutputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description How many stores one search may use
+             */
+            per_search: number;
+            stores: components["schemas"]["Store"][];
         };
         Summary: {
             /** Format: double */
@@ -426,6 +754,16 @@ export interface components {
             /** Format: int64 */
             tokens_out: number;
         };
+        TrackedOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TrackedOutputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Newest first */
+            items: components["schemas"]["Item"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -435,6 +773,164 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "admin-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Limits"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-save-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Limits"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Limits"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": ({
+                        data: components["schemas"]["Event"];
+                        /**
+                         * @description The event name.
+                         * @constant
+                         */
+                        event: "event";
+                        /** @description The event ID. */
+                        id?: number | string;
+                        /** @description The retry time in milliseconds. */
+                        retry?: number;
+                    } | {
+                        data: components["schemas"]["Snapshot"];
+                        /**
+                         * @description The event name.
+                         * @constant
+                         */
+                        event: "snapshot";
+                        /** @description The event ID. */
+                        id?: number | string;
+                        /** @description The retry time in milliseconds. */
+                        retry?: number;
+                    })[];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "admin-metrics": {
         parameters: {
             query?: {
@@ -454,6 +950,57 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Metrics"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-simulate-drop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateInputBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Forbidden */
             403: {
@@ -635,6 +1182,359 @@ export interface operations {
             };
         };
     };
+    "get-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Settings"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "save-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSettingsInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Settings"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "test-feishu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-tracked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackedOutputBody"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "save-tracked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveTrackedInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-tracked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-product": {
         parameters: {
             query?: {
@@ -759,6 +1659,8 @@ export interface operations {
         parameters: {
             query?: {
                 currency?: string;
+                /** @description The stores the search used */
+                stores?: string[];
             };
             header?: never;
             path: {
@@ -797,6 +1699,35 @@ export interface operations {
                         /** @description The retry time in milliseconds. */
                         retry?: number;
                     })[];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoresOutputBody"];
                 };
             };
             /** @description Error */

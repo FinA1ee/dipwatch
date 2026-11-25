@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/runs"
 )
 
@@ -24,7 +25,7 @@ func (f *fakeRuns) Get(context.Context, int64) (runs.Detail, error) { return run
 
 func TestAdminEndpointsNeedTheAdminRole(t *testing.T) {
 	r := &fakeRuns{}
-	h, _ := New(fakePinger{}, testToken, Services{Runs: r})
+	h, _ := New(fakePinger{}, testToken, Services{Runs: r, Live: &live.Hub{}})
 	get := func(path, role string) int {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.Header.Set(InternalTokenHeader, testToken)
@@ -36,7 +37,14 @@ func TestAdminEndpointsNeedTheAdminRole(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		return rec.Code
 	}
-	for _, path := range []string{"/admin/metrics", "/admin/runs", "/admin/runs/1"} {
+	for _, path := range []string{"/admin/metrics", "/admin/runs", "/admin/runs/1", "/admin/live"} {
+		if path == "/admin/live" {
+			// A stream answers 200 and stays open, so only the refusals are checked here.
+			if code := get(path, ""); code != http.StatusForbidden {
+				t.Errorf("%s without role: %d, want 403", path, code)
+			}
+			continue
+		}
 		if code := get(path, ""); code != http.StatusForbidden {
 			t.Errorf("%s without role: %d, want 403", path, code)
 		}

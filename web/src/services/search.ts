@@ -1,7 +1,24 @@
-import { api, type DoneEvent, fail, type OffersEvent, type ProductPage, type SearchResult } from "./api";
+import {
+  api,
+  type DoneEvent,
+  fail,
+  type OffersEvent,
+  type ProductPage,
+  type Schemas,
+  type SearchResult,
+} from "./api";
 
-export async function search(query: string, currency: string): Promise<SearchResult> {
-  const { data, error, response } = await api.POST("/search", { body: { query, currency } });
+export type Store = Schemas["Store"];
+
+/** Stores a search can use, and how many one search may pick. */
+export async function getStores(): Promise<{ stores: Store[]; perSearch: number }> {
+  const { data, error, response } = await api.GET("/stores");
+  if (!data) fail(response, error);
+  return { stores: data.stores, perSearch: data.per_search };
+}
+
+export async function search(query: string, currency: string, stores: string[]): Promise<SearchResult> {
+  const { data, error, response } = await api.POST("/search", { body: { query, currency, stores } });
   if (!data) fail(response, error);
   return data;
 }
@@ -23,8 +40,14 @@ export type StreamHandlers = {
  * Follows a refresh: each `offers` event carries the full ranked list, so the
  * caller replaces its list. Returns a function that closes the stream.
  */
-export function streamOffers(productId: number, currency: string, handlers: StreamHandlers): () => void {
+export function streamOffers(
+  productId: number,
+  currency: string,
+  stores: string[],
+  handlers: StreamHandlers,
+): () => void {
   const params = new URLSearchParams({ currency });
+  for (const s of stores) params.append("stores", s);
   const source = new EventSource(`/api/search/${productId}/events?${params}`);
   source.addEventListener("offers", (e) => handlers.onOffers(JSON.parse((e as MessageEvent<string>).data)));
   source.addEventListener("done", (e) => {

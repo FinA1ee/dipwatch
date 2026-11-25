@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -58,13 +59,8 @@ type Summary struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-// Step is one entry of a browsing run's trace.
-type Step struct {
-	Tool      string `json:"tool,omitempty"`
-	Arguments string `json:"arguments,omitempty"`
-	Result    string `json:"result,omitempty" doc:"Excerpt of what the tool returned"`
-	Note      string `json:"note,omitempty" doc:"Harness event, e.g. the budget wrap-up"`
-}
+// Step is one entry of a browsing run's trace, the same shape the live log streams.
+type Step = live.Step
 
 // Detail is a run with its trace. The trace is not called "steps": that name is
 // the step count in the embedded Summary.
