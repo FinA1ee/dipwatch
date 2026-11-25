@@ -276,3 +276,30 @@ Decisions taken before starting (2026-11-25): alerts go out through a Feishu or 
 - **Simulated drop** (`POST /admin/products/{id}/simulate-drop`) changes stored prices; use it on a product kept for testing.
 - **Decisions for Day 7 (2026-11-25):** JD only through its affiliate API (JD Union), since its search page shows the server a login wall; the owner applies, and the adapter is built against the docs. UI pass: two mockups of the search page, the owner picks one, then it is applied to every page.
 - **Budget limits (6.7).** `/admin` has a "Budget limits" form; values are stored in `app.settings` and apply to core-api's next request and within 10 seconds in the worker. Freshness is per product and store (`app.product_sources`), so picking another store starts a refresh only for that store. Trackers created before the change keep refreshing every store until edited.
+
+## Day 7: hardening, UI pass, release
+
+Goal: spend cannot run away, the deploy and the data are safe, the site looks finished, and a newcomer can run it from the README.
+
+Already met on earlier days: the injection eval case passes (H5, Day 4), two prompt versions are compared on the eval set and recorded (H6, browse-v7 and v8), and one source failing does not break search (S7, tested since Day 2).
+
+### Success metrics
+
+| #    | Metric              | How to check                                                                                                                                           |
+| ---- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M7.1 | Spend breaker       | Tests: at 80% of the daily budget, agent runs happen only for tracked products; at 100%, searches answer from stored data and no LLM call is made (C4) |
+| M7.2 | Budget visible      | `/admin` shows today's spend against the budget; the budget is one of the live limits                                                                  |
+| M7.3 | Rollback works      | A deploy of a deliberately broken image fails its health check and the previous tag is live again, without manual steps (N3)                           |
+| M7.4 | Backups             | A daily `pg_dump` on the server keeps 7 days; restoring one into a scratch database succeeds                                                           |
+| M7.5 | UI pass             | The owner picks one of two mockups; every page follows it                                                                                              |
+| M7.6 | JD through JD Union | Adapter with signed requests and a recorded-response test; live once the owner's app key is approved                                                   |
+| M7.7 | Fresh clone runs    | Following the README in an empty directory brings the stack up (N4)                                                                                    |
+| M7.8 | Retro               | `docs/retro.md` records what worked, what did not, cost so far and what comes next                                                                     |
+
+### Tasks
+
+- [ ] **7.1 Spend breaker.** Today's LLM spend from `agent_runs` (China day); daily budget as a live limit; 80% and 100% rules in search, the refresh jobs, the matcher and the scheduler; spend on `/admin`.
+- [ ] **7.2 UI pass.** Two mockups of the search page; apply the chosen one to every page.
+- [ ] **7.3 JD Union adapter.** `jd.union.open.goods.query` with the router's MD5 signature; app key and secret from env; source row disabled until keys are set.
+- [ ] **7.4 Rollback test and backups.** Broken-image deploy on the server; `deploy/backup.sh` installed by the deploy script, restore check.
+- [ ] **7.5 README and retro.** Fresh-clone check, README updates for sign-in, limits and alerts; `docs/retro.md`.
