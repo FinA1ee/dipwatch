@@ -1,0 +1,120 @@
+web/src/pages/Search/modules/ResultsModule/View/ResultsView.tsx
+  s_3313d584934833::t_5505d21547289f 4,13,20-21
+core/internal/store/queries/settings.sql
+  s_3313d584934833::t_4b6398ec434eea 1-6
+docs/spec.md
+  s_3313d584934833::t_0c1e40e154e4d1 55-57
+web/src/services/admin.ts
+  s_3313d584934833::t_3974eaae3751c6 62-76
+core/internal/guard/quota.go
+  s_3313d584934833::t_62eba05648fd1c 17-24,72
+  s_3313d584934833::t_ad268d51955217 10,35-37,39,45,50-64,69
+web/src/pages/Product/modules/TrackModule/View/TrackView.tsx
+  s_3313d584934833::t_5505d21547289f 5,14,46
+  s_3313d584934833::t_b6c354d11db621 53-59
+web/src/pages/Admin/modules/LimitsModule/Component/LimitsForm.tsx
+  s_3313d584934833::t_b6c354d11db621 1-68
+web/src/hooks/useSettings.ts
+  s_3313d584934833::t_3974eaae3751c6 9-10,12,15,20,22
+web/src/hooks/useStores.test.ts
+  s_3313d584934833::t_3974eaae3751c6 1-21
+web/src/pages/Search/modules/SearchBoxModule/View/SearchBoxView.tsx
+  s_3313d584934833::t_b6c354d11db621 49-57
+  s_3313d584934833::t_5505d21547289f 4,7,12,17-18,21,27,30,35,38,40,42-44,47-48,58-64
+core/internal/store/models.go
+  s_3313d584934833::t_4b6398ec434eea 98-103,116-121,150
+core/internal/store/products.sql.go
+  s_3313d584934833::t_4b6398ec434eea 10-11,35-38,46-55,61,63-64,67,135-150,169-203,205-208,216-217
+web/src/pages/Admin/index.tsx
+  s_3313d584934833::t_b6c354d11db621 2,19-22
+core/internal/tracking/tracking_test.go
+  s_3313d584934833::t_ffe93aa7364688 57,61-62,64,67,70,73-80,82-84,86-88,97-98
+core/internal/jobs/notify_test.go
+  s_3313d584934833::t_ffe93aa7364688 63
+core/internal/tracking/tracking.go
+  s_3313d584934833::t_e2b144e63d8185 19,24-26,35,38-47,54,71-78,105,110-112,137,142-146,148,152-154,160,165,221-223,241-245
+core/internal/store/queries/products.sql
+  s_3313d584934833::t_4b6398ec434eea 14-28,43-49
+web/src/services/schema.d.ts
+  s_3313d584934833::t_3974eaae3751c6 7-27,266-282,436-437,441-468,602-603,619-620,712-730,776-873,1662-1663,1715-1730
+core/internal/jobs/alerts.go
+  s_3313d584934833::t_67eb58a1c195fb 147-152
+web/src/pages/Search/modules/SearchBoxModule/Component/StorePicker.tsx
+  s_3313d584934833::t_68acf3779f575a 1-55
+core/internal/http/search.go
+  s_3313d584934833::t_62eba05648fd1c 20-22,27-36,45-47,51-63,74-76,82-86,88,105
+core/internal/store/queries/offers.sql
+  s_3313d584934833::t_4b6398ec434eea 50-51,59
+web/src/pages/Admin/modules/LimitsModule/View/LimitsView.tsx
+  s_3313d584934833::t_b6c354d11db621 1-32
+core/internal/store/offers.sql.go
+  s_3313d584934833::t_4b6398ec434eea 160,166,185-186,188
+core/internal/store/watch.sql.go
+  s_3313d584934833::t_4b6398ec434eea 43,63,69,82,104,120,136,158,172-173,175,184,189,197,209
+core/internal/store/settings.sql.go
+  s_3313d584934833::t_4b6398ec434eea 1-54
+core/internal/search/service.go
+  s_3313d584934833::t_c0f8213e2566f2 5,17,71,77-141,157-159,161-173,177-178,181,183,187,189-193
+core/internal/http/tracking.go
+  s_3313d584934833::t_e2b144e63d8185 19,44-46,90,160,165-167
+core/internal/jobs/refresh.go
+  s_3313d584934833::t_67eb58a1c195fb 10,31-32,86-88,161
+web/src/hooks/useTracked.ts
+  s_3313d584934833::t_3974eaae3751c6 14-15
+core/internal/alerts/check_test.go
+  s_3313d584934833::t_ffe93aa7364688 82
+core/internal/db/migrations/00010_budget_limits.sql
+  s_3313d584934833::t_4b6398ec434eea 1-25
+core/internal/store/queries/watch.sql
+  s_3313d584934833::t_4b6398ec434eea 17-19,28
+web/src/services/search.ts
+  s_3313d584934833::t_3974eaae3751c6 1-9,11-21,43-48,50
+core/internal/search/stream.go
+  s_3313d584934833::t_c0f8213e2566f2 40,59-64,67
+web/src/pages/Admin/modules/LimitsModule/Model/useLimits.ts
+  s_3313d584934833::t_b6c354d11db621 1-17
+core/internal/search/search_test.go
+  s_3313d584934833::t_0b1629fad250e0 237-277
+  s_3313d584934833::t_ffe93aa7364688 20,63-64,67-69,119,137,159,210-211,215-216,220-221,225-226,233
+  s_3313d584934833::t_ec562780d7e742 115,203
+  s_3313d584934833::t_ad9a07af540e74 134,230
+web/src/hooks/useStores.ts
+  s_3313d584934833::t_3974eaae3751c6 1-30
+core/internal/http/api.go
+  s_3313d584934833::t_2f09a0d802f09b 35,52
+web/src/services/tracking.ts
+  s_3313d584934833::t_3974eaae3751c6 13-19,22
+core/cmd/core-api/main.go
+  s_3313d584934833::t_2f09a0d802f09b 30,107-108,113,115,147,159
+web/src/pages/MyProducts/modules/TrackedModule/View/TrackedView.tsx
+  s_3313d584934833::t_b6c354d11db621 2,10-12,30
+docs/tasks.md
+  s_3313d584934833::t_0c1e40e154e4d1 267,278
+  s_3313d584934833::t_8c47e1a4ad9cde 277
+core/internal/alerts/check.go
+  s_3313d584934833::t_67eb58a1c195fb 7,76-78
+core/internal/limits/limits.go
+  s_3313d584934833::t_494fb1ae666e07 1-97
+contracts/openapi.yaml
+  s_3313d584934833::t_3974eaae3751c6 251-255,264,267-306,588-593,617-623,626,791-826,908-975,1640-1648,1709-1725
+core/internal/jobs/schedule_test.go
+  s_3313d584934833::t_ffe93aa7364688 21,31-32
+core/internal/http/limits.go
+  s_3313d584934833::t_2f09a0d802f09b 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "20a3d67ac751687d6faf3f336295eaa7590d9ed5",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
