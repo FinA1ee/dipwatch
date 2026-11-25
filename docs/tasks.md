@@ -207,18 +207,18 @@ Decisions taken before starting (2026-11-25): web pages use clean architecture (
 
 ### Success metrics
 
-| #     | Metric                           | How to check                                                                                                                                                    |
-| ----- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M5.1  | Search page                      | Typing a product shows stored offers at once, then each source's offers as it finishes, ranked by price, with source, region, original and converted price (S5) |
-| M5.2  | Filters and currency             | Results can be filtered by condition, region and stock, and shown in CNY, USD, JPY, EUR or SGD; the choice survives a reload                                    |
-| M5.3  | Product page                     | `/p/<id>` lists all offers and the lowest price per day for the last 30 days                                                                                    |
-| M5.4  | Sign-in                          | Magic link and GitHub sign-in both work against the deployed site; the same verified email by both methods is one member (A1, A2)                               |
-| M5.5  | Quotas                           | Tests: the 11th costly search from one IP in a day and the 31st from one member get 429; cached searches are never counted (C1)                                 |
-| M5.6  | Identity headers are trusted     | Tests: a client-sent `X-Dipwatch-*` header never reaches core; admin endpoints answer 403 without the admin role                                                |
-| M5.7  | Per-source metrics               | `/admin` shows, per source and day, runs, success rate, offers per run, median steps, tokens, cost per run and the most common failure outcome (H3)             |
-| M5.8  | Run inspection                   | `/admin/runs` filters by source, outcome, prompt version and day; a run's page shows each step's tool, arguments and result excerpt, with tokens and cost (H4)  |
-| M5.9  | Agent sources live               | After the quota deploy, Amazon US, Amazon Japan and SMZDM are enabled in production and a search returns offers from at least two of them                       |
-| M5.10 | An empty result is not a failure | An agent run that finds no listings does not count toward skipping the source                                                                                   |
+| #     | Metric                           | How to check                                                                                                                                                                              |
+| ----- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M5.1  | Search page                      | Typing a product shows stored offers at once, then each source's offers as it finishes, ranked by price, with source, region, original and converted price (S5)                           |
+| M5.2  | Filters and currency             | Results can be filtered by condition, region and stock, and shown in CNY, USD, JPY, EUR or SGD; the choice survives a reload                                                              |
+| M5.3  | Product page                     | `/p/<id>` lists all offers and the lowest price per day for the last 30 days                                                                                                              |
+| M5.4  | Sign-in                          | GitHub sign-in works against the deployed site; the magic link is built and tested locally and goes live once SMTP is set. The same verified email by both methods is one member (A1, A2) |
+| M5.5  | Quotas                           | Tests: the 11th costly search from one IP in a day and the 31st from one member get 429; cached searches are never counted (C1)                                                           |
+| M5.6  | Identity headers are trusted     | Tests: a client-sent `X-Dipwatch-*` header never reaches core; admin endpoints answer 403 without the admin role                                                                          |
+| M5.7  | Per-source metrics               | `/admin` shows, per source and day, runs, success rate, offers per run, median steps, tokens, cost per run and the most common failure outcome (H3)                                       |
+| M5.8  | Run inspection                   | `/admin/runs` filters by source, outcome, prompt version and day; a run's page shows each step's tool, arguments and result excerpt, with tokens and cost (H4)                            |
+| M5.9  | Agent sources live               | After the quota deploy, Amazon US, Amazon Japan and SMZDM are enabled in production and a search returns offers from at least two of them                                                 |
+| M5.10 | An empty result is not a failure | An agent run that finds no listings does not count toward skipping the source                                                                                                             |
 
 ### Tasks
 
@@ -229,7 +229,7 @@ Decisions taken before starting (2026-11-25): web pages use clean architecture (
 - [x] **5.5 Web foundations.** Router, Zustand, services layer (API client, SSE, auth client), layout with sign-in state, currency setting.
 - [x] **5.6 Search and product pages.** Search module (query, stream, results, filters) and product page, by the structure in design.
 - [x] **5.7 Sign-in and admin pages.** Sign-in page (email link, GitHub); admin metrics, run list and run trace.
-- [ ] **5.8 Deploy and go live.** New env values on the server (the owner sets the SMTP and GitHub secrets), check the three agent sources from the server with `source-smoke -browser-only`, enable them, verify M5.4 and M5.9 on the deployed site.
+- [x] **5.8 Deploy and go live.** New env values on the server (the owner sets the SMTP and GitHub secrets), check the three agent sources from the server with `source-smoke -browser-only`, enable them, verify M5.4 and M5.9 on the deployed site.
 
 ### Day 5 notes
 
@@ -237,3 +237,31 @@ Decisions taken before starting (2026-11-25): web pages use clean architecture (
 - **Bugs found by the check:** the stream reconnected about 3,000 times in a few seconds because the Model's handlers were new functions on every render (now stable); the run detail's step list overwrote the step count in JSON (renamed to `trace`); `¥` was ambiguous between CNY and JPY (now `CN¥`).
 - **Quotas count once per search,** just before its first costly step (the intent call or starting a refresh). Joining a refresh that is already running is free.
 - **Identity:** the gateway forwards the user id, email, admin role and client IP; core's tests check that admin endpoints answer 403 without the role, and the gateway's tests that client-sent identity headers never reach core.
+- **Production (2026-11-25):** GitHub-only sign-in (decided that day; email waits for SMTP). Checked from the server with `source-smoke -browser-only`: SMZDM loads results and is enabled; Amazon US answers with its "Something went wrong" page (HTTP 503) and Amazon Japan does not load at all (connection timeout), so both stay off until there is a proxy outside mainland China. A live "RTX 5090" search streamed Kakaku's offers, then SMZDM's agent run (10 offers, 10.6 s, ¥0.058), both matched (M5.9).
+
+## Day 6: tracking, alerts, live agent log
+
+Goal: a member tracks a product with rules and gets a Feishu message when a rule matches; the owner can watch an agent run step by step while it happens.
+
+Decisions taken before starting (2026-11-25): alerts go out through a Feishu or Lark bot webhook that the member pastes in (T6 brought forward from after week 1); email alerts are built and tested locally and go live once SMTP is set. The live agent log shows recorded steps only (reasoning mode stays off, so no extra tokens).
+
+### Success metrics
+
+| #    | Metric                     | How to check                                                                                                                                                                                                 |
+| ---- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M6.1 | Track with rules and notes | A member tracks a product with any of the four rules and a note of up to 500 characters, edits and removes it; the 21st tracked product is refused (T1, T2, C2)                                              |
+| M6.2 | Scheduled refresh          | Tests: tracked products are re-checked when due and discovered daily; the interval halves after a price change and doubles after 4 unchanged checks; untracked products are never scheduled (T3)             |
+| M6.3 | Alert within 5 minutes     | On the deployed site, a simulated price drop sends a Feishu message within 5 minutes of the refresh (T4)                                                                                                     |
+| M6.4 | No repeats                 | Tests: the same offer, rule and channel alert at most once per 24 hours (T5)                                                                                                                                 |
+| M6.5 | Webhook host check         | Tests: a webhook whose host is not `open.feishu.cn` or `open.larksuite.com` is refused when saved and never called (T6)                                                                                      |
+| M6.6 | Tracked price chart        | The member's tracked-products page links each product to its price chart (T7)                                                                                                                                |
+| M6.7 | Live agent log             | While a browsing run is in progress, `/admin/live` shows each step as it happens: model text, tool and arguments, result excerpt, harness notes, tokens and time; finished runs show the same in their trace |
+
+### Tasks
+
+- [ ] **6.1 Members and watch items.** `app.users` row per member on first use; API to list, create, update and delete watch items with rules, note and channels; limits from C2; host check for webhooks.
+- [ ] **6.2 Scheduler.** River periodic job every 15 minutes: enqueue refreshes for tracked products that are due; adaptive interval; daily discovery.
+- [ ] **6.3 Alerts.** After a refresh, evaluate rules and write `alerts` rows (unique per day); a `notify` job sends them through Feishu (and email when SMTP is set) with retries.
+- [ ] **6.4 Live agent log.** Per-step records with model text, tokens and time; each step sent with Postgres NOTIFY; admin SSE stream; `/admin/live` page; trace page shows the new fields.
+- [ ] **6.5 Web: tracking.** Track button and rules form on the product page; "My products" page with notes, rules, channel settings and a test message.
+- [ ] **6.6 Deploy and check.** Deploy, add a Feishu webhook, simulate a price drop, confirm the message arrives within 5 minutes.
