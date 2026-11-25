@@ -21,6 +21,7 @@ export function useSearchBox() {
         offers: result.offers,
         pending: [],
         paused: result.paused ?? false,
+        inviteOnly: result.invite_only ?? false,
         ...(sameProduct ? {} : { filters: NO_FILTERS }),
       }),
     [patch],

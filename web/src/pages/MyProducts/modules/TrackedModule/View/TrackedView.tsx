@@ -26,9 +26,17 @@ export function TrackedView() {
             <Link to={`/p/${i.product_id}`} className="font-medium hover:underline">
               {i.product_name}
             </Link>
+            {i.listing && (
+              <p className="text-sm">
+                Listing: <span className="font-medium">{i.listing.title}</span> at{" "}
+                {formatMoney(i.listing.price)}
+                {i.listing.gone && <span className="text-warn"> · no longer listed by the store</span>}
+              </p>
+            )}
             <p className="text-sm text-muted">
               At {storeNames(i.stores)} · alerts: {i.rules.map(describeRule).join(", ")}
-              {i.baseline && ` · lowest when you started: ${formatMoney(i.baseline)}`}
+              {i.baseline &&
+                ` · ${i.listing ? "price" : "lowest"} when you started: ${formatMoney(i.baseline)}`}
             </p>
             {i.note && <p className="text-sm text-muted">{i.note}</p>}
           </div>

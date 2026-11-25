@@ -15,10 +15,21 @@ export function ResultsListView() {
   }
   return (
     <section className="space-y-8">
-      <OfferTable offers={r.shown} />
+      <OfferTable
+        offers={r.shown}
+        action={(o) => (
+          <Link
+            to={`/p/${r.product?.id}?listing=${o.id}#track`}
+            className="font-medium text-ink hover:underline"
+          >
+            Track this listing
+          </Link>
+        )}
+      />
       <aside className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[14px] bg-ink px-[22px] py-[18px] text-white">
         <p className="min-w-60 flex-1">
-          Get a Feishu message when the {r.product.name} drops below a price you choose.
+          Get a Feishu message when the {r.product.name} drops below a price you choose, at any listing or one
+          you pick above.
         </p>
         <Link
           to={`/p/${r.product.id}`}

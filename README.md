@@ -12,7 +12,7 @@ It is also a learning project: a Go backend, an AI browsing agent, and a full CI
 
 | Feature                                                                                                                        | Status                                                  |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
-| Search one store at a time, ranked by price in CNY, results streamed as stores finish                                          | Done (Days 4 to 6)                                      |
+| Search up to two stores at a time, ranked by price in CNY, results streamed as stores finish                                   | Done (Days 4 to 6, week 2)                              |
 | Stores: Kakaku.com (HTML), SMZDM (AI agent), JD (affiliate API, needs an app key)                                              | Done; Amazon blocks the server, see Day 5 notes         |
 | AI browsing agent with a harness: budgets, guards, run recording with cost and trace                                           | Done (Day 3)                                            |
 | Agent offline eval set: precision, recall and cost per store; prompt-injection case                                            | Done (Day 4), log in [docs/harness.md](docs/harness.md) |
@@ -20,8 +20,9 @@ It is also a learning project: a Go backend, an AI browsing agent, and a full CI
 | Query gate: input checks and one product per spelling                                                                          | Done (Day 4)                                            |
 | Sign in with GitHub (email magic link built, live once SMTP is set)                                                            | Done (Day 5)                                            |
 | Admin: per-source metrics, run list and trace, live agent log                                                                  | Done (Days 5 and 6)                                     |
-| Track products with notes and alert rules, price history chart, Feishu alerts                                                  | Done (Day 6)                                            |
+| Track a product or one listing of it, with notes, alert rules, price history chart, Feishu alerts                              | Done (Day 6, week 2)                                    |
 | Budget limits you change on the admin page: stores per search, tracked products, quotas, daily LLM budget with a spend breaker | Done (Days 6 and 7)                                     |
+| Invite-only access: only invited sign-in emails run new searches and track; stored results stay public                         | Done (week 2)                                           |
 | Deploy on merge to `main`, automatic rollback, daily database backups                                                          | Done (Days 2 and 7)                                     |
 | iOS app with push notifications                                                                                                | After week 1                                            |
 

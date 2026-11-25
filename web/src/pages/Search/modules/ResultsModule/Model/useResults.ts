@@ -16,6 +16,7 @@ export function useResults() {
   const error = useSearchStore((s) => s.error);
   const timedOut = useSearchStore((s) => s.timedOut);
   const paused = useSearchStore((s) => s.paused);
+  const inviteOnly = useSearchStore((s) => s.inviteOnly);
   const filters = useSearchStore((s) => s.filters);
   const patch = useSearchStore((s) => s.patch);
   // Each event carries the whole ranked list, so it replaces the current one.
@@ -34,6 +35,7 @@ export function useResults() {
     error,
     timedOut,
     paused,
+    inviteOnly,
     pending,
     total: offers.length,
     shown: filterOffers(offers, filters),

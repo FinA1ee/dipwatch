@@ -312,3 +312,18 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - **Fresh clone (7.5).** A clone of `main` in an empty directory, following the README with its own compose project and ports, came up healthy. It found one gap: without an LLM key every new search answered 503. Without a key the gate now uses the typed name as the product (not cached, so a later key still merges spellings).
 - **JD (7.3).** Adapter for `jd.union.open.goods.query` (router at `api.jd.com/routerjson`, MD5 signature, response JSON wrapped in a string), tested against recorded responses. Not tried against the real API yet: that needs the owner's app key.
 - **UI pass (7.2).** The owner picked mockup A, "price ladder": every offer as a tick on one price line, cheapest in green, the others as steps up from it. Applied through Tailwind theme tokens (paper, ink, muted, rule, drop) and self-hosted Familjen Grotesk and Public Sans; the search page, product page, offer list, filters (now chips) and all other pages use them. `/admin` gained a "Test an alert" form for the simulated price drop. Alert and test messages now start with lower-case "dipwatch", because Feishu's keyword check is case-sensitive (checked against a real bot: "Dipwatch" was refused, "dipwatch" accepted).
+
+## Week 2
+
+### Tasks
+
+- [x] **W2.1 Pin a listing.** A tracker follows the product's cheapest offer or one listing (`watch_items.offer_id`). Alerts and the drop baseline use only that listing; its store becomes the tracker's store. "Track this listing" on every offer row, on the search and product pages.
+- [x] **W2.2 Listing price history.** `GET /products/{id}?listing=` returns the history of one listing; the product page shows it for the listing being tracked or picked.
+- [x] **W2.3 Higher default limits.** Two stores per search and three tracked products per member, also raised in a saved limits row (migration 00012, never lowered).
+- [x] **W2.4 Invite list.** Invite-only on by default. Only admins and invited sign-in emails run costly searches and track products; others get stored results, or a 403 naming their email for a product with none. The list is edited on `/admin`.
+- [ ] **W2.5 JD live.** App key and secret on the server, then `UPDATE app.sources SET enabled = true WHERE id = 'jd'`.
+
+### Week 2 notes
+
+- **A listing can disappear.** SMZDM entries are deal posts that expire; a new deal for the same card gets a new id. When a store's last refresh did not see the pinned listing, My products and the track form say so, and the member picks another listing or goes back to the cheapest. Re-pinning automatically would need fuzzy title matching.
+- **One tracker per product.** A member follows one listing or the cheapest offer of a product, not several listings of it; switching listings resets the drop baseline to the new listing's price.

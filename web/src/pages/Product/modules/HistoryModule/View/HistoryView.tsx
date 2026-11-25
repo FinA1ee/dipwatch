@@ -6,7 +6,11 @@ export function HistoryView() {
   if (!page) return null;
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-semibold">Lowest price per day, last 30 days</h2>
+      <h2 className="text-lg font-semibold">
+        {page.history_of
+          ? "Price of this listing per day, last 30 days"
+          : "Lowest price per day, last 30 days"}
+      </h2>
       <PriceChart history={page.history} />
     </section>
   );

@@ -148,6 +148,7 @@ type AppWatchItem struct {
 	BaselinePriceCnyMinor *int64
 	CreatedAt             pgtype.Timestamptz
 	Sources               []string
+	OfferID               *int64
 }
 
 type AuthAccount struct {

@@ -22,6 +22,7 @@ type SearchState = {
   error: string | null;
   timedOut: boolean;
   paused: boolean; // stored prices only: today's budget is spent
+  inviteOnly: boolean; // stored prices only: the viewer is not invited
   filters: Filters;
   setQuery: (next: Update<string>) => void;
   setFilters: (next: Update<Filters>) => void;
@@ -43,6 +44,7 @@ export const useSearchStore = create<SearchState>()((set) => ({
   error: null,
   timedOut: false,
   paused: false,
+  inviteOnly: false,
   filters: NO_FILTERS,
   setQuery: (next) => set((s) => ({ query: resolve(next, s.query) })),
   setFilters: (next) => set((s) => ({ filters: resolve(next, s.filters) })),

@@ -171,3 +171,24 @@ func TestValidateAndDescribe(t *testing.T) {
 		t.Fatalf("describe drop: %q", got)
 	}
 }
+
+func TestPinnedTrackerOnlyAlertsOnItsListing(t *testing.T) {
+	ctx, pool := setup(t)
+	// Below ¥1,000: both offers qualify, but the tracker follows the ¥900 one.
+	f := newFixture(t, ctx, pool, []Rule{{Type: RuleBelow, Below: &Money{Minor: 100000, Currency: "CNY"}}}, 90000)
+	if _, err := pool.Exec(ctx, "UPDATE app.watch_items SET offer_id = $1 WHERE id = $2", f.dear, f.watchID); err != nil {
+		t.Fatal(err)
+	}
+	out := &queued{}
+	n, err := (&Checker{Enqueue: out.enqueue}).Check(ctx, f.q, f.productID, f.sourceID, Changes{})
+	if err != nil || n != 1 {
+		t.Fatalf("alerts: %d, %v", n, err)
+	}
+	var offerID int64
+	if err := pool.QueryRow(ctx, "SELECT offer_id FROM app.alerts WHERE id = $1", out.ids[0]).Scan(&offerID); err != nil {
+		t.Fatal(err)
+	}
+	if offerID != f.dear {
+		t.Fatalf("alert for offer %d, want the pinned %d (not the cheaper %d)", offerID, f.dear, f.cheap)
+	}
+}

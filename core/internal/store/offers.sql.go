@@ -24,6 +24,39 @@ func (q *Queries) CountPricePointsByProduct(ctx context.Context, productID int64
 	return count, err
 }
 
+const getProductOffer = `-- name: GetProductOffer :one
+SELECT id, source_id, price_minor, currency, is_product
+FROM app.offers
+WHERE id = $1 AND product_id = $2
+`
+
+type GetProductOfferParams struct {
+	ID        int64
+	ProductID int64
+}
+
+type GetProductOfferRow struct {
+	ID         int64
+	SourceID   string
+	PriceMinor int64
+	Currency   string
+	IsProduct  *bool
+}
+
+// An offer of the product, for pinning a listing to a tracker.
+func (q *Queries) GetProductOffer(ctx context.Context, arg GetProductOfferParams) (GetProductOfferRow, error) {
+	row := q.db.QueryRow(ctx, getProductOffer, arg.ID, arg.ProductID)
+	var i GetProductOfferRow
+	err := row.Scan(
+		&i.ID,
+		&i.SourceID,
+		&i.PriceMinor,
+		&i.Currency,
+		&i.IsProduct,
+	)
+	return i, err
+}
+
 const insertPricePointIfChanged = `-- name: InsertPricePointIfChanged :execrows
 INSERT INTO app.price_points (offer_id, price_minor, currency, in_stock)
 SELECT $1::bigint, $2::bigint, $3::char(3), $4::boolean
@@ -61,6 +94,47 @@ func (q *Queries) InsertPricePointIfChanged(ctx context.Context, arg InsertPrice
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const listOfferPricePoints = `-- name: ListOfferPricePoints :many
+SELECT pp.observed_at, pp.price_minor, pp.currency
+FROM app.price_points pp
+JOIN app.offers o ON o.id = pp.offer_id
+WHERE pp.offer_id = $1 AND o.product_id = $2 AND pp.observed_at >= $3
+ORDER BY pp.observed_at
+`
+
+type ListOfferPricePointsParams struct {
+	OfferID   int64
+	ProductID int64
+	Since     pgtype.Timestamptz
+}
+
+type ListOfferPricePointsRow struct {
+	ObservedAt pgtype.Timestamptz
+	PriceMinor int64
+	Currency   string
+}
+
+// Price history of one listing of the product (a pinned offer), since a start time.
+func (q *Queries) ListOfferPricePoints(ctx context.Context, arg ListOfferPricePointsParams) ([]ListOfferPricePointsRow, error) {
+	rows, err := q.db.Query(ctx, listOfferPricePoints, arg.OfferID, arg.ProductID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOfferPricePointsRow
+	for rows.Next() {
+		var i ListOfferPricePointsRow
+		if err := rows.Scan(&i.ObservedAt, &i.PriceMinor, &i.Currency); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOffersByProduct = `-- name: ListOffersByProduct :many

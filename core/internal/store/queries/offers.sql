@@ -73,3 +73,17 @@ ORDER BY pp.observed_at;
 -- name: SetOfferPrice :exec
 -- Used only by the simulated price drop (admin test of alert delivery).
 UPDATE app.offers SET price_minor = @price_minor WHERE id = @id;
+
+-- name: GetProductOffer :one
+-- An offer of the product, for pinning a listing to a tracker.
+SELECT id, source_id, price_minor, currency, is_product
+FROM app.offers
+WHERE id = @id AND product_id = @product_id;
+
+-- name: ListOfferPricePoints :many
+-- Price history of one listing of the product (a pinned offer), since a start time.
+SELECT pp.observed_at, pp.price_minor, pp.currency
+FROM app.price_points pp
+JOIN app.offers o ON o.id = pp.offer_id
+WHERE pp.offer_id = @offer_id AND o.product_id = @product_id AND pp.observed_at >= @since
+ORDER BY pp.observed_at;

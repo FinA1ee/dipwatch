@@ -23,9 +23,14 @@ export async function search(query: string, currency: string, stores: string[]):
   return data;
 }
 
-export async function getProduct(productId: number, currency: string): Promise<ProductPage> {
+/** The product page; with a listing (offer id), its price history is of that listing only. */
+export async function getProduct(
+  productId: number,
+  currency: string,
+  listing?: number,
+): Promise<ProductPage> {
   const { data, error, response } = await api.GET("/products/{productId}", {
-    params: { path: { productId }, query: { currency } },
+    params: { path: { productId }, query: { currency, ...(listing ? { listing } : {}) } },
   });
   if (!data) fail(response, error);
   return data;

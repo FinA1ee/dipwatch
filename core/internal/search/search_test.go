@@ -202,7 +202,8 @@ func TestQuotaCountsOnlyCostlySearches(t *testing.T) {
 	ctx, pool := setup(t)
 	q := store.New(pool)
 	product, sourceID, query := fixture(t, ctx, q)
-	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Quotas: &guard.Quotas{DB: pool}, Queue: &fakeQueue{}}
+	l := openSite(t, ctx, pool)
+	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Quotas: &guard.Quotas{DB: pool, Limits: l}, Queue: &fakeQueue{}}
 	unique := fmt.Sprint(time.Now().UnixNano())
 
 	// The product is stale and the fake queue never starts the refresh, so every
@@ -233,6 +234,38 @@ func TestQuotaCountsOnlyCostlySearches(t *testing.T) {
 	}
 	if res, err := s.Search(ctx, visitor, query, "CNY", []string{sourceID}); err != nil || res.Status != "fresh" {
 		t.Fatalf("cached search over the limit: %+v, %v", res, err)
+	}
+}
+
+// openSite turns the invite list off for the test (the default is invite-only)
+// and restores the saved limits afterwards.
+func openSite(t *testing.T, ctx context.Context, pool *pgxpool.Pool) *limits.Store {
+	t.Helper()
+	l := &limits.Store{DB: pool}
+	saved := l.Get(ctx)
+	t.Cleanup(func() { _, _ = l.Save(context.Background(), saved) })
+	open := limits.Defaults
+	open.InviteOnly = false
+	if _, err := l.Save(ctx, open); err != nil {
+		t.Fatal(err)
+	}
+	return l
+}
+
+func TestUninvitedViewersGetStoredOffersOnly(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	_, sourceID, query := fixture(t, ctx, q)
+	queue := &fakeQueue{}
+	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Quotas: &guard.Quotas{DB: pool}, Queue: queue} // default limits: invite-only
+
+	// The product is stale: an invited viewer would start a refresh.
+	res, err := s.Search(ctx, guard.Viewer{IP: "198.51.100.7"}, query, "CNY", []string{sourceID})
+	if err != nil || !res.InviteOnly || len(res.Offers) == 0 || len(queue.inserted) != 0 {
+		t.Fatalf("visitor: %+v, %v, queued %d", res, err, len(queue.inserted))
+	}
+	if res, err := s.Search(ctx, guard.Viewer{UserID: "x", Email: "x@example.test", Admin: true}, query, "CNY", []string{sourceID}); err != nil || res.InviteOnly || len(queue.inserted) != 1 {
+		t.Fatalf("admin: %+v, %v, queued %d", res, err, len(queue.inserted))
 	}
 }
 
