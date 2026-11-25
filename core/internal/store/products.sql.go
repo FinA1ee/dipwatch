@@ -59,6 +59,15 @@ func (q *Queries) MarkProductRefreshed(ctx context.Context, id int64) error {
 	return err
 }
 
+const notifyAgent = `-- name: NotifyAgent :exec
+SELECT pg_notify('dipwatch_agent', $1::text)
+`
+
+func (q *Queries) NotifyAgent(ctx context.Context, payload string) error {
+	_, err := q.db.Exec(ctx, notifyAgent, payload)
+	return err
+}
+
 const notifyOffers = `-- name: NotifyOffers :exec
 SELECT pg_notify('dipwatch_offers', $1::text)
 `

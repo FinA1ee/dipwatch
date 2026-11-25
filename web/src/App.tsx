@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { Layout } from "./app/Layout";
 import { AdminPage } from "./pages/Admin";
+import { AdminLivePage } from "./pages/AdminLive";
 import { AdminRunPage } from "./pages/AdminRun";
 import { AdminRunsPage } from "./pages/AdminRuns";
 import { ProductPage } from "./pages/Product";
@@ -15,6 +16,7 @@ const router = createBrowserRouter([
       { path: "/p/:productId", element: <ProductPage /> },
       { path: "/signin", element: <SignInPage /> },
       { path: "/admin", element: <AdminPage /> },
+      { path: "/admin/live", element: <AdminLivePage /> },
       { path: "/admin/runs", element: <AdminRunsPage /> },
       { path: "/admin/runs/:runId", element: <AdminRunPage /> },
     ],

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 )
 
@@ -415,5 +416,41 @@ func TestEmptySubmissionMeansNoListings(t *testing.T) {
 	run, err := newAgent(model, &fakeBrowser{}, &memRecorder{}, DefaultBudget).Run(context.Background(), task)
 	if err != nil || run.Outcome != OutcomeNoOffers || model.calls != 1 || len(run.Offers) != 0 {
 		t.Fatalf("outcome %s after %d calls, err %v; want no_offers without an error after 1 call", run.Outcome, model.calls, err)
+	}
+}
+
+type memObserver struct{ events []live.Event }
+
+func (o *memObserver) Observe(_ context.Context, e live.Event) { o.events = append(o.events, e) }
+
+func TestObserverSeesEachStepAsItHappens(t *testing.T) {
+	look := call("1", "browser_navigate", `{"url":"https://www.example-store.test/s?k=x"}`)
+	look.Content = "Opening the search results first."
+	look.TokensIn, look.TokensOut = 900, 40
+	model := &scriptedModel{turns: []llm.Turn{look, call("2", "submit_offers", goodSubmission)}}
+	obs := &memObserver{}
+	a := newAgent(model, &fakeBrowser{}, &memRecorder{}, DefaultBudget)
+	a.Observer = obs
+	run, err := a.Run(context.Background(), task)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(obs.events) != 4 {
+		t.Fatalf("events: %+v", obs.events)
+	}
+	start, first, end := obs.events[0], obs.events[1], obs.events[3]
+	if start.Kind != live.KindStart || start.Run != run.Key || start.SourceID != task.SourceID || start.Product != task.Product {
+		t.Fatalf("start: %+v", start)
+	}
+	if first.Kind != live.KindStep || first.Index != 1 || first.Step.Tool != "browser_navigate" ||
+		first.Step.Thought != "Opening the search results first." || first.Step.TokensIn != 900 {
+		t.Fatalf("first step: %+v %+v", first, first.Step)
+	}
+	if end.Kind != live.KindEnd || end.Outcome != OutcomeOK || end.Offers != len(run.Offers) || end.Run != run.Key {
+		t.Fatalf("end: %+v", end)
+	}
+	if run.Trace[0].Thought == "" {
+		t.Fatal("thought not kept in the recorded trace")
 	}
 }

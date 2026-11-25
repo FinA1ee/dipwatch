@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/admin/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream browsing-agent steps as they happen
+         * @description Sends `snapshot` with recent runs, then an `event` per start, step and end.
+         */
+        get: operations["admin-live"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/metrics": {
         parameters: {
             query?: never;
@@ -227,6 +247,32 @@ export interface components {
              */
             type: string;
         };
+        Event: {
+            /** Format: date-time */
+            at: string;
+            /** Format: double */
+            cost_cny?: number;
+            /**
+             * Format: int64
+             * @description Step number, from 1
+             */
+            index?: number;
+            /** @enum {string} */
+            kind: "start" | "step" | "end";
+            /** Format: int64 */
+            offers?: number;
+            outcome?: string;
+            product?: string;
+            /** @description Run key, unique per run */
+            run: string;
+            source_id: string;
+            step?: components["schemas"]["Step"];
+            store?: string;
+            /** Format: int64 */
+            tokens_in?: number;
+            /** Format: int64 */
+            tokens_out?: number;
+        };
         HealthOutputBody: {
             /**
              * Format: uri
@@ -330,6 +376,12 @@ export interface components {
              */
             status: "fresh" | "refreshing";
         };
+        Run: {
+            /** @description Missing while the run is in progress */
+            end?: components["schemas"]["Event"];
+            start: components["schemas"]["Event"];
+            steps: components["schemas"]["Event"][];
+        };
         RunsOutputBody: {
             /**
              * Format: uri
@@ -354,6 +406,10 @@ export interface components {
             currency: string;
             /** @description Product to search for, e.g. RTX 5090. At most 80 characters after trimming. */
             query: string;
+        };
+        Snapshot: {
+            /** @description Newest first */
+            runs: components["schemas"]["Run"][];
         };
         Source: {
             id: string;
@@ -394,10 +450,24 @@ export interface components {
         };
         Step: {
             arguments?: string;
+            /**
+             * Format: int64
+             * @description Time the tool took
+             */
+            ms?: number;
             /** @description Harness event, e.g. the budget wrap-up */
             note?: string;
             /** @description Excerpt of what the tool returned */
             result?: string;
+            /** @description Text the model wrote with this turn's tool calls */
+            thought?: string;
+            /**
+             * Format: int64
+             * @description Tokens of the model call that chose this step (first step of a turn only)
+             */
+            tokens_in?: number;
+            /** Format: int64 */
+            tokens_out?: number;
             tool?: string;
         };
         Summary: {
@@ -435,6 +505,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "admin-live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": ({
+                        data: components["schemas"]["Event"];
+                        /**
+                         * @description The event name.
+                         * @constant
+                         */
+                        event: "event";
+                        /** @description The event ID. */
+                        id?: number | string;
+                        /** @description The retry time in milliseconds. */
+                        retry?: number;
+                    } | {
+                        data: components["schemas"]["Snapshot"];
+                        /**
+                         * @description The event name.
+                         * @constant
+                         */
+                        event: "snapshot";
+                        /** @description The event ID. */
+                        id?: number | string;
+                        /** @description The retry time in milliseconds. */
+                        retry?: number;
+                    })[];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "admin-metrics": {
         parameters: {
             query?: {

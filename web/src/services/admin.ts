@@ -35,3 +35,27 @@ export async function getRun(runId: number): Promise<RunDetail> {
   if (!data) fail(response, error);
   return data;
 }
+
+export type LiveEvent = Schemas["Event"];
+export type LiveRun = Schemas["Run"];
+
+export type LiveHandlers = {
+  onSnapshot: (runs: LiveRun[]) => void;
+  onEvent: (event: LiveEvent) => void;
+  onConnection: (connected: boolean) => void;
+};
+
+/**
+ * Follows browsing-agent runs as they happen (admins only). EventSource
+ * reconnects on its own; each reconnect starts with a fresh snapshot.
+ */
+export function streamLive(handlers: LiveHandlers): () => void {
+  const source = new EventSource("/api/admin/live");
+  source.onopen = () => handlers.onConnection(true);
+  source.onerror = () => handlers.onConnection(false);
+  source.addEventListener("snapshot", (e) =>
+    handlers.onSnapshot(JSON.parse((e as MessageEvent<string>).data).runs ?? []),
+  );
+  source.addEventListener("event", (e) => handlers.onEvent(JSON.parse((e as MessageEvent<string>).data)));
+  return () => source.close();
+}

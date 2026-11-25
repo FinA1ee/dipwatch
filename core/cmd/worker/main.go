@@ -25,6 +25,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/db"
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
@@ -71,6 +72,7 @@ func adapters(pool *pgxpool.Pool) (jobs.Adapters, *matcher.Matcher) {
 			return agent.StartPlaywright(ctx, agent.PlaywrightCommand())
 		},
 		Recorder: agent.DBRecorder{Queries: store.New(pool)},
+		Observer: live.Notifier{Queries: store.New(pool)},
 	}
 	for id, s := range agent.Stores {
 		if a[id] == nil {

@@ -26,6 +26,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/db"
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	httpapi "github.com/FinA1ee/dipwatch/core/internal/http"
+	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/runs"
 	"github.com/FinA1ee/dipwatch/core/internal/search"
@@ -100,8 +101,10 @@ func serve() error {
 	if err != nil {
 		return err
 	}
+	liveFeed := &live.Hub{DB: pool}
+	go liveFeed.Run(ctx)
 	handler, _ := httpapi.New(pool, cfg.InternalToken, httpapi.Services{
-		Search: searcher, Products: searcher, Runs: &runs.Reader{DB: pool},
+		Search: searcher, Products: searcher, Runs: &runs.Reader{DB: pool}, Live: liveFeed,
 	})
 	srv := &http.Server{
 		Addr:              cfg.Addr,

@@ -29,6 +29,7 @@ type Services struct {
 	Search   Searcher
 	Products Products
 	Runs     Runs
+	Live     LiveFeed
 }
 
 // New builds the router and registers every operation.
@@ -36,13 +37,14 @@ func New(db Pinger, internalToken string, s Services) (http.Handler, huma.API) {
 	// Every list core returns is a real (possibly empty) array, never null.
 	huma.DefaultArrayNullable = false
 	router := chi.NewMux()
-	router.Use(requireInternalToken(internalToken), withViewer)
+	router.Use(requireInternalToken(internalToken), withViewer, adminPaths)
 
 	api := humachi.New(router, huma.DefaultConfig(Title, Version))
 	registerHealth(api, db)
 	registerSearch(api, s.Search)
 	registerProducts(api, s.Products)
 	registerAdmin(api, s.Runs)
+	registerLive(api, s.Live)
 	return router, api
 }
 

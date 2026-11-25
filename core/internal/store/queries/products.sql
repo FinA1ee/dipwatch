@@ -21,3 +21,6 @@ RETURNING cardinality(refreshing_sources)::int AS remaining;
 
 -- name: NotifyOffers :exec
 SELECT pg_notify('dipwatch_offers', @payload::text);
+
+-- name: NotifyAgent :exec
+SELECT pg_notify('dipwatch_agent', @payload::text);
