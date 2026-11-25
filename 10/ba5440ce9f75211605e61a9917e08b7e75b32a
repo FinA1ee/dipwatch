@@ -1,0 +1,109 @@
+docs/mockups/fonts/LICENSE-public-sans.txt
+  s_3313d584934833::t_98de63d09887e0 1-93
+core/internal/spend/spend.go
+  s_3313d584934833::t_0c061c98deee86 63-64
+  s_3313d584934833::t_cd7d7f9065ea7b 1-30,44-62,65-120
+  s_3313d584934833::t_4acfbea02cd24b 31-43
+core/internal/limits/limits.go
+  s_3313d584934833::t_22292a800e6a99 20-24,28,39-40
+deploy/.env.example
+  s_3313d584934833::t_49616e1c743fb5 37-40
+core/internal/spend/spend_test.go
+  s_3313d584934833::t_62394ee99d4abc 1-67
+core/internal/sources/jdunion/jdunion.go
+  s_3313d584934833::t_d65b1eddf4faa5 1-203
+deploy/backup.sh
+  s_3313d584934833::t_326b54a1d3c184 1-13
+core/internal/db/migrations/00011_jd_union.sql
+  s_3313d584934833::t_49616e1c743fb5 1-9
+docs/mockups/fonts/LICENSE-familjen-grotesk.txt
+  s_3313d584934833::t_98de63d09887e0 1-93
+web/src/pages/Admin/modules/LimitsModule/Component/LimitsForm.tsx
+  s_3313d584934833::t_ae26dd6843cbe2 22-26,53
+core/internal/guard/gate.go
+  s_3313d584934833::t_4acfbea02cd24b 23-24,56
+  s_3313d584934833::t_fbdfbc60d89112 13,57
+core/internal/store/agent_runs.sql.go
+  s_3313d584934833::t_22292a800e6a99 271-282
+deploy/deploy.sh
+  s_3313d584934833::t_326b54a1d3c184 41-46,49
+web/src/services/schema.d.ts
+  s_3313d584934833::t_ae26dd6843cbe2 119-135,465-469,569-570,714-727,1183-1215
+core/cmd/worker/main.go
+  s_3313d584934833::t_49616e1c743fb5 35,64-66
+  s_3313d584934833::t_4f3fc3148133be 29,37,130,134,141,144
+core/cmd/core-api/main.go
+  s_3313d584934833::t_4f3fc3148133be 35,109-110,118,150-151,162
+core/internal/store/watch.sql.go
+  s_3313d584934833::t_22292a800e6a99 171-181
+core/internal/http/limits.go
+  s_3313d584934833::t_4f3fc3148133be 10,21-27,30-44
+.github/workflows/deploy.yml
+  s_3313d584934833::t_326b54a1d3c184 143
+web/src/pages/Admin/modules/LimitsModule/Model/useLimits.ts
+  s_3313d584934833::t_ae26dd6843cbe2 2,9-14,19,23
+docs/mockups/b-price-tags.html
+  s_3313d584934833::t_f9ef5e77c45977 1-15,17-157
+core/internal/jobs/refresh.go
+  s_3313d584934833::t_4acfbea02cd24b 76,81-82,160
+  s_3313d584934833::t_fbdfbc60d89112 22,79-80,83-89,94-97
+  s_3313d584934833::t_4f3fc3148133be 159,200-203
+web/src/pages/Search/modules/SearchBoxModule/Model/useSearchBox.ts
+  s_3313d584934833::t_ae26dd6843cbe2 23
+web/src/pages/Search/store.ts
+  s_3313d584934833::t_ae26dd6843cbe2 24,45
+contracts/openapi.yaml
+  s_3313d584934833::t_ae26dd6843cbe2 277-282,312,486-488,773-799,1300-1322
+core/internal/search/search_test.go
+  s_3313d584934833::t_62394ee99d4abc 21,279-318
+deploy/compose.yaml
+  s_3313d584934833::t_49616e1c743fb5 78-80
+web/src/services/admin.ts
+  s_3313d584934833::t_ae26dd6843cbe2 77-84
+core/internal/jobs/alerts.go
+  s_3313d584934833::t_fbdfbc60d89112 19,135,141-143
+  s_3313d584934833::t_4acfbea02cd24b 136,140
+docs/mockups/a-price-ladder.html
+  s_3313d584934833::t_a1a58e0bba600e 1-7,14-21,24-60,64-123,125-129,131-173
+  s_3313d584934833::t_a07a32b7fb274a 61-63,124,130
+core/internal/http/api.go
+  s_3313d584934833::t_4f3fc3148133be 36,53
+docs/mockups/fonts/LICENSE-archivo.txt
+  s_3313d584934833::t_98de63d09887e0 1-93
+web/src/pages/Search/modules/ResultsModule/View/ResultsView.tsx
+  s_3313d584934833::t_ae26dd6843cbe2 44-48
+core/internal/store/queries/agent_runs.sql
+  s_3313d584934833::t_22292a800e6a99 61-64
+web/src/pages/Admin/modules/LimitsModule/View/LimitsView.tsx
+  s_3313d584934833::t_ae26dd6843cbe2 18-22,24-43
+core/internal/sources/jdunion/jdunion_test.go
+  s_3313d584934833::t_38048209fc6d42 1-27,29-101
+  s_3313d584934833::t_530ad6bf0a8e6b 28
+deploy/.gitignore
+  s_3313d584934833::t_53401750880e16 1-2
+web/src/pages/Search/modules/ResultsModule/Model/useResults.ts
+  s_3313d584934833::t_ae26dd6843cbe2 18,36
+core/internal/http/search.go
+  s_3313d584934833::t_4f3fc3148133be 16,90-91
+core/internal/store/queries/watch.sql
+  s_3313d584934833::t_22292a800e6a99 33-35
+core/internal/search/service.go
+  s_3313d584934833::t_4acfbea02cd24b 74,179
+  s_3313d584934833::t_fbdfbc60d89112 19,60,176-178,180-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "10ba5440ce9f75211605e61a9917e08b7e75b32a",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
