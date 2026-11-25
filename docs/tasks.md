@@ -298,8 +298,16 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 
 ### Tasks
 
-- [ ] **7.1 Spend breaker.** Today's LLM spend from `agent_runs` (China day); daily budget as a live limit; 80% and 100% rules in search, the refresh jobs, the matcher and the scheduler; spend on `/admin`.
+- [x] **7.1 Spend breaker.** Today's LLM spend from `agent_runs` (China day); daily budget as a live limit; 80% and 100% rules in search, the refresh jobs, the matcher and the scheduler; spend on `/admin`.
 - [ ] **7.2 UI pass.** Two mockups of the search page; apply the chosen one to every page.
-- [ ] **7.3 JD Union adapter.** `jd.union.open.goods.query` with the router's MD5 signature; app key and secret from env; source row disabled until keys are set.
+- [x] **7.3 JD Union adapter.** `jd.union.open.goods.query` with the router's MD5 signature; app key and secret from env; source row disabled until keys are set.
 - [ ] **7.4 Rollback test and backups.** Broken-image deploy on the server; `deploy/backup.sh` installed by the deploy script, restore check.
 - [ ] **7.5 README and retro.** Fresh-clone check, README updates for sign-in, limits and alerts; `docs/retro.md`.
+
+### Day 7 notes
+
+- **Spend breaker (7.1).** Today's spend is the sum of `agent_runs` since midnight China time, cached for 15 seconds. The daily budget is a live limit (default ¥5). From 80%, refreshes run only for tracked products; at 100%, searches answer from stored offers with a note, new queries are refused before the intent call, and the scheduler and queued refresh jobs skip their work. A broken spend query lets work run rather than taking the site down; each agent run still has its own budget (C3).
+- **Rollback test (7.4) found a real bug.** A release whose core container cannot start (a Postgres image tagged as core) made `docker compose up` fail, and under `set -e` the script exited before its rollback: the site was down for about a minute until the previous tag was started by hand. `deploy.sh` now treats a failed start like a failed health check. The fixed script reaches the server with the next deploy; the broken-release test is to be run again after that (owner's go-ahead).
+- **Backups (7.4).** `deploy/backup.sh` keeps 7 gzipped `pg_dump` files; the deploy script installs it in the deploy user's crontab (03:30). Ran once by hand on the server (36 KB) and restored into a scratch database: 109 offers, as in the live one.
+- **Fresh clone (7.5).** A clone of `main` in an empty directory, following the README with its own compose project and ports, came up healthy. It found one gap: without an LLM key every new search answered 503. Without a key the gate now uses the typed name as the product (not cached, so a later key still merges spellings).
+- **JD (7.3).** Adapter for `jd.union.open.goods.query` (router at `api.jd.com/routerjson`, MD5 signature, response JSON wrapped in a string), tested against recorded responses. Not tried against the real API yet: that needs the owner's app key.

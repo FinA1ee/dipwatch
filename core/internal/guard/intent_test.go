@@ -155,3 +155,16 @@ func TestGateCachesAndSharesOneProduct(t *testing.T) {
 		t.Fatalf("URL: %v after %d calls", err, model.calls)
 	}
 }
+
+func TestGateWithoutAModelUsesTheTypedName(t *testing.T) {
+	ctx, pool := setup(t)
+	text := fmt.Sprintf("  Fresh   Clone %d ", time.Now().UnixNano())
+	p, err := (&Gate{DB: pool}).Resolve(ctx, text, nil)
+	if err != nil || p.CanonicalName != strings.Join(strings.Fields(text), " ") {
+		t.Fatalf("got %+v, %v", p, err)
+	}
+	again, err := (&Gate{DB: pool}).Resolve(ctx, text, nil)
+	if err != nil || again.ID != p.ID || again.Cached {
+		t.Fatalf("second search: %+v, %v (same product, not cached)", again, err)
+	}
+}
