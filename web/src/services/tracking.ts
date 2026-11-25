@@ -1,6 +1,7 @@
 import { api, fail, type Schemas } from "./api";
 
 export type TrackedItem = Schemas["Item"];
+export type TrackedListing = Schemas["Listing"];
 export type Rule = Schemas["Rule"];
 export type AlertSettings = Schemas["Settings"];
 
@@ -10,16 +11,21 @@ export async function listTracked(): Promise<TrackedItem[]> {
   return data.items;
 }
 
-/** Tracks a product at the given stores (used when tracking starts), or updates it. */
+/**
+ * Tracks a product at the given stores (used when tracking starts), or updates
+ * it. With offerId the tracker follows that listing only; null follows the
+ * product's cheapest offer.
+ */
 export async function saveTracked(
   productId: number,
   note: string,
   rules: Rule[],
   stores: string[],
+  offerId: number | null,
 ): Promise<TrackedItem> {
   const { data, error, response } = await api.PUT("/me/tracked/{productId}", {
     params: { path: { productId } },
-    body: { note, rules, stores },
+    body: { note, rules, stores, ...(offerId ? { offer_id: offerId } : {}) },
   });
   if (!data) fail(response, error);
   return data;

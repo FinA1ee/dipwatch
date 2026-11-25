@@ -33,6 +33,7 @@ var (
 	ErrNoProduct   = errors.New("no such product")
 	ErrNoWebhook   = errors.New("add a Feishu webhook first")
 	ErrStores      = errors.New("pick the store to track this product at")
+	ErrListing     = errors.New("that listing is not an offer for this product")
 )
 
 // LimitError means the member reached the tracked-products limit.
@@ -52,8 +53,19 @@ type Item struct {
 	Note        string        `json:"note"`
 	Rules       []alerts.Rule `json:"rules"`
 	Stores      []string      `json:"stores" doc:"Stores refreshed and alerted on; empty: every store"`
-	Baseline    *alerts.Money `json:"baseline,omitempty" doc:"Lowest price when tracking started, in CNY"`
+	Baseline    *alerts.Money `json:"baseline,omitempty" doc:"Price when tracking started (of the listing, if one is pinned), in CNY"`
+	Listing     *Listing      `json:"listing,omitempty" doc:"The listing this tracker follows; absent: the product's cheapest offer"`
 	TrackedAt   time.Time     `json:"tracked_at"`
+}
+
+// Listing is a pinned offer, as last seen.
+type Listing struct {
+	OfferID int64        `json:"offer_id"`
+	Title   string       `json:"title"`
+	Store   string       `json:"store" doc:"Source id"`
+	URL     string       `json:"url"`
+	Price   alerts.Money `json:"price" doc:"Price at the store, in its currency"`
+	Gone    bool         `json:"gone" doc:"The store's last refresh no longer listed it"`
 }
 
 // Settings are a member's alert channels.
@@ -103,13 +115,16 @@ func (s *Service) List(ctx context.Context, v guard.Viewer) ([]Item, error) {
 	out := make([]Item, len(rows))
 	for i, r := range rows {
 		out[i] = item(r.ProductID, r.CanonicalName, r.Note, r.Rules, r.BaselinePriceCnyMinor, r.CreatedAt.Time, r.Sources)
+		out[i].Listing = listing(r)
 	}
 	return out, nil
 }
 
-// Save starts tracking a product at the given stores, or updates its note and
-// rules (the stores of an existing tracker stay as they were).
-func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string) (Item, error) {
+// Save starts tracking a product, or updates its note and rules. A tracker
+// follows the product's cheapest offer at the given stores, or, with offerID,
+// one listing at its store. The stores and the baseline price are set when
+// tracking starts and again when the pinned listing changes.
+func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64) (Item, error) {
 	q, err := s.member(ctx, v)
 	if err != nil {
 		return Item{}, err
@@ -127,14 +142,16 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 	if err != nil {
 		return Item{}, err
 	}
-	_, err = q.GetWatchItem(ctx, store.GetWatchItemParams{UserID: v.UserID, ProductID: productID})
+	existing, err := q.GetWatchItem(ctx, store.GetWatchItemParams{UserID: v.UserID, ProductID: productID})
 	isNew := errors.Is(err, pgx.ErrNoRows)
 	if err != nil && !isNew {
 		return Item{}, err
 	}
-	var baseline *int64
+	l := s.limits(ctx)
+	if !guard.Invited(l, v) {
+		return Item{}, guard.ErrInviteOnly
+	}
 	if isNew {
-		l := s.limits(ctx)
 		count, err := q.CountWatchItems(ctx, v.UserID)
 		if err != nil {
 			return Item{}, err
@@ -142,27 +159,98 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 		if int(count) >= l.TrackedPerMember {
 			return Item{}, &LimitError{Limit: l.TrackedPerMember}
 		}
-		if len(stores) == 0 || len(stores) > l.SourcesPerSearch {
-			return Item{}, ErrStores
+	}
+
+	baseline, sources := existing.BaselinePriceCnyMinor, existing.Sources
+	switch {
+	case offerID != nil && (isNew || !sameID(existing.OfferID, offerID)):
+		o, err := q.GetProductOffer(ctx, store.GetProductOfferParams{ID: *offerID, ProductID: productID})
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && o.IsProduct != nil && !*o.IsProduct) {
+			return Item{}, ErrListing
 		}
-		if baseline, err = lowestCNY(ctx, q, productID, stores); err != nil {
+		if err != nil {
+			return Item{}, err
+		}
+		sources = []string{o.SourceID}
+		baseline = nil
+		if rates, err := fx.Latest(ctx, q); err == nil {
+			if cny, err := rates.ToCNYMinor(o.PriceMinor, o.Currency); err == nil {
+				baseline = &cny
+			}
+		}
+	case offerID == nil && (isNew || existing.OfferID != nil):
+		if isNew {
+			if len(stores) == 0 || len(stores) > l.SourcesPerSearch {
+				return Item{}, ErrStores
+			}
+			sources = stores
+		}
+		if baseline, err = lowestCNY(ctx, q, productID, sources); err != nil {
 			return Item{}, err
 		}
 	}
-	if stores == nil {
-		stores = []string{}
+	if sources == nil {
+		sources = []string{}
 	}
 	raw, err := json.Marshal(rules)
 	if err != nil {
 		return Item{}, err
 	}
 	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{
-		UserID: v.UserID, ProductID: productID, Note: note, Rules: raw, BaselinePriceCnyMinor: baseline, Sources: stores,
+		UserID: v.UserID, ProductID: productID, Note: note, Rules: raw,
+		BaselinePriceCnyMinor: baseline, Sources: sources, OfferID: offerID,
 	})
 	if err != nil {
 		return Item{}, err
 	}
+	for _, it := range must(s.List(ctx, v)) {
+		if it.ProductID == productID {
+			return it, nil
+		}
+	}
 	return item(w.ProductID, product.CanonicalName, w.Note, w.Rules, w.BaselinePriceCnyMinor, w.CreatedAt.Time, w.Sources), nil
+}
+
+func sameID(a, b *int64) bool { return (a == nil) == (b == nil) && (a == nil || *a == *b) }
+
+// must drops a List error: Save already succeeded, and the fallback item
+// without listing details is still correct.
+func must(items []Item, err error) []Item {
+	if err != nil {
+		return nil
+	}
+	return items
+}
+
+// goneAfter is how much later than a listing's last sighting its store's
+// refresh must be to count the listing as gone (saving offers and marking the
+// refresh happen moments apart).
+const goneAfter = 5 * time.Minute
+
+func listing(r store.ListWatchItemsRow) *Listing {
+	if r.OfferID == nil || r.OfferTitle == nil {
+		return nil
+	}
+	gone := r.OfferSourceRefreshedAt.Valid && r.OfferLastSeenAt.Valid &&
+		r.OfferSourceRefreshedAt.Time.Sub(r.OfferLastSeenAt.Time) > goneAfter
+	return &Listing{
+		OfferID: *r.OfferID, Title: *r.OfferTitle, Store: deref(r.OfferSourceID), URL: deref(r.OfferUrl),
+		Price: alerts.Money{Minor: derefInt(r.OfferPriceMinor), Currency: deref(r.OfferCurrency)}, Gone: gone,
+	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func derefInt(n *int64) int64 {
+	if n == nil {
+		return 0
+	}
+	return *n
 }
 
 func (s *Service) Delete(ctx context.Context, v guard.Viewer, productID int64) error {

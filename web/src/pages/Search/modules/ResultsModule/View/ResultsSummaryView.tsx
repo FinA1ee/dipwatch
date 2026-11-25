@@ -52,6 +52,12 @@ export function ResultsSummaryView() {
           These prices were not re-checked: today's checks are used up. They update again tomorrow.
         </p>
       )}
+      {r.inviteOnly && (
+        <p className="rounded-[10px] bg-amber-50 p-3 text-sm text-amber-900">
+          These are stored prices. Dipwatch is invite-only for now, so only invited members can have them
+          re-checked.
+        </p>
+      )}
       {r.shown.length > 0 && <PriceLadder offers={r.shown} />}
     </section>
   );

@@ -7,6 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/mail"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,15 +20,40 @@ import (
 
 // Limits are the knobs that bound LLM and browser spend.
 type Limits struct {
-	SourcesPerSearch     int     `json:"sources_per_search" minimum:"1" maximum:"20" doc:"Stores a member or visitor may pick for one search"`
-	TrackedPerMember     int     `json:"tracked_per_member" minimum:"0" maximum:"100" doc:"Products one member may track (C2)"`
-	VisitorDailySearches int     `json:"visitor_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per visitor IP per day (C1)"`
-	MemberDailySearches  int     `json:"member_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per member per day (C1)"`
-	DailyBudgetCNY       float64 `json:"daily_budget_cny" minimum:"0" maximum:"1000" doc:"LLM spend per China day; at 80% only tracked products get agent runs, at 100% only stored data is served (C4)"`
+	SourcesPerSearch     int      `json:"sources_per_search" minimum:"1" maximum:"20" doc:"Stores a member or visitor may pick for one search"`
+	TrackedPerMember     int      `json:"tracked_per_member" minimum:"0" maximum:"100" doc:"Products one member may track (C2)"`
+	VisitorDailySearches int      `json:"visitor_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per visitor IP per day (C1)"`
+	MemberDailySearches  int      `json:"member_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per member per day (C1)"`
+	DailyBudgetCNY       float64  `json:"daily_budget_cny" minimum:"0" maximum:"1000" doc:"LLM spend per China day; at 80% only tracked products get agent runs, at 100% only stored data is served (C4)"`
+	InviteOnly           bool     `json:"invite_only" doc:"Only invited members (and admins) may run costly searches and track products; everyone can still read stored results"`
+	Invited              []string `json:"invited" maxItems:"500" doc:"Email addresses of invited members, as their sign-in account reports them"`
+}
+
+// MaxInvited is the longest invite list.
+const MaxInvited = 500
+
+// Allows reports whether the email may use costly features. Admins are checked
+// by the caller.
+func (l Limits) Allows(email string) bool {
+	return !l.InviteOnly || (email != "" && slices.Contains(l.Invited, strings.ToLower(strings.TrimSpace(email))))
+}
+
+// normalize lower-cases, trims, drops blanks and duplicates, and sorts the invite list.
+func (l *Limits) normalize() {
+	out := make([]string, 0, len(l.Invited))
+	for _, e := range l.Invited {
+		if e = strings.ToLower(strings.TrimSpace(e)); e != "" {
+			out = append(out, e)
+		}
+	}
+	slices.Sort(out)
+	l.Invited = slices.Compact(out)
 }
 
 // Defaults keep spend low until the owner raises them.
-var Defaults = Limits{SourcesPerSearch: 1, TrackedPerMember: 1, VisitorDailySearches: 10, MemberDailySearches: 30, DailyBudgetCNY: 5}
+// The site starts invite-only: a saved limits row from before the invite list
+// existed has no invite_only field, so it gets this default too.
+var Defaults = Limits{SourcesPerSearch: 2, TrackedPerMember: 3, VisitorDailySearches: 10, MemberDailySearches: 30, DailyBudgetCNY: 5, InviteOnly: true, Invited: []string{}}
 
 // Validate checks ranges, matching the API schema, for callers other than the API.
 func (l Limits) Validate() error {
@@ -38,6 +66,13 @@ func (l Limits) Validate() error {
 		return fmt.Errorf("daily searches must be 0 to 1000")
 	case l.DailyBudgetCNY < 0 || l.DailyBudgetCNY > 1000:
 		return fmt.Errorf("the daily budget must be 0 to 1000 yuan")
+	case len(l.Invited) > MaxInvited:
+		return fmt.Errorf("the invite list can have up to %d addresses", MaxInvited)
+	}
+	for _, e := range l.Invited {
+		if a, err := mail.ParseAddress(e); err != nil || a.Address != e {
+			return fmt.Errorf("%q is not an email address", e)
+		}
 	}
 	return nil
 }
@@ -83,6 +118,7 @@ func (s *Store) Get(ctx context.Context) Limits {
 
 // Save stores new limits.
 func (s *Store) Save(ctx context.Context, l Limits) (Limits, error) {
+	l.normalize()
 	if err := l.Validate(); err != nil {
 		return Limits{}, err
 	}

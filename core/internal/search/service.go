@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -55,10 +56,11 @@ type Product struct {
 
 // Result answers one search.
 type Result struct {
-	Product Product `json:"product"`
-	Status  string  `json:"status" enum:"fresh,refreshing" doc:"refreshing: open the events stream for new offers"`
-	Paused  bool    `json:"paused,omitempty" doc:"true when stored offers are older than usual because today's budget is spent"`
-	Offers  []Offer `json:"offers" doc:"Cheapest first, compared in CNY"`
+	Product    Product `json:"product"`
+	Status     string  `json:"status" enum:"fresh,refreshing" doc:"refreshing: open the events stream for new offers"`
+	Paused     bool    `json:"paused,omitempty" doc:"true when stored offers are older than usual because today's budget is spent"`
+	InviteOnly bool    `json:"invite_only,omitempty" doc:"true when stored offers were not refreshed because the viewer is not invited"`
+	Offers     []Offer `json:"offers" doc:"Cheapest first, compared in CNY"`
 }
 
 // Inserter enqueues jobs. *river.Client satisfies it; tests use a fake.
@@ -186,7 +188,17 @@ func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currenc
 		}
 	}
 	if len(stale) > 0 {
-		if err := charge.Charge(ctx); err != nil {
+		err := charge.Charge(ctx)
+		if errors.Is(err, guard.ErrInviteOnly) {
+			// Not invited: the stored offers are the answer, if there are any.
+			res.Offers, err = s.offers(ctx, q, product.ID, stores, currency)
+			if err == nil && len(res.Offers) == 0 {
+				err = guard.ErrInviteOnly
+			}
+			res.InviteOnly = err == nil
+			return res, err
+		}
+		if err != nil {
 			return Result{}, err
 		}
 		// Unique while queued or running, so concurrent searches share it.

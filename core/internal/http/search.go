@@ -69,7 +69,7 @@ func registerSearch(api huma.API, s Searcher) {
 		Summary:     "Search offers for a product",
 		Description: "Resolves the query to one product and returns its offers. When they are older than 6 hours a refresh starts; follow it with the events stream.",
 		Tags:        []string{"Search"},
-		Errors:      []int{http.StatusBadRequest, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable},
+		Errors:      []int{http.StatusBadRequest, http.StatusForbidden, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable},
 	}, func(ctx context.Context, in *SearchInput) (*SearchOutput, error) {
 		viewer := viewerFrom(ctx)
 		res, err := s.Search(ctx, viewer, in.Body.Query, in.Body.Currency, in.Body.Stores)
@@ -82,6 +82,8 @@ func registerSearch(api huma.API, s Searcher) {
 			return nil, huma.Error400BadRequest(err.Error())
 		case errors.As(err, &storeErr):
 			return nil, huma.Error400BadRequest(storeErr.Error())
+		case errors.Is(err, guard.ErrInviteOnly):
+			return nil, inviteError(viewer)
 		case errors.As(err, &quota):
 			if !quota.Member {
 				return nil, huma.Error429TooManyRequests(fmt.Sprintf("You have used today's %d new searches. Sign in for more, or try a product someone searched recently.", quota.Limit))

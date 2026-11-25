@@ -13,7 +13,7 @@ import (
 // HistoryDays is how far back the product page's price history goes.
 const HistoryDays = 30
 
-// DayLow is the lowest price seen on one UTC day, across all offers.
+// DayLow is the lowest price seen on one UTC day, across all offers or of one listing.
 type DayLow struct {
 	Day       string `json:"day" format:"date"`
 	Converted Money  `json:"converted" doc:"Lowest price that day, in the requested currency"`
@@ -26,11 +26,13 @@ type ProductPage struct {
 	Refreshing    bool      `json:"refreshing" doc:"true while sources are being searched"`
 	Offers        []Offer   `json:"offers" doc:"Cheapest first, compared in CNY"`
 	History       []DayLow  `json:"history" doc:"Oldest first; days without any price are left out"`
+	HistoryOf     int64     `json:"history_of,omitempty" doc:"Offer id the history is for; absent: the lowest of all listings"`
 }
 
-// Product returns a product's offers and daily lowest price. It never starts a
-// refresh, so opening the page costs nothing. pgx.ErrNoRows when unknown.
-func (s *Service) Product(ctx context.Context, productID int64, currency string) (ProductPage, error) {
+// Product returns a product's offers and daily lowest price, of all listings
+// or of one (listing > 0). It never starts a refresh, so opening the page costs
+// nothing. pgx.ErrNoRows when unknown.
+func (s *Service) Product(ctx context.Context, productID int64, currency string, listing int64) (ProductPage, error) {
 	q := store.New(s.DB)
 	p, err := q.GetProduct(ctx, productID)
 	if err != nil {
@@ -49,10 +51,18 @@ func (s *Service) Product(ctx context.Context, productID int64, currency string)
 	}
 
 	since := time.Now().UTC().AddDate(0, 0, -HistoryDays+1).Truncate(24 * time.Hour)
-	points, err := q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{
-		ProductID: p.ID, Since: pgtype.Timestamptz{Time: since, Valid: true},
-	})
-	if err != nil {
+	from := pgtype.Timestamptz{Time: since, Valid: true}
+	var points []store.ListProductPricePointsRow
+	if listing > 0 {
+		rows, err := q.ListOfferPricePoints(ctx, store.ListOfferPricePointsParams{OfferID: listing, ProductID: p.ID, Since: from})
+		if err != nil {
+			return ProductPage{}, err
+		}
+		for _, r := range rows {
+			points = append(points, store.ListProductPricePointsRow(r))
+		}
+		page.HistoryOf = listing
+	} else if points, err = q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{ProductID: p.ID, Since: from}); err != nil {
 		return ProductPage{}, err
 	}
 	rates, err := fx.Latest(ctx, q)

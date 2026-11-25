@@ -38,7 +38,7 @@ export function RuleEditor({ draft, note, currency, onDraft, onNote }: Props) {
           className={`${box} w-16`}
           aria-label="Drop percentage"
         />
-        % from the lowest price when tracking started
+        % from the price when tracking started
       </label>
       <label className="flex items-center gap-2">
         <input

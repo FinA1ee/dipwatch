@@ -40,8 +40,9 @@ type offer struct {
 }
 
 // Check runs every tracker's rules against one source's offers for a product
-// (T1, T4). Each rule fires for the cheapest matching offer, at most once per
-// offer, rule and channel per day (T5, enforced by the alerts table).
+// (T1, T4). Each rule fires for the cheapest matching offer, or only for the
+// pinned listing when the tracker has one, at most once per offer, rule and
+// channel per day (T5, enforced by the alerts table).
 func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, sourceID string, ch Changes) (int, error) {
 	watchers, err := q.ListProductWatchers(ctx, productID)
 	if err != nil || len(watchers) == 0 {
@@ -60,10 +61,14 @@ func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, 
 		cny, err := rates.ToCNYMinor(r.PriceMinor, r.Currency)
 		offers = append(offers, offer{id: r.ID, cny: cny, known: err == nil})
 	}
+	var pinned *int64
 	cheapestWhere := func(match func(offer) bool) (offer, bool) {
 		var best offer
 		found := false
 		for _, o := range offers {
+			if pinned != nil && o.id != *pinned {
+				continue
+			}
 			if o.known && match(o) && (!found || o.cny < best.cny) {
 				best, found = o, true
 			}
@@ -76,6 +81,7 @@ func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, 
 		if len(w.Sources) > 0 && !slices.Contains(w.Sources, sourceID) {
 			continue // the member tracks this product at another store
 		}
+		pinned = w.OfferID
 		channels := c.channels(w.FeishuWebhook, w.EmailAlerts)
 		if len(channels) == 0 {
 			continue

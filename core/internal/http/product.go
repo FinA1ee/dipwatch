@@ -13,12 +13,13 @@ import (
 
 // Products serves the product page.
 type Products interface {
-	Product(ctx context.Context, productID int64, currency string) (search.ProductPage, error)
+	Product(ctx context.Context, productID int64, currency string, listing int64) (search.ProductPage, error)
 }
 
 type ProductInput struct {
 	ProductID int64  `path:"productId" minimum:"1"`
 	Currency  string `query:"currency" pattern:"^[A-Z]{3}$" default:"CNY"`
+	Listing   int64  `query:"listing" minimum:"0" doc:"Offer id: price history of this listing only; 0: the lowest of all listings"`
 }
 
 type ProductOutput struct {
@@ -35,7 +36,7 @@ func registerProducts(api huma.API, p Products) {
 		Tags:        []string{"Search"},
 		Errors:      []int{http.StatusNotFound},
 	}, func(ctx context.Context, in *ProductInput) (*ProductOutput, error) {
-		page, err := p.Product(ctx, in.ProductID, in.Currency)
+		page, err := p.Product(ctx, in.ProductID, in.Currency, in.Listing)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, huma.Error404NotFound("No such product.")
 		}

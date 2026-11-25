@@ -14,6 +14,12 @@ import (
 // ErrQuotaExceeded means the viewer used today's costly searches.
 var ErrQuotaExceeded = errors.New("daily search limit reached")
 
+// ErrInviteOnly means the site is invite-only and the viewer is not invited.
+var ErrInviteOnly = errors.New("invite-only: the viewer is not invited")
+
+// Invited reports whether the viewer may use costly features under the invite list.
+func Invited(l limits.Limits, v Viewer) bool { return v.Admin || l.Allows(v.Email) }
+
 // QuotaError is ErrQuotaExceeded with the limit that applied.
 type QuotaError struct {
 	Limit  int
@@ -64,9 +70,14 @@ func (q *Quotas) current(ctx context.Context) limits.Limits {
 	return q.Limits.Get(ctx)
 }
 
-// Charge counts one costly search for the viewer, or returns ErrQuotaExceeded.
+// Charge counts one costly search for the viewer, or returns ErrInviteOnly or
+// ErrQuotaExceeded.
 func (q *Quotas) Charge(ctx context.Context, v Viewer) error {
-	subject, limit := v.quotaSubject(q.current(ctx))
+	l := q.current(ctx)
+	if !Invited(l, v) {
+		return ErrInviteOnly
+	}
+	subject, limit := v.quotaSubject(l)
 	_, err := store.New(q.DB).ChargeQuota(ctx, store.ChargeQuotaParams{Subject: subject, QuotaLimit: int32(limit)}) //nolint:gosec // small constant
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &QuotaError{Limit: limit, Member: v.UserID != ""}

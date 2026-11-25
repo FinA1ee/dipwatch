@@ -443,8 +443,10 @@ export interface components {
              * @example https://example.com/schemas/Item.json
              */
             readonly $schema?: string;
-            /** @description Lowest price when tracking started, in CNY */
+            /** @description Price when tracking started (of the listing, if one is pinned), in CNY */
             baseline?: components["schemas"]["Money"];
+            /** @description The listing this tracker follows; absent: the product's cheapest offer */
+            listing?: components["schemas"]["Listing"];
             note: string;
             /** Format: int64 */
             product_id: number;
@@ -467,6 +469,10 @@ export interface components {
              * @description LLM spend per China day; at 80% only tracked products get agent runs, at 100% only stored data is served (C4)
              */
             daily_budget_cny: number;
+            /** @description Only invited members (and admins) may run costly searches and track products; everyone can still read stored results */
+            invite_only: boolean;
+            /** @description Email addresses of invited members, as their sign-in account reports them */
+            invited: string[];
             /**
              * Format: int64
              * @description Costly searches per member per day (C1)
@@ -487,6 +493,18 @@ export interface components {
              * @description Costly searches per visitor IP per day (C1)
              */
             visitor_daily_searches: number;
+        };
+        Listing: {
+            /** @description The store's last refresh no longer listed it */
+            gone: boolean;
+            /** Format: int64 */
+            offer_id: number;
+            /** @description Price at the store, in its currency */
+            price: components["schemas"]["Money"];
+            /** @description Source id */
+            store: string;
+            title: string;
+            url: string;
         };
         Metrics: {
             /**
@@ -549,6 +567,11 @@ export interface components {
             readonly $schema?: string;
             /** @description Oldest first; days without any price are left out */
             history: components["schemas"]["DayLow"][];
+            /**
+             * Format: int64
+             * @description Offer id the history is for; absent: the lowest of all listings
+             */
+            history_of?: number;
             /** Format: date-time */
             last_refreshed?: string;
             /** @description Cheapest first, compared in CNY */
@@ -564,6 +587,8 @@ export interface components {
              * @example https://example.com/schemas/Result.json
              */
             readonly $schema?: string;
+            /** @description true when stored offers were not refreshed because the viewer is not invited */
+            invite_only?: boolean;
             /** @description Cheapest first, compared in CNY */
             offers: components["schemas"]["Offer"][];
             /** @description true when stored offers are older than usual because today's budget is spent */
@@ -622,8 +647,13 @@ export interface components {
             readonly $schema?: string;
             /** @description Up to 500 characters */
             note: string;
+            /**
+             * Format: int64
+             * @description Follow this listing only; omit to follow the product's cheapest offer
+             */
+            offer_id?: number;
             rules: components["schemas"]["Rule"][];
-            /** @description Stores to track at (needed when tracking starts; ignored afterwards) */
+            /** @description Stores to track at (needed when tracking starts without a listing; ignored afterwards) */
             stores?: string[];
         };
         SearchInputBody: {
@@ -1508,6 +1538,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorModel"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -1615,6 +1654,8 @@ export interface operations {
         parameters: {
             query?: {
                 currency?: string;
+                /** @description Offer id: price history of this listing only; 0: the lowest of all listings */
+                listing?: number;
             };
             header?: never;
             path: {
@@ -1686,6 +1727,15 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

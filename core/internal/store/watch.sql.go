@@ -40,7 +40,7 @@ func (q *Queries) DeleteWatchItem(ctx context.Context, arg DeleteWatchItemParams
 }
 
 const getWatchItem = `-- name: GetWatchItem :one
-SELECT id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources FROM app.watch_items WHERE user_id = $1 AND product_id = $2
+SELECT id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id FROM app.watch_items WHERE user_id = $1 AND product_id = $2
 `
 
 type GetWatchItemParams struct {
@@ -61,12 +61,13 @@ func (q *Queries) GetWatchItem(ctx context.Context, arg GetWatchItemParams) (App
 		&i.BaselinePriceCnyMinor,
 		&i.CreatedAt,
 		&i.Sources,
+		&i.OfferID,
 	)
 	return i, err
 }
 
 const listProductWatchers = `-- name: ListProductWatchers :many
-SELECT w.id, w.user_id, w.rules, w.baseline_price_cny_minor, w.created_at, w.sources,
+SELECT w.id, w.user_id, w.rules, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id,
        u.email, u.feishu_webhook, u.email_alerts
 FROM app.watch_items w
 JOIN app.users u ON u.id = w.user_id
@@ -80,6 +81,7 @@ type ListProductWatchersRow struct {
 	BaselinePriceCnyMinor *int64
 	CreatedAt             pgtype.Timestamptz
 	Sources               []string
+	OfferID               *int64
 	Email                 string
 	FeishuWebhook         string
 	EmailAlerts           bool
@@ -102,6 +104,7 @@ func (q *Queries) ListProductWatchers(ctx context.Context, productID int64) ([]L
 			&i.BaselinePriceCnyMinor,
 			&i.CreatedAt,
 			&i.Sources,
+			&i.OfferID,
 			&i.Email,
 			&i.FeishuWebhook,
 			&i.EmailAlerts,
@@ -117,26 +120,40 @@ func (q *Queries) ListProductWatchers(ctx context.Context, productID int64) ([]L
 }
 
 const listWatchItems = `-- name: ListWatchItems :many
-SELECT w.id, w.user_id, w.product_id, w.note, w.rules, w.channels, w.baseline_price_cny_minor, w.created_at, w.sources, p.canonical_name
+SELECT w.id, w.user_id, w.product_id, w.note, w.rules, w.channels, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id, p.canonical_name,
+       o.title_original AS offer_title, o.source_id AS offer_source_id, o.url AS offer_url,
+       o.price_minor AS offer_price_minor, o.currency AS offer_currency, o.last_seen_at AS offer_last_seen_at,
+       ps.last_refreshed_at AS offer_source_refreshed_at
 FROM app.watch_items w
 JOIN app.products p ON p.id = w.product_id
+LEFT JOIN app.offers o ON o.id = w.offer_id
+LEFT JOIN app.product_sources ps ON ps.product_id = w.product_id AND ps.source_id = o.source_id
 WHERE w.user_id = $1
 ORDER BY w.created_at DESC
 `
 
 type ListWatchItemsRow struct {
-	ID                    int64
-	UserID                string
-	ProductID             int64
-	Note                  string
-	Rules                 []byte
-	Channels              []byte
-	BaselinePriceCnyMinor *int64
-	CreatedAt             pgtype.Timestamptz
-	Sources               []string
-	CanonicalName         string
+	ID                     int64
+	UserID                 string
+	ProductID              int64
+	Note                   string
+	Rules                  []byte
+	Channels               []byte
+	BaselinePriceCnyMinor  *int64
+	CreatedAt              pgtype.Timestamptz
+	Sources                []string
+	OfferID                *int64
+	CanonicalName          string
+	OfferTitle             *string
+	OfferSourceID          *string
+	OfferUrl               *string
+	OfferPriceMinor        *int64
+	OfferCurrency          *string
+	OfferLastSeenAt        pgtype.Timestamptz
+	OfferSourceRefreshedAt pgtype.Timestamptz
 }
 
+// A pinned listing comes with its current price and when a refresh last saw it.
 func (q *Queries) ListWatchItems(ctx context.Context, userID string) ([]ListWatchItemsRow, error) {
 	rows, err := q.db.Query(ctx, listWatchItems, userID)
 	if err != nil {
@@ -156,7 +173,15 @@ func (q *Queries) ListWatchItems(ctx context.Context, userID string) ([]ListWatc
 			&i.BaselinePriceCnyMinor,
 			&i.CreatedAt,
 			&i.Sources,
+			&i.OfferID,
 			&i.CanonicalName,
+			&i.OfferTitle,
+			&i.OfferSourceID,
+			&i.OfferUrl,
+			&i.OfferPriceMinor,
+			&i.OfferCurrency,
+			&i.OfferLastSeenAt,
+			&i.OfferSourceRefreshedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -180,10 +205,12 @@ func (q *Queries) ProductTracked(ctx context.Context, productID int64) (bool, er
 }
 
 const saveWatchItem = `-- name: SaveWatchItem :one
-INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, sources)
-VALUES ($1, $2, $3, $4, $5, $6::text[])
-ON CONFLICT (user_id, product_id) DO UPDATE SET note = EXCLUDED.note, rules = EXCLUDED.rules
-RETURNING id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources
+INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, sources, offer_id)
+VALUES ($1, $2, $3, $4, $5, $6::text[], $7)
+ON CONFLICT (user_id, product_id) DO UPDATE
+SET note = EXCLUDED.note, rules = EXCLUDED.rules, baseline_price_cny_minor = EXCLUDED.baseline_price_cny_minor,
+    sources = EXCLUDED.sources, offer_id = EXCLUDED.offer_id
+RETURNING id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id
 `
 
 type SaveWatchItemParams struct {
@@ -193,11 +220,12 @@ type SaveWatchItemParams struct {
 	Rules                 []byte
 	BaselinePriceCnyMinor *int64
 	Sources               []string
+	OfferID               *int64
 }
 
-// Creates the tracker, or updates its note and rules. The baseline price is
-// set once, when tracking starts (rule "drop by a percentage since tracking started").
-// The stores are set when tracking starts too: a tracker keeps the store it was created with.
+// Creates or updates the tracker. The service decides the baseline price and
+// stores: they are set when tracking starts and again when the pinned listing
+// changes, and otherwise passed through unchanged.
 func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (AppWatchItem, error) {
 	row := q.db.QueryRow(ctx, saveWatchItem,
 		arg.UserID,
@@ -206,6 +234,7 @@ func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (A
 		arg.Rules,
 		arg.BaselinePriceCnyMinor,
 		arg.Sources,
+		arg.OfferID,
 	)
 	var i AppWatchItem
 	err := row.Scan(
@@ -218,6 +247,7 @@ func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (A
 		&i.BaselinePriceCnyMinor,
 		&i.CreatedAt,
 		&i.Sources,
+		&i.OfferID,
 	)
 	return i, err
 }

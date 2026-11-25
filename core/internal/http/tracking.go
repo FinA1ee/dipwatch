@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -16,7 +17,7 @@ import (
 // Tracker manages a member's tracked products and alert settings.
 type Tracker interface {
 	List(ctx context.Context, v guard.Viewer) ([]tracking.Item, error)
-	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string) (tracking.Item, error)
+	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64) (tracking.Item, error)
 	Delete(ctx context.Context, v guard.Viewer, productID int64) error
 	Settings(ctx context.Context, v guard.Viewer) (tracking.Settings, error)
 	SaveSettings(ctx context.Context, v guard.Viewer, feishu string, email bool) (tracking.Settings, error)
@@ -41,9 +42,10 @@ type ProductPath struct {
 type SaveTrackedInput struct {
 	ProductPath
 	Body struct {
-		Note   string        `json:"note" maxLength:"2000" doc:"Up to 500 characters"`
-		Rules  []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
-		Stores []string      `json:"stores,omitempty" maxItems:"20" doc:"Stores to track at (needed when tracking starts; ignored afterwards)"`
+		Note    string        `json:"note" maxLength:"2000" doc:"Up to 500 characters"`
+		Rules   []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
+		Stores  []string      `json:"stores,omitempty" maxItems:"20" doc:"Stores to track at (needed when tracking starts without a listing; ignored afterwards)"`
+		OfferID *int64        `json:"offer_id,omitempty" doc:"Follow this listing only; omit to follow the product's cheapest offer"`
 	}
 }
 
@@ -85,9 +87,12 @@ func registerTracking(api huma.API, t Tracker, sim Simulator) {
 	huma.Register(api, huma.Operation{
 		OperationID: "save-tracked", Method: http.MethodPut, Path: "/me/tracked/{productId}",
 		Summary: "Track a product, or change its note and rules", Tags: tags,
-		Errors: append(member, http.StatusNotFound, http.StatusConflict),
+		Errors: append(member, http.StatusForbidden, http.StatusNotFound, http.StatusConflict),
 	}, func(ctx context.Context, in *SaveTrackedInput) (*TrackedItemOutput, error) {
-		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores)
+		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores, in.Body.OfferID)
+		if errors.Is(err, guard.ErrInviteOnly) {
+			return nil, inviteError(viewerFrom(ctx))
+		}
 		if err != nil {
 			return nil, trackingError(err)
 		}
@@ -157,7 +162,7 @@ func trackingError(err error) error {
 		return huma.Error401Unauthorized(err.Error())
 	case errors.Is(err, tracking.ErrNoProduct), errors.Is(err, tracking.ErrNotTracked):
 		return huma.Error404NotFound(err.Error())
-	case errors.Is(err, tracking.ErrNoteTooLong), errors.Is(err, tracking.ErrNoWebhook), errors.Is(err, tracking.ErrStores), errors.Is(err, notify.ErrWebhookHost):
+	case errors.Is(err, tracking.ErrNoteTooLong), errors.Is(err, tracking.ErrNoWebhook), errors.Is(err, tracking.ErrStores), errors.Is(err, tracking.ErrListing), errors.Is(err, notify.ErrWebhookHost):
 		return huma.Error400BadRequest(err.Error())
 	case isRuleError(err):
 		return huma.Error400BadRequest(err.Error())
@@ -177,4 +182,12 @@ func trackingError(err error) error {
 func isRuleError(err error) bool {
 	var re alerts.RuleError
 	return errors.As(err, &re)
+}
+
+// inviteError tells an uninvited viewer which email to send the owner.
+func inviteError(v guard.Viewer) error {
+	if v.Email == "" {
+		return huma.Error403Forbidden("Dipwatch is invite-only for now. Sign in, then ask the owner to invite your email.")
+	}
+	return huma.Error403Forbidden(fmt.Sprintf("Dipwatch is invite-only for now. Ask the owner to invite %s.", v.Email))
 }
