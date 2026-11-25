@@ -59,3 +59,18 @@ export function streamLive(handlers: LiveHandlers): () => void {
   source.addEventListener("event", (e) => handlers.onEvent(JSON.parse((e as MessageEvent<string>).data)));
   return () => source.close();
 }
+
+export type Limits = Schemas["Limits"];
+
+export async function getLimits(): Promise<Limits> {
+  const { data, error, response } = await api.GET("/admin/limits");
+  if (!data) fail(response, error);
+  return data;
+}
+
+export async function saveLimits(limits: Limits): Promise<Limits> {
+  const { $schema: _, ...body } = limits as Limits & { $schema?: string };
+  const { data, error, response } = await api.PUT("/admin/limits", { body });
+  if (!data) fail(response, error);
+  return data;
+}

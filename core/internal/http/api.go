@@ -32,6 +32,7 @@ type Services struct {
 	Live     LiveFeed
 	Tracking Tracker
 	Simulate Simulator
+	Limits   LimitStore
 }
 
 // New builds the router and registers every operation.
@@ -48,6 +49,7 @@ func New(db Pinger, internalToken string, s Services) (http.Handler, huma.API) {
 	registerAdmin(api, s.Runs)
 	registerLive(api, s.Live)
 	registerTracking(api, s.Tracking, s.Simulate)
+	registerLimits(api, s.Limits)
 	return router, api
 }
 

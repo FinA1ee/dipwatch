@@ -10,10 +10,16 @@ export async function listTracked(): Promise<TrackedItem[]> {
   return data.items;
 }
 
-export async function saveTracked(productId: number, note: string, rules: Rule[]): Promise<TrackedItem> {
+/** Tracks a product at the given stores (used when tracking starts), or updates it. */
+export async function saveTracked(
+  productId: number,
+  note: string,
+  rules: Rule[],
+  stores: string[],
+): Promise<TrackedItem> {
   const { data, error, response } = await api.PUT("/me/tracked/{productId}", {
     params: { path: { productId } },
-    body: { note, rules },
+    body: { note, rules, stores },
   });
   if (!data) fail(response, error);
   return data;

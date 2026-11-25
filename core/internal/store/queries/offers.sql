@@ -47,8 +47,8 @@ JOIN app.offers o ON o.id = pp.offer_id
 WHERE o.product_id = @product_id;
 
 -- name: ListSearchOffers :many
--- Offers shown in search results: everything the matcher did not reject (S6).
--- Optionally limited to one source, for the per-source stream events.
+-- Offers shown in search results: everything the matcher did not reject (S6),
+-- from the given stores (empty: every store).
 SELECT o.id, o.source_id, s.name AS source_name, s.region AS source_region,
        o.url, o.title_original, o.title_en, o.price_minor, o.currency, o.shipping_minor,
        o.condition, o.availability, o.seller_type
@@ -56,7 +56,7 @@ FROM app.offers o
 JOIN app.sources s ON s.id = o.source_id
 WHERE o.product_id = @product_id
   AND o.is_product IS NOT FALSE
-  AND (sqlc.narg('source_id')::text IS NULL OR o.source_id = sqlc.narg('source_id')::text)
+  AND (cardinality(@source_ids::text[]) = 0 OR o.source_id = ANY(@source_ids::text[]))
 ORDER BY o.id;
 
 -- name: ListProductPricePoints :many

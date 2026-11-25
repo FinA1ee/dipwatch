@@ -16,25 +16,34 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/alerts"
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
+	"github.com/FinA1ee/dipwatch/core/internal/limits"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
-// Limits from the spec.
-const (
-	MaxTracked  = 20  // C2
-	MaxNoteRune = 500 // T2
-)
+// MaxNoteRune is the longest note (T2). The tracked-products limit is the owner's
+// live setting (limits.TrackedPerMember).
+const MaxNoteRune = 500
 
 // Errors the API maps to 4xx responses.
 var (
 	ErrNotMember   = errors.New("sign in to track products")
-	ErrTooMany     = fmt.Errorf("you can track up to %d products", MaxTracked)
 	ErrNoteTooLong = fmt.Errorf("notes can be up to %d characters", MaxNoteRune)
 	ErrNotTracked  = errors.New("you are not tracking this product")
 	ErrNoProduct   = errors.New("no such product")
 	ErrNoWebhook   = errors.New("add a Feishu webhook first")
+	ErrStores      = errors.New("pick the store to track this product at")
 )
+
+// LimitError means the member reached the tracked-products limit.
+type LimitError struct{ Limit int }
+
+func (e *LimitError) Error() string {
+	if e.Limit == 1 {
+		return "you can track 1 product for now: stop tracking the other one first"
+	}
+	return fmt.Sprintf("you can track up to %d products", e.Limit)
+}
 
 // Item is one tracked product.
 type Item struct {
@@ -42,6 +51,7 @@ type Item struct {
 	ProductName string        `json:"product_name"`
 	Note        string        `json:"note"`
 	Rules       []alerts.Rule `json:"rules"`
+	Stores      []string      `json:"stores" doc:"Stores refreshed and alerted on; empty: every store"`
 	Baseline    *alerts.Money `json:"baseline,omitempty" doc:"Lowest price when tracking started, in CNY"`
 	TrackedAt   time.Time     `json:"tracked_at"`
 }
@@ -58,6 +68,14 @@ type Service struct {
 	DB             *pgxpool.Pool
 	Feishu         notify.Feishu
 	EmailAvailable bool
+	Limits         *limits.Store // nil: the defaults
+}
+
+func (s *Service) limits(ctx context.Context) limits.Limits {
+	if s.Limits == nil {
+		return limits.Defaults
+	}
+	return s.Limits.Get(ctx)
 }
 
 // member makes sure core has a row for the signed-in member (Better Auth owns
@@ -84,13 +102,14 @@ func (s *Service) List(ctx context.Context, v guard.Viewer) ([]Item, error) {
 	}
 	out := make([]Item, len(rows))
 	for i, r := range rows {
-		out[i] = item(r.ProductID, r.CanonicalName, r.Note, r.Rules, r.BaselinePriceCnyMinor, r.CreatedAt.Time)
+		out[i] = item(r.ProductID, r.CanonicalName, r.Note, r.Rules, r.BaselinePriceCnyMinor, r.CreatedAt.Time, r.Sources)
 	}
 	return out, nil
 }
 
-// Save starts tracking a product or updates its note and rules.
-func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule) (Item, error) {
+// Save starts tracking a product at the given stores, or updates its note and
+// rules (the stores of an existing tracker stay as they were).
+func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string) (Item, error) {
 	q, err := s.member(ctx, v)
 	if err != nil {
 		return Item{}, err
@@ -115,28 +134,35 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 	}
 	var baseline *int64
 	if isNew {
+		l := s.limits(ctx)
 		count, err := q.CountWatchItems(ctx, v.UserID)
 		if err != nil {
 			return Item{}, err
 		}
-		if count >= MaxTracked {
-			return Item{}, ErrTooMany
+		if int(count) >= l.TrackedPerMember {
+			return Item{}, &LimitError{Limit: l.TrackedPerMember}
 		}
-		if baseline, err = lowestCNY(ctx, q, productID); err != nil {
+		if len(stores) == 0 || len(stores) > l.SourcesPerSearch {
+			return Item{}, ErrStores
+		}
+		if baseline, err = lowestCNY(ctx, q, productID, stores); err != nil {
 			return Item{}, err
 		}
+	}
+	if stores == nil {
+		stores = []string{}
 	}
 	raw, err := json.Marshal(rules)
 	if err != nil {
 		return Item{}, err
 	}
 	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{
-		UserID: v.UserID, ProductID: productID, Note: note, Rules: raw, BaselinePriceCnyMinor: baseline,
+		UserID: v.UserID, ProductID: productID, Note: note, Rules: raw, BaselinePriceCnyMinor: baseline, Sources: stores,
 	})
 	if err != nil {
 		return Item{}, err
 	}
-	return item(w.ProductID, product.CanonicalName, w.Note, w.Rules, w.BaselinePriceCnyMinor, w.CreatedAt.Time), nil
+	return item(w.ProductID, product.CanonicalName, w.Note, w.Rules, w.BaselinePriceCnyMinor, w.CreatedAt.Time, w.Sources), nil
 }
 
 func (s *Service) Delete(ctx context.Context, v guard.Viewer, productID int64) error {
@@ -192,9 +218,9 @@ func (s *Service) TestFeishu(ctx context.Context, v guard.Viewer) error {
 	return s.Feishu.Send(ctx, set.FeishuWebhook, "Dipwatch: test message. Price alerts for your tracked products will arrive here.")
 }
 
-// lowestCNY is the cheapest current offer in CNY, the baseline of drop rules.
-func lowestCNY(ctx context.Context, q *store.Queries, productID int64) (*int64, error) {
-	rows, err := q.ListSearchOffers(ctx, store.ListSearchOffersParams{ProductID: productID})
+// lowestCNY is the cheapest current offer in CNY at the stores, the baseline of drop rules.
+func lowestCNY(ctx context.Context, q *store.Queries, productID int64, stores []string) (*int64, error) {
+	rows, err := q.ListSearchOffers(ctx, store.ListSearchOffersParams{ProductID: productID, SourceIds: stores})
 	if err != nil {
 		return nil, err
 	}
@@ -212,8 +238,11 @@ func lowestCNY(ctx context.Context, q *store.Queries, productID int64) (*int64, 
 	return low, nil
 }
 
-func item(productID int64, name, note string, raw []byte, baseline *int64, at time.Time) Item {
-	it := Item{ProductID: productID, ProductName: name, Note: note, Rules: alerts.Parse(raw), TrackedAt: at}
+func item(productID int64, name, note string, raw []byte, baseline *int64, at time.Time, stores []string) Item {
+	if stores == nil {
+		stores = []string{}
+	}
+	it := Item{ProductID: productID, ProductName: name, Note: note, Rules: alerts.Parse(raw), TrackedAt: at, Stores: stores}
 	if it.Rules == nil {
 		it.Rules = []alerts.Rule{}
 	}

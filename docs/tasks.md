@@ -264,6 +264,7 @@ Decisions taken before starting (2026-11-25): alerts go out through a Feishu or 
 - [x] **6.3 Alerts.** After a refresh, evaluate rules and write `alerts` rows (unique per day); a `notify` job sends them through Feishu (and email when SMTP is set) with retries.
 - [x] **6.4 Live agent log.** Per-step records with model text, tokens and time; each step sent with Postgres NOTIFY; admin SSE stream; `/admin/live` page; trace page shows the new fields.
 - [x] **6.5 Web: tracking.** Track button and rules form on the product page; "My products" page with notes, rules, channel settings and a test message.
+- [x] **6.7 Budget limits (added 2026-11-25).** Limits the owner changes at any time on an admin page, stored in `app.settings`: stores per search (default 1), tracked products per member (default 1, replacing C2's 20), daily search quotas (C1). A search names its store; only that store is searched, shown and checked for freshness (`app.product_sources`). A tracker keeps the store it was created with, and scheduled refreshes and alerts use only that store.
 - [ ] **6.6 Deploy and check.** Deploy, add a Feishu webhook, simulate a price drop, confirm the message arrives within 5 minutes.
 
 ### Day 6 notes
@@ -273,3 +274,5 @@ Decisions taken before starting (2026-11-25): alerts go out through a Feishu or 
 - **Schedule.** Every refresh is a full search, so every scheduled refresh is also discovery; with the interval capped at 24 hours, T3's daily discovery holds.
 - **Bug found by the local check:** the simulated drop lowered the offer with the smallest number in its own currency (a ¥51,871 JPY offer) instead of the cheapest in CNY. It now compares in CNY.
 - **Simulated drop** (`POST /admin/products/{id}/simulate-drop`) changes stored prices; use it on a product kept for testing.
+- **Decisions for Day 7 (2026-11-25):** JD only through its affiliate API (JD Union), since its search page shows the server a login wall; the owner applies, and the adapter is built against the docs. UI pass: two mockups of the search page, the owner picks one, then it is applied to every page.
+- **Budget limits (6.7).** `/admin` has a "Budget limits" form; values are stored in `app.settings` and apply to core-api's next request and within 10 seconds in the worker. Freshness is per product and store (`app.product_sources`), so picking another store starts a refresh only for that store. Trackers created before the change keep refreshing every store until edited.

@@ -27,6 +27,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	httpapi "github.com/FinA1ee/dipwatch/core/internal/http"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/limits"
 	"github.com/FinA1ee/dipwatch/core/internal/live"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/runs"
@@ -103,13 +104,15 @@ func serve() error {
 	if err != nil {
 		return err
 	}
-	searcher := newSearch(ctx, pool, queue)
+	limitStore := &limits.Store{DB: pool}
+	searcher := newSearch(ctx, pool, queue, limitStore)
 	liveFeed := &live.Hub{DB: pool}
 	go liveFeed.Run(ctx)
 	handler, _ := httpapi.New(pool, cfg.InternalToken, httpapi.Services{
 		Search: searcher, Products: searcher, Runs: &runs.Reader{DB: pool}, Live: liveFeed,
-		Tracking: &tracking.Service{DB: pool, EmailAvailable: os.Getenv("EMAIL_ALERTS_AVAILABLE") == "true"},
+		Tracking: &tracking.Service{DB: pool, EmailAvailable: os.Getenv("EMAIL_ALERTS_AVAILABLE") == "true", Limits: limitStore},
 		Simulate: jobs.Simulator{Queue: queue},
+		Limits:   limitStore,
 	})
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -141,7 +144,7 @@ func serve() error {
 
 // newSearch builds the search service: the LISTEN hub for streams and the
 // query gate. Without an LLM, only queries already in the cache resolve.
-func newSearch(ctx context.Context, pool *pgxpool.Pool, queue search.Inserter) *search.Service {
+func newSearch(ctx context.Context, pool *pgxpool.Pool, queue search.Inserter, l *limits.Store) *search.Service {
 	gate := &guard.Gate{DB: pool}
 	switch cfg, err := llm.ConfigFromEnv(); {
 	case errors.Is(err, llm.ErrNotConfigured):
@@ -153,5 +156,5 @@ func newSearch(ctx context.Context, pool *pgxpool.Pool, queue search.Inserter) *
 	}
 	hub := &search.Hub{DB: pool}
 	go hub.Run(ctx)
-	return &search.Service{DB: pool, Gate: gate, Quotas: &guard.Quotas{DB: pool}, Queue: queue, Hub: hub}
+	return &search.Service{DB: pool, Gate: gate, Quotas: &guard.Quotas{DB: pool, Limits: l}, Limits: l, Queue: queue, Hub: hub}
 }

@@ -37,7 +37,7 @@ type Emit func(event any) error
 
 // Stream sends the product's offers now and again each time a source finishes,
 // then a DoneEvent once no source is running (S2).
-func (s *Service) Stream(ctx context.Context, productID int64, currency string, emit Emit) error {
+func (s *Service) Stream(ctx context.Context, productID int64, currency string, stores []string, emit Emit) error {
 	updates, stop := s.Hub.Subscribe(productID)
 	defer stop()
 	q := store.New(s.DB)
@@ -56,12 +56,15 @@ func (s *Service) Stream(ctx context.Context, productID int64, currency string, 
 		if err != nil {
 			return err
 		}
-		pending := product.RefreshingSources
-		if pending == nil {
-			pending = []string{}
+		// Only the stores this search chose: another search's stores are not its business.
+		pending := []string{}
+		for _, id := range product.RefreshingSources {
+			if len(stores) == 0 || slices.Contains(stores, id) {
+				pending = append(pending, id)
+			}
 		}
 		if first || !slices.Equal(pending, last) {
-			offers, err := s.offers(ctx, q, productID, nil, currency)
+			offers, err := s.offers(ctx, q, productID, stores, currency)
 			if err != nil {
 				return err
 			}

@@ -95,6 +95,12 @@ type AppProduct struct {
 	RefreshChanged    bool
 }
 
+type AppProductSource struct {
+	ProductID       int64
+	SourceID        string
+	LastRefreshedAt pgtype.Timestamptz
+}
+
 type AppQuery struct {
 	NormalizedText string
 	ProductID      *int64
@@ -105,6 +111,12 @@ type AppSearchQuotum struct {
 	Subject string
 	Day     pgtype.Date
 	Used    int32
+}
+
+type AppSetting struct {
+	Key       string
+	Value     []byte
+	UpdatedAt pgtype.Timestamptz
 }
 
 type AppSource struct {
@@ -135,6 +147,7 @@ type AppWatchItem struct {
 	Channels              []byte
 	BaselinePriceCnyMinor *int64
 	CreatedAt             pgtype.Timestamptz
+	Sources               []string
 }
 
 type AuthAccount struct {

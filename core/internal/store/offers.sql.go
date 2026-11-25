@@ -157,13 +157,13 @@ FROM app.offers o
 JOIN app.sources s ON s.id = o.source_id
 WHERE o.product_id = $1
   AND o.is_product IS NOT FALSE
-  AND ($2::text IS NULL OR o.source_id = $2::text)
+  AND (cardinality($2::text[]) = 0 OR o.source_id = ANY($2::text[]))
 ORDER BY o.id
 `
 
 type ListSearchOffersParams struct {
 	ProductID int64
-	SourceID  *string
+	SourceIds []string
 }
 
 type ListSearchOffersRow struct {
@@ -182,10 +182,10 @@ type ListSearchOffersRow struct {
 	SellerType    string
 }
 
-// Offers shown in search results: everything the matcher did not reject (S6).
-// Optionally limited to one source, for the per-source stream events.
+// Offers shown in search results: everything the matcher did not reject (S6),
+// from the given stores (empty: every store).
 func (q *Queries) ListSearchOffers(ctx context.Context, arg ListSearchOffersParams) ([]ListSearchOffersRow, error) {
-	rows, err := q.db.Query(ctx, listSearchOffers, arg.ProductID, arg.SourceID)
+	rows, err := q.db.Query(ctx, listSearchOffers, arg.ProductID, arg.SourceIds)
 	if err != nil {
 		return nil, err
 	}

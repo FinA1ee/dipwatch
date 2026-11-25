@@ -7,6 +7,8 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const adaptRefreshInterval = `-- name: AdaptRefreshInterval :exec
@@ -30,7 +32,10 @@ func (q *Queries) AdaptRefreshInterval(ctx context.Context, id int64) error {
 }
 
 const dueTrackedProducts = `-- name: DueTrackedProducts :many
-SELECT p.id FROM app.products p
+SELECT p.id,
+       ARRAY(SELECT DISTINCT s FROM app.watch_items w, unnest(w.sources) s WHERE w.product_id = p.id ORDER BY 1)::text[] AS sources,
+       EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id AND cardinality(w.sources) = 0) AS all_sources
+FROM app.products p
 WHERE EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
   AND cardinality(p.refreshing_sources) = 0
   AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + p.refresh_interval <= now())
@@ -38,21 +43,28 @@ ORDER BY p.last_refreshed_at NULLS FIRST
 LIMIT 50
 `
 
-// Tracked products whose refresh interval has passed and that are not refreshing (T3).
-// Untracked products are never scheduled.
-func (q *Queries) DueTrackedProducts(ctx context.Context) ([]int64, error) {
+type DueTrackedProductsRow struct {
+	ID         int64
+	Sources    []string
+	AllSources bool
+}
+
+// Tracked products whose refresh interval has passed and that are not refreshing
+// (T3), with the stores their trackers chose. An empty list means a tracker from
+// before per-store tracking: every enabled store. Untracked products are never scheduled.
+func (q *Queries) DueTrackedProducts(ctx context.Context) ([]DueTrackedProductsRow, error) {
 	rows, err := q.db.Query(ctx, dueTrackedProducts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []int64
+	var items []DueTrackedProductsRow
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var i DueTrackedProductsRow
+		if err := rows.Scan(&i.ID, &i.Sources, &i.AllSources); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -120,6 +132,22 @@ func (q *Queries) MarkRefreshChanged(ctx context.Context, id int64) error {
 	return err
 }
 
+const markSourceRefreshed = `-- name: MarkSourceRefreshed :exec
+INSERT INTO app.product_sources (product_id, source_id, last_refreshed_at)
+VALUES ($1, $2, now())
+ON CONFLICT (product_id, source_id) DO UPDATE SET last_refreshed_at = now()
+`
+
+type MarkSourceRefreshedParams struct {
+	ProductID int64
+	SourceID  string
+}
+
+func (q *Queries) MarkSourceRefreshed(ctx context.Context, arg MarkSourceRefreshedParams) error {
+	_, err := q.db.Exec(ctx, markSourceRefreshed, arg.ProductID, arg.SourceID)
+	return err
+}
+
 const notifyAgent = `-- name: NotifyAgent :exec
 SELECT pg_notify('dipwatch_agent', $1::text)
 `
@@ -138,8 +166,46 @@ func (q *Queries) NotifyOffers(ctx context.Context, payload string) error {
 	return err
 }
 
+const sourceFreshness = `-- name: SourceFreshness :many
+SELECT source_id, last_refreshed_at FROM app.product_sources
+WHERE product_id = $1 AND source_id = ANY($2::text[])
+`
+
+type SourceFreshnessParams struct {
+	ProductID int64
+	SourceIds []string
+}
+
+type SourceFreshnessRow struct {
+	SourceID        string
+	LastRefreshedAt pgtype.Timestamptz
+}
+
+func (q *Queries) SourceFreshness(ctx context.Context, arg SourceFreshnessParams) ([]SourceFreshnessRow, error) {
+	rows, err := q.db.Query(ctx, sourceFreshness, arg.ProductID, arg.SourceIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SourceFreshnessRow
+	for rows.Next() {
+		var i SourceFreshnessRow
+		if err := rows.Scan(&i.SourceID, &i.LastRefreshedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const startRefresh = `-- name: StartRefresh :exec
-UPDATE app.products SET refreshing_sources = $1::text[], refresh_changed = false WHERE id = $2
+UPDATE app.products SET
+    refreshing_sources = ARRAY(SELECT DISTINCT unnest(refreshing_sources || $1::text[]) ORDER BY 1),
+    refresh_changed = false
+WHERE id = $2
 `
 
 type StartRefreshParams struct {
@@ -147,6 +213,8 @@ type StartRefreshParams struct {
 	ID        int64
 }
 
+// Adds the refresh's stores to those already running: searches for different
+// stores of one product may overlap.
 func (q *Queries) StartRefresh(ctx context.Context, arg StartRefreshParams) error {
 	_, err := q.db.Exec(ctx, startRefresh, arg.SourceIds, arg.ID)
 	return err

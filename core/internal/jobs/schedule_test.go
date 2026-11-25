@@ -18,7 +18,7 @@ func TestAdaptiveIntervalAndDueProducts(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = q.DeleteUser(context.Background(), user) })
-	if _, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: tracked.ID, Rules: []byte(`[]`)}); err != nil {
+	if _, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: tracked.ID, Rules: []byte(`[]`), Sources: []string{}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -28,8 +28,8 @@ func TestAdaptiveIntervalAndDueProducts(t *testing.T) {
 			t.Fatal(err)
 		}
 		m := map[int64]bool{}
-		for _, id := range ids {
-			m[id] = true
+		for _, row := range ids {
+			m[row.ID] = true
 		}
 		return m
 	}

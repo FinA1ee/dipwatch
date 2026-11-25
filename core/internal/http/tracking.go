@@ -16,7 +16,7 @@ import (
 // Tracker manages a member's tracked products and alert settings.
 type Tracker interface {
 	List(ctx context.Context, v guard.Viewer) ([]tracking.Item, error)
-	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule) (tracking.Item, error)
+	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string) (tracking.Item, error)
 	Delete(ctx context.Context, v guard.Viewer, productID int64) error
 	Settings(ctx context.Context, v guard.Viewer) (tracking.Settings, error)
 	SaveSettings(ctx context.Context, v guard.Viewer, feishu string, email bool) (tracking.Settings, error)
@@ -41,8 +41,9 @@ type ProductPath struct {
 type SaveTrackedInput struct {
 	ProductPath
 	Body struct {
-		Note  string        `json:"note" maxLength:"2000" doc:"Up to 500 characters"`
-		Rules []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
+		Note   string        `json:"note" maxLength:"2000" doc:"Up to 500 characters"`
+		Rules  []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
+		Stores []string      `json:"stores,omitempty" maxItems:"20" doc:"Stores to track at (needed when tracking starts; ignored afterwards)"`
 	}
 }
 
@@ -86,7 +87,7 @@ func registerTracking(api huma.API, t Tracker, sim Simulator) {
 		Summary: "Track a product, or change its note and rules", Tags: tags,
 		Errors: append(member, http.StatusNotFound, http.StatusConflict),
 	}, func(ctx context.Context, in *SaveTrackedInput) (*TrackedItemOutput, error) {
-		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules)
+		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores)
 		if err != nil {
 			return nil, trackingError(err)
 		}
@@ -156,12 +157,14 @@ func trackingError(err error) error {
 		return huma.Error401Unauthorized(err.Error())
 	case errors.Is(err, tracking.ErrNoProduct), errors.Is(err, tracking.ErrNotTracked):
 		return huma.Error404NotFound(err.Error())
-	case errors.Is(err, tracking.ErrTooMany):
-		return huma.Error409Conflict(err.Error())
-	case errors.Is(err, tracking.ErrNoteTooLong), errors.Is(err, tracking.ErrNoWebhook), errors.Is(err, notify.ErrWebhookHost):
+	case errors.Is(err, tracking.ErrNoteTooLong), errors.Is(err, tracking.ErrNoWebhook), errors.Is(err, tracking.ErrStores), errors.Is(err, notify.ErrWebhookHost):
 		return huma.Error400BadRequest(err.Error())
 	case isRuleError(err):
 		return huma.Error400BadRequest(err.Error())
+	}
+	var limitErr *tracking.LimitError
+	if errors.As(err, &limitErr) {
+		return huma.Error409Conflict(limitErr.Error())
 	}
 	var sendErr *notify.SendError
 	if errors.As(err, &sendErr) {

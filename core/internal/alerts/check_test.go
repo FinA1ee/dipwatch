@@ -79,7 +79,7 @@ func newFixture(t *testing.T, ctx context.Context, pool *pgxpool.Pool, rules []R
 		t.Fatal(err)
 	}
 	raw, _ := json.Marshal(rules)
-	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: p.ID, Rules: raw, BaselinePriceCnyMinor: &baseline})
+	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: p.ID, Rules: raw, BaselinePriceCnyMinor: &baseline, Sources: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}

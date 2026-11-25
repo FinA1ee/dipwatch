@@ -144,8 +144,12 @@ func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs])
 		return err
 	}
 	params := make([]river.InsertManyParams, len(ids))
-	for i, id := range ids {
-		params[i] = river.InsertManyParams{Args: RefreshProductArgs{ProductID: id}, InsertOpts: &river.InsertOpts{Queue: job.Queue}}
+	for i, p := range ids {
+		args := RefreshProductArgs{ProductID: p.ID, Sources: p.Sources}
+		if p.AllSources {
+			args.Sources = nil // a tracker from before per-store tracking: every store
+		}
+		params[i] = river.InsertManyParams{Args: args, InsertOpts: &river.InsertOpts{Queue: job.Queue}}
 	}
 	if _, err := client.InsertMany(ctx, params); err != nil {
 		return err

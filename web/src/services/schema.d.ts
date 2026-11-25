@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/admin/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Budget limits */
+        get: operations["admin-limits"];
+        /**
+         * Change budget limits
+         * @description Applies to the next request in core-api and within 10 seconds in the worker.
+         */
+        put: operations["admin-save-limits"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/live": {
         parameters: {
             query?: never;
@@ -242,6 +263,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stores a search can use */
+        get: operations["list-stores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -395,8 +433,38 @@ export interface components {
             product_id: number;
             product_name: string;
             rules: components["schemas"]["Rule"][];
+            /** @description Stores refreshed and alerted on; empty: every store */
+            stores: string[];
             /** Format: date-time */
             tracked_at: string;
+        };
+        Limits: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Limits.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Costly searches per member per day (C1)
+             */
+            member_daily_searches: number;
+            /**
+             * Format: int64
+             * @description Stores a member or visitor may pick for one search
+             */
+            sources_per_search: number;
+            /**
+             * Format: int64
+             * @description Products one member may track (C2)
+             */
+            tracked_per_member: number;
+            /**
+             * Format: int64
+             * @description Costly searches per visitor IP per day (C1)
+             */
+            visitor_daily_searches: number;
         };
         Metrics: {
             /**
@@ -531,6 +599,8 @@ export interface components {
             /** @description Up to 500 characters */
             note: string;
             rules: components["schemas"]["Rule"][];
+            /** @description Stores to track at (needed when tracking starts; ignored afterwards) */
+            stores?: string[];
         };
         SearchInputBody: {
             /**
@@ -546,6 +616,8 @@ export interface components {
             currency: string;
             /** @description Product to search for, e.g. RTX 5090. At most 80 characters after trimming. */
             query: string;
+            /** @description Store ids to search, from GET /stores; at most the per-search limit */
+            stores: string[];
         };
         Settings: {
             /**
@@ -637,6 +709,25 @@ export interface components {
             tokens_out?: number;
             tool?: string;
         };
+        Store: {
+            id: string;
+            name: string;
+            region: string;
+        };
+        StoresOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StoresOutputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description How many stores one search may use
+             */
+            per_search: number;
+            stores: components["schemas"]["Store"][];
+        };
         Summary: {
             /** Format: double */
             cost_cny: number;
@@ -682,6 +773,104 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "admin-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Limits"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-save-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Limits"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Limits"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "admin-live": {
         parameters: {
             query?: never;
@@ -1470,6 +1659,8 @@ export interface operations {
         parameters: {
             query?: {
                 currency?: string;
+                /** @description The stores the search used */
+                stores?: string[];
             };
             header?: never;
             path: {
@@ -1508,6 +1699,35 @@ export interface operations {
                         /** @description The retry time in milliseconds. */
                         retry?: number;
                     })[];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoresOutputBody"];
                 };
             };
             /** @description Error */

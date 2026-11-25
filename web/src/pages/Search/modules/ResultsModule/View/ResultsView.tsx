@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { OfferTable } from "@/components/OfferTable";
 import { useSettings } from "@/hooks/useSettings";
+import { useStores } from "@/hooks/useStores";
 import { streamOffers } from "@/services/search";
 import { ResultsHeader } from "../Component/ResultsHeader";
 import { useResults } from "../Model/useResults";
@@ -9,14 +10,15 @@ import { useResults } from "../Model/useResults";
 export function ResultsView() {
   const r = useResults();
   const currency = useSettings((s) => s.currency);
+  const picked = useStores().selected.join(",");
   const productId = r.product?.id;
   const streaming = r.phase === "streaming";
   const { applyOffers, finish } = r;
 
   useEffect(() => {
     if (!streaming || productId === undefined) return;
-    return streamOffers(productId, currency, { onOffers: applyOffers, onDone: finish });
-  }, [streaming, productId, currency, applyOffers, finish]);
+    return streamOffers(productId, currency, picked.split(","), { onOffers: applyOffers, onDone: finish });
+  }, [streaming, productId, currency, picked, applyOffers, finish]);
 
   if (r.phase === "error") {
     return <p className="rounded-lg bg-rose-50 p-3 text-rose-800">{r.error}</p>;

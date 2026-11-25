@@ -11,8 +11,8 @@ export function useTracked() {
   const query = useQuery({ queryKey: KEY, queryFn: listTracked, enabled: Boolean(member), retry: false });
   const refresh = () => client.invalidateQueries({ queryKey: KEY });
   const save = useMutation({
-    mutationFn: (v: { productId: number; note: string; rules: Rule[] }) =>
-      saveTracked(v.productId, v.note, v.rules),
+    mutationFn: (v: { productId: number; note: string; rules: Rule[]; stores: string[] }) =>
+      saveTracked(v.productId, v.note, v.rules, v.stores),
     onSuccess: refresh,
   });
   const remove = useMutation({

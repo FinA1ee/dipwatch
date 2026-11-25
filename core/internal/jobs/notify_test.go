@@ -60,7 +60,7 @@ func TestNotifySendsOnceAndGivesUpOnARefusal(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = q.DeleteUser(context.Background(), user) })
 	_ = q.SetUserChannels(ctx, store.SetUserChannelsParams{ID: user, FeishuWebhook: "https://open.feishu.cn/open-apis/bot/v2/hook/t"})
-	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: product.ID, Rules: []byte(`[]`)})
+	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: product.ID, Rules: []byte(`[]`), Sources: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}

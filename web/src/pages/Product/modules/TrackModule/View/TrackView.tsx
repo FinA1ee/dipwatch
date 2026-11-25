@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { RuleEditor } from "@/components/RuleEditor";
 import { useSettings } from "@/hooks/useSettings";
+import { useStores } from "@/hooks/useStores";
 import { useTracked } from "@/hooks/useTracked";
 import { draftToRules, EMPTY_DRAFT, type RuleDraft, rulesToDraft } from "@/utils/rules";
 
@@ -10,6 +11,7 @@ export function TrackView() {
   const productId = Number(useParams().productId);
   const t = useTracked();
   const currency = useSettings((s) => s.currency);
+  const stores = useStores();
   const current = t.items.find((i) => i.product_id === productId);
   const [draft, setDraft] = useState<RuleDraft>(EMPTY_DRAFT);
   const [note, setNote] = useState("");
@@ -41,13 +43,20 @@ export function TrackView() {
     const rules = draftToRules(draft, currency);
     if (typeof rules === "string") return setProblem(rules);
     setProblem("");
-    t.save.mutate({ productId, note: note.trim(), rules });
+    t.save.mutate({ productId, note: note.trim(), rules, stores: stores.selected });
   };
   const error = problem || t.save.error?.message || t.remove.error?.message;
 
   return (
     <section className="space-y-3 rounded-lg border border-slate-200 p-3">
       <h2 className="text-lg font-semibold">{current ? "You track this product" : "Track this product"}</h2>
+      <p className="text-sm text-slate-600">
+        At{" "}
+        {(current && current.stores.length > 0 ? current.stores : stores.selected)
+          .map((id) => stores.all.find((s) => s.id === id)?.name ?? id)
+          .join(", ") || "every store"}
+        {!current && " (the store picked on the search page)"}. Dipwatch re-checks it every few hours.
+      </p>
       <RuleEditor draft={draft} note={note} currency={currency} onDraft={setDraft} onNote={setNote} />
       {error && <p className="text-sm text-rose-700">{error}</p>}
       <div className="flex flex-wrap items-center gap-3 text-sm">

@@ -54,32 +54,38 @@ var anyStock = []alerts.Rule{{Type: alerts.RuleBackInStock}}
 
 func TestTrackingLimitsAndUpdates(t *testing.T) {
 	ctx, pool := setup(t)
-	s := &Service{DB: pool}
+	s := &Service{DB: pool} // default limits: 1 product, 1 store
 	id := fmt.Sprintf("track-%d", time.Now().UnixNano())
 	v := guard.Viewer{UserID: id, Email: id + "@example.test"}
 	t.Cleanup(func() { _ = store.New(pool).DeleteUser(context.Background(), id) })
-	ids := products(t, ctx, store.New(pool), MaxTracked+1)
+	ids := products(t, ctx, store.New(pool), 2)
+	at := []string{"kakaku"}
 
-	if _, err := s.Save(ctx, guard.Viewer{}, ids[0], "", anyStock); !errors.Is(err, ErrNotMember) {
+	if _, err := s.Save(ctx, guard.Viewer{}, ids[0], "", anyStock, at); !errors.Is(err, ErrNotMember) {
 		t.Fatalf("visitor: %v", err)
 	}
-	if _, err := s.Save(ctx, v, ids[0], strings.Repeat("备", MaxNoteRune+1), anyStock); !errors.Is(err, ErrNoteTooLong) {
+	if _, err := s.Save(ctx, v, ids[0], strings.Repeat("备", MaxNoteRune+1), anyStock, at); !errors.Is(err, ErrNoteTooLong) {
 		t.Fatalf("long note: %v", err)
 	}
-	if _, err := s.Save(ctx, v, ids[0], "", []alerts.Rule{{Type: alerts.RuleDrop}}); err == nil {
+	if _, err := s.Save(ctx, v, ids[0], "", []alerts.Rule{{Type: alerts.RuleDrop}}, at); err == nil {
 		t.Fatal("invalid rule accepted")
 	}
-	for i := range MaxTracked {
-		if _, err := s.Save(ctx, v, ids[i], strings.Repeat("备", MaxNoteRune), anyStock); err != nil {
-			t.Fatalf("product %d: %v", i+1, err)
-		}
+	if _, err := s.Save(ctx, v, ids[0], "", anyStock, nil); !errors.Is(err, ErrStores) {
+		t.Fatalf("no store: %v", err)
 	}
-	if _, err := s.Save(ctx, v, ids[MaxTracked], "", anyStock); !errors.Is(err, ErrTooMany) {
-		t.Fatalf("21st product: %v (C2)", err)
+	if _, err := s.Save(ctx, v, ids[0], "", anyStock, []string{"kakaku", "smzdm"}); !errors.Is(err, ErrStores) {
+		t.Fatalf("two stores with a limit of one: %v", err)
 	}
-	// Changing an existing tracker is not a new one.
-	item, err := s.Save(ctx, v, ids[0], "upgrade", []alerts.Rule{{Type: alerts.RuleDrop, Percent: 10}})
-	if err != nil || item.Note != "upgrade" || item.Rules[0].Percent != 10 {
+	if _, err := s.Save(ctx, v, ids[0], strings.Repeat("备", MaxNoteRune), anyStock, at); err != nil {
+		t.Fatal(err)
+	}
+	var limit *LimitError
+	if _, err := s.Save(ctx, v, ids[1], "", anyStock, at); !errors.As(err, &limit) || limit.Limit != 1 {
+		t.Fatalf("second product: %v (limit 1)", err)
+	}
+	// Changing an existing tracker is not a new one, and keeps its store.
+	item, err := s.Save(ctx, v, ids[0], "upgrade", []alerts.Rule{{Type: alerts.RuleDrop, Percent: 10}}, nil)
+	if err != nil || item.Note != "upgrade" || item.Rules[0].Percent != 10 || len(item.Stores) != 1 || item.Stores[0] != "kakaku" {
 		t.Fatalf("update: %+v, %v", item, err)
 	}
 	if err := s.Delete(ctx, v, ids[0]); err != nil {
@@ -88,9 +94,8 @@ func TestTrackingLimitsAndUpdates(t *testing.T) {
 	if err := s.Delete(ctx, v, ids[0]); !errors.Is(err, ErrNotTracked) {
 		t.Fatalf("second delete: %v", err)
 	}
-	list, err := s.List(ctx, v)
-	if err != nil || len(list) != MaxTracked-1 {
-		t.Fatalf("list: %d items, %v", len(list), err)
+	if _, err := s.Save(ctx, v, ids[1], "", anyStock, at); err != nil {
+		t.Fatalf("after stopping the first: %v", err)
 	}
 }
 

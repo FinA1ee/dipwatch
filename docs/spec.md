@@ -52,8 +52,9 @@ Requirements use EARS form. IDs are referenced from [tasks.md](tasks.md).
 
 ### Cost and abuse controls
 
-- **C1.** Visitors shall be limited to 10 searches per day per IP that miss the cache. Members shall be limited to 30 per day. Cache hits are not limited.
-- **C2.** A member shall be limited to 20 tracked products.
+- **C1.** Visitors shall be limited to a number of searches per day per IP that miss the cache (default 10), members to their own number (default 30). Cache hits are not limited. The owner can change both at any time on the admin page.
+- **C2.** A member shall be limited to a number of tracked products (default 1; the owner can change it at any time).
+- **C2a.** A search shall use only the stores it names, at most a number set by the owner (default 1), and only those stores are searched, shown and refreshed. A tracked product keeps the store it was tracked at.
 - **C3.** Each browsing-agent run shall stop after 15 tool steps, 30,000 tokens or 90 seconds, whichever comes first.
 - **C4.** When daily LLM spend reaches 80% of the daily budget, the browsing agent shall run only for products that already have trackers. At 100%, the system shall serve cached data only until the next day.
 - **C5.** Every LLM call shall be recorded with model, tokens, estimated cost, duration and outcome.

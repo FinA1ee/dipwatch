@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useStores } from "@/hooks/useStores";
 import { useTracked } from "@/hooks/useTracked";
 import { formatMoney } from "@/utils/money";
 import { describeRule } from "@/utils/rules";
@@ -6,6 +7,9 @@ import { describeRule } from "@/utils/rules";
 /** The member's tracked products (T1, T2), each linking to its offers and price chart (T7). */
 export function TrackedView() {
   const t = useTracked();
+  const { all } = useStores();
+  const storeNames = (ids: string[]) =>
+    ids.length === 0 ? "every store" : ids.map((id) => all.find((s) => s.id === id)?.name ?? id).join(", ");
   if (t.loading) return <p className="text-slate-600">Loading…</p>;
   if (t.items.length === 0) {
     return (
@@ -23,7 +27,7 @@ export function TrackedView() {
               {i.product_name}
             </Link>
             <p className="text-sm text-slate-600">
-              Alerts: {i.rules.map(describeRule).join(", ")}
+              At {storeNames(i.stores)} · alerts: {i.rules.map(describeRule).join(", ")}
               {i.baseline && ` · lowest when you started: ${formatMoney(i.baseline)}`}
             </p>
             {i.note && <p className="text-sm text-slate-700">{i.note}</p>}

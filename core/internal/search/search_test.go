@@ -17,6 +17,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
+	"github.com/FinA1ee/dipwatch/core/internal/limits"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -59,9 +60,13 @@ func fixture(t *testing.T, ctx context.Context, q *store.Queries) (product store
 		t.Fatal(err)
 	}
 	sourceID = "search-test-" + suffix
-	if err := q.UpsertSource(ctx, store.UpsertSourceParams{ID: sourceID, Name: "Test store", Region: "US", Currency: "USD", Strategies: []string{}}); err != nil {
+	// Enabled, so searches may name it; without strategies no worker ever runs it.
+	if err := q.UpsertSource(ctx, store.UpsertSourceParams{ID: sourceID, Name: "Test store", Region: "US", Currency: "USD", Strategies: []string{}, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		_ = q.UpsertSource(context.Background(), store.UpsertSourceParams{ID: sourceID, Name: "Test store", Region: "US", Currency: "USD", Strategies: []string{}})
+	})
 	// Dated long ago, so they never replace real rates in a shared dev database.
 	// The order below holds for any USD rate between 0.1 and 0.2.
 	if err := fx.Save(ctx, q, fx.Rates{Date: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), Rates: map[string]float64{"USD": 0.14}}); err != nil {
@@ -107,11 +112,11 @@ func ids(offers []Offer) []string {
 func TestSearchRanksInCNYAndStartsRefresh(t *testing.T) {
 	ctx, pool := setup(t)
 	q := store.New(pool)
-	product, _, query := fixture(t, ctx, q)
+	product, sourceID, query := fixture(t, ctx, q)
 	queue := &fakeQueue{}
 	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Queue: queue}
 
-	res, err := s.Search(ctx, guard.Viewer{}, "  "+query+" ", "USD")
+	res, err := s.Search(ctx, guard.Viewer{}, "  "+query+" ", "USD", []string{sourceID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,10 +131,10 @@ func TestSearchRanksInCNYAndStartsRefresh(t *testing.T) {
 	}
 
 	// Fresh: served from the database, no new job (S1).
-	if err := q.MarkProductRefreshed(ctx, product.ID); err != nil {
+	if err := q.MarkSourceRefreshed(ctx, store.MarkSourceRefreshedParams{ProductID: product.ID, SourceID: sourceID}); err != nil {
 		t.Fatal(err)
 	}
-	res, err = s.Search(ctx, guard.Viewer{}, query, "CNY")
+	res, err = s.Search(ctx, guard.Viewer{}, query, "CNY", []string{sourceID})
 	if err != nil || res.Status != "fresh" || len(queue.inserted) != 1 {
 		t.Fatalf("fresh search: status %s, %d jobs, %v", res.Status, len(queue.inserted), err)
 	}
@@ -151,7 +156,7 @@ func TestStreamSendsOffersUntilSourcesFinish(t *testing.T) {
 	events := make(chan any, 8)
 	errc := make(chan error, 1)
 	go func() {
-		errc <- s.Stream(ctx, product.ID, "CNY", func(e any) error { events <- e; return nil })
+		errc <- s.Stream(ctx, product.ID, "CNY", []string{sourceID}, func(e any) error { events <- e; return nil })
 	}()
 
 	next := func() any {
@@ -195,37 +200,78 @@ func TestStreamSendsOffersUntilSourcesFinish(t *testing.T) {
 func TestQuotaCountsOnlyCostlySearches(t *testing.T) {
 	ctx, pool := setup(t)
 	q := store.New(pool)
-	product, _, query := fixture(t, ctx, q)
+	product, sourceID, query := fixture(t, ctx, q)
 	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Quotas: &guard.Quotas{DB: pool}, Queue: &fakeQueue{}}
 	unique := fmt.Sprint(time.Now().UnixNano())
 
 	// The product is stale and the fake queue never starts the refresh, so every
 	// search is costly.
 	visitor := guard.Viewer{IP: "198.51.100." + unique}
-	for i := range guard.VisitorDailySearches {
-		if _, err := s.Search(ctx, visitor, query, "CNY"); err != nil {
+	for i := range limits.Defaults.VisitorDailySearches {
+		if _, err := s.Search(ctx, visitor, query, "CNY", []string{sourceID}); err != nil {
 			t.Fatalf("visitor search %d: %v", i+1, err)
 		}
 	}
-	if _, err := s.Search(ctx, visitor, query, "CNY"); !errors.Is(err, guard.ErrQuotaExceeded) {
-		t.Fatalf("visitor search %d: %v, want quota exceeded", guard.VisitorDailySearches+1, err)
+	if _, err := s.Search(ctx, visitor, query, "CNY", []string{sourceID}); !errors.Is(err, guard.ErrQuotaExceeded) {
+		t.Fatalf("visitor search %d: %v, want quota exceeded", limits.Defaults.VisitorDailySearches+1, err)
 	}
 
 	member := guard.Viewer{UserID: "quota-test-" + unique, IP: visitor.IP} // same IP, own quota
-	for i := range guard.MemberDailySearches {
-		if _, err := s.Search(ctx, member, query, "CNY"); err != nil {
+	for i := range limits.Defaults.MemberDailySearches {
+		if _, err := s.Search(ctx, member, query, "CNY", []string{sourceID}); err != nil {
 			t.Fatalf("member search %d: %v", i+1, err)
 		}
 	}
-	if _, err := s.Search(ctx, member, query, "CNY"); !errors.Is(err, guard.ErrQuotaExceeded) {
-		t.Fatalf("member search %d: %v, want quota exceeded", guard.MemberDailySearches+1, err)
+	if _, err := s.Search(ctx, member, query, "CNY", []string{sourceID}); !errors.Is(err, guard.ErrQuotaExceeded) {
+		t.Fatalf("member search %d: %v, want quota exceeded", limits.Defaults.MemberDailySearches+1, err)
 	}
 
 	// A fresh product is answered from the database: free even over the limit.
-	if err := q.MarkProductRefreshed(ctx, product.ID); err != nil {
+	if err := q.MarkSourceRefreshed(ctx, store.MarkSourceRefreshedParams{ProductID: product.ID, SourceID: sourceID}); err != nil {
 		t.Fatal(err)
 	}
-	if res, err := s.Search(ctx, visitor, query, "CNY"); err != nil || res.Status != "fresh" {
+	if res, err := s.Search(ctx, visitor, query, "CNY", []string{sourceID}); err != nil || res.Status != "fresh" {
 		t.Fatalf("cached search over the limit: %+v, %v", res, err)
+	}
+}
+
+func TestSearchNamesItsStoresWithinTheLimit(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	_, sourceID, query := fixture(t, ctx, q)
+	_, other, _ := fixture(t, ctx, q)
+	l := &limits.Store{DB: pool}
+	saved := l.Get(ctx)
+	t.Cleanup(func() { _, _ = l.Save(context.Background(), saved) })
+	s := &Service{DB: pool, Gate: &guard.Gate{DB: pool}, Limits: l, Queue: &fakeQueue{}}
+
+	var storeErr StoreError
+	if _, err := s.Search(ctx, guard.Viewer{}, query, "CNY", nil); !errors.As(err, &storeErr) {
+		t.Fatalf("no store: %v", err)
+	}
+	if _, err := s.Search(ctx, guard.Viewer{}, query, "CNY", []string{"no-such-store"}); !errors.As(err, &storeErr) {
+		t.Fatalf("unknown store: %v", err)
+	}
+	if _, err := l.Save(ctx, limits.Limits{SourcesPerSearch: 1, TrackedPerMember: 1, VisitorDailySearches: 10, MemberDailySearches: 30}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Search(ctx, guard.Viewer{}, query, "CNY", []string{sourceID, other}); !errors.As(err, &storeErr) {
+		t.Fatalf("two stores with a limit of 1: %v", err)
+	}
+	// The owner raises the limit: it applies to the next search.
+	if _, err := l.Save(ctx, limits.Limits{SourcesPerSearch: 2, TrackedPerMember: 1, VisitorDailySearches: 10, MemberDailySearches: 30}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := s.Search(ctx, guard.Viewer{}, query, "CNY", []string{sourceID, other})
+	if err != nil {
+		t.Fatalf("two stores with a limit of 2: %v", err)
+	}
+	for _, o := range res.Offers {
+		if o.Source.ID != sourceID && o.Source.ID != other {
+			t.Fatalf("offer from a store not asked for: %s", o.Source.ID)
+		}
+	}
+	if q := s.Queue.(*fakeQueue); len(q.inserted) != 1 || len(q.inserted[0].(jobs.RefreshProductArgs).Sources) != 2 {
+		t.Fatalf("refresh: %+v", q.inserted)
 	}
 }

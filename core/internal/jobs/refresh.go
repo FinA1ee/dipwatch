@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -27,7 +28,8 @@ const offersPerSource = 50
 // enabled source, as one RefreshSourceArgs job per source. Only one pending job per product exists at a time, so many
 // trackers of the same product share one refresh (design: Refresh policy and cost).
 type RefreshProductArgs struct {
-	ProductID int64 `json:"product_id"`
+	ProductID int64    `json:"product_id"`
+	Sources   []string `json:"sources,omitempty"` // stores to search; empty: every enabled store
 }
 
 func (RefreshProductArgs) Kind() string { return "refresh_product" }
@@ -81,6 +83,9 @@ func (w *RefreshProductWorker) Work(ctx context.Context, job *river.Job[RefreshP
 	var ids []string
 	var args []river.InsertManyParams
 	for _, row := range rows {
+		if len(job.Args.Sources) > 0 && !slices.Contains(job.Args.Sources, row.ID) {
+			continue
+		}
 		if _, ok := sourceFor(w.Adapters, row); ok {
 			ids = append(ids, row.ID)
 			args = append(args, river.InsertManyParams{
@@ -151,6 +156,9 @@ func (w *RefreshSourceWorker) Work(ctx context.Context, job *river.Job[RefreshSo
 	// stays stale, so the next search tries again instead of serving nothing for 6 hours.
 	if ok {
 		if err := q.MarkProductRefreshed(ctx, job.Args.ProductID); err != nil {
+			return err
+		}
+		if err := q.MarkSourceRefreshed(ctx, store.MarkSourceRefreshedParams{ProductID: job.Args.ProductID, SourceID: job.Args.SourceID}); err != nil {
 			return err
 		}
 	}

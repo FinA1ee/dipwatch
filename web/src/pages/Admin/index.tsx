@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { LimitsView } from "./modules/LimitsModule/View/LimitsView";
 import { MetricsView } from "./modules/MetricsModule/View/MetricsView";
 
 export function AdminPage() {
@@ -15,6 +16,10 @@ export function AdminPage() {
           </Link>
         </span>
       </div>
+      <section className="space-y-3 rounded-lg border border-slate-200 p-3">
+        <h2 className="text-lg font-semibold">Budget limits</h2>
+        <LimitsView />
+      </section>
       <MetricsView />
     </div>
   );

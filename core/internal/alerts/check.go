@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -72,6 +73,9 @@ func (c *Checker) Check(ctx context.Context, q *store.Queries, productID int64, 
 
 	sent := 0
 	for _, w := range watchers {
+		if len(w.Sources) > 0 && !slices.Contains(w.Sources, sourceID) {
+			continue // the member tracks this product at another store
+		}
 		channels := c.channels(w.FeishuWebhook, w.EmailAlerts)
 		if len(channels) == 0 {
 			continue
