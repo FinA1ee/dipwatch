@@ -9,6 +9,16 @@ import (
 	"context"
 )
 
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM app.users WHERE id = $1
+`
+
+// Removes a member's core data (watch items and alerts cascade). Used by tests.
+func (q *Queries) DeleteUser(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, email, currency, created_at, feishu_webhook, email_alerts FROM app.users WHERE id = $1
 `

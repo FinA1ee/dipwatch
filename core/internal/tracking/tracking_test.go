@@ -57,6 +57,7 @@ func TestTrackingLimitsAndUpdates(t *testing.T) {
 	s := &Service{DB: pool}
 	id := fmt.Sprintf("track-%d", time.Now().UnixNano())
 	v := guard.Viewer{UserID: id, Email: id + "@example.test"}
+	t.Cleanup(func() { _ = store.New(pool).DeleteUser(context.Background(), id) })
 	ids := products(t, ctx, store.New(pool), MaxTracked+1)
 
 	if _, err := s.Save(ctx, guard.Viewer{}, ids[0], "", anyStock); !errors.Is(err, ErrNotMember) {
@@ -98,6 +99,7 @@ func TestSettingsCheckTheWebhookHost(t *testing.T) {
 	s := &Service{DB: pool}
 	id := fmt.Sprintf("settings-%d", time.Now().UnixNano())
 	v := guard.Viewer{UserID: id, Email: id + "@example.test"}
+	t.Cleanup(func() { _ = store.New(pool).DeleteUser(context.Background(), id) })
 
 	if _, err := s.SaveSettings(ctx, v, "https://evil.example/open-apis/bot/v2/hook/x", true); !errors.Is(err, notify.ErrWebhookHost) {
 		t.Fatalf("other host: %v (T6)", err)

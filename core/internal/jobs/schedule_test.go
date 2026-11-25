@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ func TestAdaptiveIntervalAndDueProducts(t *testing.T) {
 	if err := q.UpsertUser(ctx, store.UpsertUserParams{ID: user, Email: time.Now().Format("150405.000000") + "@example.test"}); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = q.DeleteUser(context.Background(), user) })
 	if _, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: tracked.ID, Rules: []byte(`[]`)}); err != nil {
 		t.Fatal(err)
 	}

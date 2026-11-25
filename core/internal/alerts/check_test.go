@@ -73,6 +73,8 @@ func newFixture(t *testing.T, ctx context.Context, pool *pgxpool.Pool, rules []R
 	if err := q.UpsertUser(ctx, store.UpsertUserParams{ID: user, Email: suffix + "@example.test"}); err != nil {
 		t.Fatal(err)
 	}
+	// A tracker left behind would make a dev worker on this database refresh it.
+	t.Cleanup(func() { _ = q.DeleteUser(context.Background(), user) })
 	if err := q.SetUserChannels(ctx, store.SetUserChannelsParams{ID: user, FeishuWebhook: "https://open.feishu.cn/open-apis/bot/v2/hook/test", EmailAlerts: true}); err != nil {
 		t.Fatal(err)
 	}

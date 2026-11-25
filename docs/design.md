@@ -282,7 +282,8 @@ Rules that keep the cost down:
 
 - A River periodic job runs every 15 minutes and enqueues a re-check for each tracked product that is due under the adaptive interval, and a discovery run for each tracked product not discovered in the last 24 hours (T3).
 - After a refresh stores new price points, an `alert_check` job evaluates every watch item for that product and writes `alerts` rows. The unique index on `(watch_item_id, offer_id, rule, date)` enforces T5.
-- A `notify` job sends each pending alert through its channel. Email goes through Aliyun DirectMail (SMTP). Feishu goes to the member's webhook URL after the host check from T6.
+- A `notify` job, on its own `notify` queue, sends each pending alert through its channel. Feishu goes to the member's webhook URL after the host check from T6 (checked when saved and again before sending; redirects are not followed). Email goes over SMTP once `SMTP_URL` is set. Channels belong to the member (`app.users`), not to each tracked product.
+- Rules are checked after each source's refresh and its matcher run, and fire for the cheapest matching offer.
 
 ## Accounts
 

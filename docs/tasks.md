@@ -259,9 +259,17 @@ Decisions taken before starting (2026-11-25): alerts go out through a Feishu or 
 
 ### Tasks
 
-- [ ] **6.1 Members and watch items.** `app.users` row per member on first use; API to list, create, update and delete watch items with rules, note and channels; limits from C2; host check for webhooks.
-- [ ] **6.2 Scheduler.** River periodic job every 15 minutes: enqueue refreshes for tracked products that are due; adaptive interval; daily discovery.
-- [ ] **6.3 Alerts.** After a refresh, evaluate rules and write `alerts` rows (unique per day); a `notify` job sends them through Feishu (and email when SMTP is set) with retries.
-- [ ] **6.4 Live agent log.** Per-step records with model text, tokens and time; each step sent with Postgres NOTIFY; admin SSE stream; `/admin/live` page; trace page shows the new fields.
-- [ ] **6.5 Web: tracking.** Track button and rules form on the product page; "My products" page with notes, rules, channel settings and a test message.
+- [x] **6.1 Members and watch items.** `app.users` row per member on first use; API to list, create, update and delete watch items with rules, note and channels; limits from C2; host check for webhooks.
+- [x] **6.2 Scheduler.** River periodic job every 15 minutes: enqueue refreshes for tracked products that are due; adaptive interval; daily discovery.
+- [x] **6.3 Alerts.** After a refresh, evaluate rules and write `alerts` rows (unique per day); a `notify` job sends them through Feishu (and email when SMTP is set) with retries.
+- [x] **6.4 Live agent log.** Per-step records with model text, tokens and time; each step sent with Postgres NOTIFY; admin SSE stream; `/admin/live` page; trace page shows the new fields.
+- [x] **6.5 Web: tracking.** Track button and rules form on the product page; "My products" page with notes, rules, channel settings and a test message.
 - [ ] **6.6 Deploy and check.** Deploy, add a Feishu webhook, simulate a price drop, confirm the message arrives within 5 minutes.
+
+### Day 6 notes
+
+- **Live agent log.** The worker sends each step with Postgres NOTIFY (`dipwatch_agent`); core-api keeps the last 20 runs in memory and streams them to `/admin/live`. Each step now records the model's text, the tokens of the call that chose it and the tool's time, so finished runs show the same in their trace. Checked live: an SMZDM run appeared at its first step, with the model explaining each move ("The find tool didn't match; let me take a snapshot…").
+- **Alerts.** Rules are checked after the matcher, so accessories never alert. A rule fires for the cheapest matching offer, once per offer, rule and channel per day (T5). Alerts go to their own River queue, so they never wait behind agent runs (T4). Feishu refusing a message (bad token, bot removed) fails the alert at once instead of retrying.
+- **Schedule.** Every refresh is a full search, so every scheduled refresh is also discovery; with the interval capped at 24 hours, T3's daily discovery holds.
+- **Bug found by the local check:** the simulated drop lowered the offer with the smallest number in its own currency (a ¥51,871 JPY offer) instead of the cheapest in CNY. It now compares in CNY.
+- **Simulated drop** (`POST /admin/products/{id}/simulate-drop`) changes stored prices; use it on a product kept for testing.

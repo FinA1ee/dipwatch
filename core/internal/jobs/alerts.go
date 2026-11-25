@@ -13,6 +13,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/FinA1ee/dipwatch/core/internal/alerts"
+	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/money"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
@@ -82,11 +83,17 @@ func (w *NotifyWorker) Work(ctx context.Context, job *river.Job[NotifyArgs]) err
 		err = fmt.Errorf("unknown channel %q", a.Channel)
 	}
 	if err != nil {
-		final := job.Attempt >= job.MaxAttempts
-		if final {
+		// Feishu answered but refused the message (bad token, bot removed): a retry
+		// cannot succeed, so give up now. Network errors and timeouts are retried.
+		var refused *notify.SendError
+		permanent := errors.As(err, &refused) || errors.Is(err, notify.ErrWebhookHost)
+		if permanent || job.Attempt >= job.MaxAttempts {
 			_ = q.MarkAlert(ctx, store.MarkAlertParams{ID: a.ID, Status: "failed"})
 		}
-		slog.WarnContext(ctx, "notify: send failed", "alert", a.ID, "channel", a.Channel, "attempt", job.Attempt, "err", err)
+		slog.WarnContext(ctx, "notify: send failed", "alert", a.ID, "channel", a.Channel, "attempt", job.Attempt, "permanent", permanent, "err", err)
+		if permanent {
+			return river.JobCancel(err)
+		}
 		return err
 	}
 	slog.InfoContext(ctx, "notify: sent", "alert", a.ID, "channel", a.Channel, "product", a.ProductID)
@@ -164,15 +171,25 @@ type SimulateDropWorker struct {
 
 func (w *SimulateDropWorker) Work(ctx context.Context, job *river.Job[SimulateDropArgs]) error {
 	q := store.New(w.DB)
-	offers, err := q.ListOffersByProduct(ctx, job.Args.ProductID) // cheapest first
+	offers, err := q.ListOffersByProduct(ctx, job.Args.ProductID)
 	if err != nil {
 		return err
 	}
+	rates, err := fx.Latest(ctx, q)
+	if err != nil {
+		rates = fx.Rates{}
+	}
+	// Cheapest in CNY: raw minor units are not comparable across currencies.
 	var target *store.AppOffer
+	var best int64
 	for i := range offers {
-		if offers[i].IsProduct == nil || *offers[i].IsProduct {
-			target = &offers[i]
-			break
+		o := &offers[i]
+		if o.IsProduct != nil && !*o.IsProduct {
+			continue
+		}
+		cny, err := rates.ToCNYMinor(o.PriceMinor, o.Currency)
+		if err == nil && (target == nil || cny < best) {
+			target, best = o, cny
 		}
 	}
 	if target == nil {
