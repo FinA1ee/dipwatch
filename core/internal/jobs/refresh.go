@@ -228,7 +228,8 @@ func (w *RefreshSourceWorker) refresh(ctx context.Context, args RefreshSourceArg
 		slog.WarnContext(ctx, "refresh: source failed", "product", product.ID, "source", src.ID, "err", err)
 		return false
 	}
-	changes, err := save(ctx, w.DB, product.ID, src.ID, res.Offers)
+	offers := append(res.Offers, w.pinnedNotReturned(ctx, q, product.ID, src, res.Offers)...)
+	changes, err := save(ctx, w.DB, product.ID, src.ID, offers)
 	if err != nil {
 		slog.ErrorContext(ctx, "refresh: save offers", "product", product.ID, "source", src.ID, "err", err)
 		return false
@@ -255,6 +256,45 @@ func (w *RefreshSourceWorker) refresh(ctx context.Context, args RefreshSourceArg
 		}
 	}
 	return true
+}
+
+// pinnedNotReturned fetches, by id, the pinned listings of this product and
+// store that the search did not return, so their price stays current and they
+// are not shown as gone. Only strategies that can look a listing up do this.
+func (w *RefreshSourceWorker) pinnedNotReturned(ctx context.Context, q *store.Queries, productID int64, src sources.Source, got []sources.Offer) []sources.Offer {
+	var looker sources.Looker
+	for _, s := range src.Strategies {
+		if l, ok := s.(sources.Looker); ok {
+			looker = l
+			break
+		}
+	}
+	if looker == nil {
+		return nil
+	}
+	pinned, err := q.ListPinnedOffers(ctx, store.ListPinnedOffersParams{ProductID: productID, SourceID: src.ID})
+	if err != nil {
+		slog.WarnContext(ctx, "refresh: list pinned listings", "product", productID, "err", err)
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, o := range got {
+		seen[o.ExternalID] = true
+	}
+	var out []sources.Offer
+	for _, p := range pinned {
+		if seen[p.ExternalID] {
+			continue
+		}
+		o, ok, err := looker.Lookup(ctx, p.ExternalID)
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "refresh: look up pinned listing", "product", productID, "offer", p.ID, "err", err)
+		case ok:
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 func notifySourceDone(ctx context.Context, q *store.Queries, done SourceDone) error {

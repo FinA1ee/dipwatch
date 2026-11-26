@@ -69,6 +69,45 @@ func (q *Queries) GetWatchItem(ctx context.Context, arg GetWatchItemParams) (App
 	return i, err
 }
 
+const listPinnedOffers = `-- name: ListPinnedOffers :many
+SELECT DISTINCT o.id, o.external_id
+FROM app.watch_items w
+JOIN app.offers o ON o.id = w.offer_id
+WHERE w.product_id = $1 AND o.source_id = $2
+`
+
+type ListPinnedOffersParams struct {
+	ProductID int64
+	SourceID  string
+}
+
+type ListPinnedOffersRow struct {
+	ID         int64
+	ExternalID string
+}
+
+// Listings members pinned for a product at a store, to re-check them by id
+// when a search does not return them.
+func (q *Queries) ListPinnedOffers(ctx context.Context, arg ListPinnedOffersParams) ([]ListPinnedOffersRow, error) {
+	rows, err := q.db.Query(ctx, listPinnedOffers, arg.ProductID, arg.SourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPinnedOffersRow
+	for rows.Next() {
+		var i ListPinnedOffersRow
+		if err := rows.Scan(&i.ID, &i.ExternalID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProductWatchers = `-- name: ListProductWatchers :many
 SELECT w.id, w.user_id, w.rules, w.baseline_price_cny_minor, w.last_price_cny_minor, w.created_at, w.sources, w.offer_id, w.variant,
        u.email, u.feishu_webhook, u.email_alerts

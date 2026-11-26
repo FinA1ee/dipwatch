@@ -37,6 +37,14 @@ type Strategy interface {
 	Search(ctx context.Context, q Query) ([]Offer, error)
 }
 
+// Looker is a strategy that can fetch one listing by its id, for listings
+// members pinned that a search did not return (a search returns only its top
+// results, so a listing outside them is not gone from the store).
+type Looker interface {
+	// Lookup returns the listing, or ok false when the store no longer has it.
+	Lookup(ctx context.Context, externalID string) (offer Offer, ok bool, err error)
+}
+
 // Source is a store with its strategies in the order they should be tried.
 type Source struct {
 	ID         string
