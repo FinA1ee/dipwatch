@@ -139,3 +139,32 @@ func TestTrackerDueByItsStore(t *testing.T) {
 	}
 	t.Fatal("not due 70 minutes after its store's refresh with hourly checks")
 }
+
+// An automatic tracker (no chosen interval) waits for the automatic interval:
+// it must not fall back to the owner's 1-hour minimum.
+func TestAutomaticTrackerWaitsForItsInterval(t *testing.T) {
+	ctx, pool := setup(t)
+	q := store.New(pool)
+	product, src := newProductAndSource(t, ctx, q)
+	user := "auto-due-" + product.CanonicalName
+	if err := q.UpsertUser(ctx, store.UpsertUserParams{ID: user, Email: time.Now().Format("150405.000000") + "-a@example.test"}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.DeleteUser(context.Background(), user) })
+	if _, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{UserID: user, ProductID: product.ID, Rules: []byte(`[]`), Sources: []string{src}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO app.product_sources (product_id, source_id, last_refreshed_at)
+		VALUES ($1, $2, now() - interval '2 hours')`, product.ID, src); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := q.DueTrackedProducts(ctx, 3600) // automatic interval: 6 hours
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		if r.ID == product.ID {
+			t.Fatalf("due 2 hours after a refresh with the 6-hour automatic interval: %v", r.Sources)
+		}
+	}
+}

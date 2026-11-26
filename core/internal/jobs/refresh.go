@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -290,11 +291,22 @@ func (w *RefreshSourceWorker) pinnedNotReturned(ctx context.Context, q *store.Qu
 		switch {
 		case err != nil:
 			slog.WarnContext(ctx, "refresh: look up pinned listing", "product", productID, "offer", p.ID, "err", err)
-		case ok:
+		case !ok:
+		case !sameTitle(o.Title, p.TitleOriginal):
+			// A lookup that answers with another listing must not overwrite the
+			// pinned one's price; it then shows as gone, which is the safe side.
+			slog.WarnContext(ctx, "refresh: pinned lookup returned another listing", "product", productID, "offer", p.ID)
+		default:
 			out = append(out, o)
 		}
 	}
 	return out
+}
+
+// sameTitle compares listing titles ignoring case and spacing.
+func sameTitle(a, b string) bool {
+	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), "")) }
+	return norm(a) == norm(b)
 }
 
 func notifySourceDone(ctx context.Context, q *store.Queries, done SourceDone) error {

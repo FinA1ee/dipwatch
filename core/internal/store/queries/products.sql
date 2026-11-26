@@ -47,7 +47,8 @@ SELECT pg_notify('dipwatch_agent', @payload::text);
 -- search at another store does not delay it. sources lists only the due
 -- stores; all_sources is a tracker from before per-store tracking (every
 -- enabled store), due by the product's last refresh. Untracked products are
--- never scheduled.
+-- never scheduled. (Postgres's GREATEST ignores NULL, so "automatic" needs
+-- its own branch: GREATEST(NULL, 1 hour) would be 1 hour.)
 SELECT id, sources, all_sources FROM (
     SELECT p.id, p.last_refreshed_at,
            ARRAY(
@@ -56,15 +57,19 @@ SELECT id, sources, all_sources FROM (
                CROSS JOIN LATERAL unnest(w.sources) AS s(src)
                LEFT JOIN app.product_sources ps ON ps.product_id = p.id AND ps.source_id = s.src
                WHERE w.product_id = p.id
-                 AND (ps.last_refreshed_at IS NULL OR ps.last_refreshed_at + LEAST(p.refresh_interval,
-                      COALESCE(GREATEST(w.check_every, make_interval(secs => @min_check_seconds::int)), p.refresh_interval)) <= now())
+                 AND (ps.last_refreshed_at IS NULL OR ps.last_refreshed_at + CASE
+                      WHEN w.check_every IS NULL THEN p.refresh_interval -- automatic
+                      ELSE LEAST(p.refresh_interval, GREATEST(w.check_every, make_interval(secs => @min_check_seconds::int)))
+                      END <= now())
                ORDER BY 1
            )::text[] AS sources,
            EXISTS (
                SELECT 1 FROM app.watch_items w
                WHERE w.product_id = p.id AND cardinality(w.sources) = 0
-                 AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + LEAST(p.refresh_interval,
-                      COALESCE(GREATEST(w.check_every, make_interval(secs => @min_check_seconds::int)), p.refresh_interval)) <= now())
+                 AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + CASE
+                      WHEN w.check_every IS NULL THEN p.refresh_interval -- automatic
+                      ELSE LEAST(p.refresh_interval, GREATEST(w.check_every, make_interval(secs => @min_check_seconds::int)))
+                      END <= now())
            ) AS all_sources
     FROM app.products p
     WHERE cardinality(p.refreshing_sources) = 0

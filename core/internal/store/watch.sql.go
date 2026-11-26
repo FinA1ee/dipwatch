@@ -70,7 +70,7 @@ func (q *Queries) GetWatchItem(ctx context.Context, arg GetWatchItemParams) (App
 }
 
 const listPinnedOffers = `-- name: ListPinnedOffers :many
-SELECT DISTINCT o.id, o.external_id
+SELECT DISTINCT o.id, o.external_id, o.title_original
 FROM app.watch_items w
 JOIN app.offers o ON o.id = w.offer_id
 WHERE w.product_id = $1 AND o.source_id = $2
@@ -82,8 +82,9 @@ type ListPinnedOffersParams struct {
 }
 
 type ListPinnedOffersRow struct {
-	ID         int64
-	ExternalID string
+	ID            int64
+	ExternalID    string
+	TitleOriginal string
 }
 
 // Listings members pinned for a product at a store, to re-check them by id
@@ -97,7 +98,7 @@ func (q *Queries) ListPinnedOffers(ctx context.Context, arg ListPinnedOffersPara
 	var items []ListPinnedOffersRow
 	for rows.Next() {
 		var i ListPinnedOffersRow
-		if err := rows.Scan(&i.ID, &i.ExternalID); err != nil {
+		if err := rows.Scan(&i.ID, &i.ExternalID, &i.TitleOriginal); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

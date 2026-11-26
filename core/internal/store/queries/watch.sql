@@ -51,7 +51,7 @@ SELECT EXISTS (SELECT 1 FROM app.watch_items WHERE product_id = @product_id)::bo
 -- name: ListPinnedOffers :many
 -- Listings members pinned for a product at a store, to re-check them by id
 -- when a search does not return them.
-SELECT DISTINCT o.id, o.external_id
+SELECT DISTINCT o.id, o.external_id, o.title_original
 FROM app.watch_items w
 JOIN app.offers o ON o.id = w.offer_id
 WHERE w.product_id = @product_id AND o.source_id = @source_id;
