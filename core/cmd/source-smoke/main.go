@@ -20,6 +20,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/agent"
 	"github.com/FinA1ee/dipwatch/core/internal/llm"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
+	"github.com/FinA1ee/dipwatch/core/internal/sources/ecapi"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/kakaku"
 )
 
@@ -44,6 +45,13 @@ func main() {
 func run(ctx context.Context, source, query string, limit int, browserOnly bool, dump string, wait time.Duration) error {
 	if source == "kakaku" {
 		return search(ctx, kakaku.New(&http.Client{Timeout: 30 * time.Second}, kakaku.DefaultBaseURL), source, query, limit)
+	}
+	if source == "jd" {
+		key, keyID := os.Getenv("ECAPI_API_KEY"), os.Getenv("ECAPI_JD_KEY_ID")
+		if key == "" || keyID == "" {
+			return errors.New("ECAPI_API_KEY and ECAPI_JD_KEY_ID must be set (run it from a whitelisted IP)")
+		}
+		return search(ctx, &ecapi.JD{HTTP: &http.Client{Timeout: 30 * time.Second}, URL: ecapi.DefaultURL, APIKey: key, KeyID: keyID}, source, query, limit)
 	}
 	store, ok := agent.Stores[source]
 	if !ok {
