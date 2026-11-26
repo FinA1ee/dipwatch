@@ -32,6 +32,7 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
 	"github.com/FinA1ee/dipwatch/core/internal/sources"
+	"github.com/FinA1ee/dipwatch/core/internal/sources/ecapi"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/jdunion"
 	"github.com/FinA1ee/dipwatch/core/internal/sources/kakaku"
 	"github.com/FinA1ee/dipwatch/core/internal/spend"
@@ -61,7 +62,12 @@ func adapters(pool *pgxpool.Pool) (jobs.Adapters, *matcher.Matcher) {
 	a := jobs.Adapters{
 		"kakaku": {"html": kakaku.New(httpClient, kakaku.DefaultBaseURL)},
 	}
-	if key, secret := os.Getenv("JD_UNION_APP_KEY"), os.Getenv("JD_UNION_APP_SECRET"); key != "" && secret != "" {
+	// JD through 喵有券 when its key and the authorized JD Union key_id are set,
+	// else through the owner's own JD Union app key.
+	if key, keyID := os.Getenv("ECAPI_API_KEY"), os.Getenv("ECAPI_JD_KEY_ID"); key != "" && keyID != "" {
+		a["jd"] = map[string]sources.Strategy{"api": &ecapi.JD{HTTP: httpClient, URL: ecapi.DefaultURL, APIKey: key, KeyID: keyID}}
+		slog.Info("JD enabled through 喵有券")
+	} else if key, secret := os.Getenv("JD_UNION_APP_KEY"), os.Getenv("JD_UNION_APP_SECRET"); key != "" && secret != "" {
 		a["jd"] = map[string]sources.Strategy{"api": &jdunion.Client{HTTP: httpClient, URL: jdunion.DefaultURL, AppKey: key, AppSecret: secret}}
 		slog.Info("JD Union API enabled")
 	}
