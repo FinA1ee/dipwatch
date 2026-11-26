@@ -30,3 +30,29 @@ func (q *Queries) ChargeQuota(ctx context.Context, arg ChargeQuotaParams) (int32
 	err := row.Scan(&used)
 	return used, err
 }
+
+const deleteOldQuota = `-- name: DeleteOldQuota :execrows
+DELETE FROM app.search_quota WHERE day < (now() AT TIME ZONE 'UTC')::date - 30
+`
+
+// Search counters name a visitor's IP address: kept for 30 days (privacy page).
+func (q *Queries) DeleteOldQuota(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldQuota)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteOldSessions = `-- name: DeleteOldSessions :execrows
+DELETE FROM auth.session WHERE "expiresAt" < now() - interval '30 days'
+`
+
+// Sign-in sessions hold an IP address and browser name: removed 30 days after they expire.
+func (q *Queries) DeleteOldSessions(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldSessions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

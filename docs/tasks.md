@@ -323,6 +323,8 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - [x] **W2.4 Invite list.** Invite-only on by default. Only admins and invited sign-in emails run costly searches and track products; others get stored results, or a 403 naming their email for a product with none. The list is edited on `/admin`.
 - [x] **W2.6 Sizes (variants).** The matcher (match-v3) gives each listing its memory or storage size ("24GB", "48GB") and rejects listings that name several models. Search and product pages compare one size at a time, preselecting the size named in the query or the most common one; a tracker can follow one size, and the price chart is per size or per listing, never across sizes.
 - [x] **W2.7 Price trust.** Kakaku's links to shop feeds are marked "price not confirmed at the store"; a price more than twice or under half the median of its size is marked unusual. Marked offers come after the others, are never the lowest, stay off the price ladder and the baseline, and never trigger an alert.
+- [x] **W2.8 Privacy page and retention.** `/privacy` says what is stored, who else sees it and how to delete it. The scheduler deletes search counters (which name visitor IP addresses) after 30 days and sign-in sessions 30 days after they expire.
+- [x] **W2.9 Uptime check.** A GitHub Actions workflow requests `/api/stores` every 10 minutes and posts to the owner's Feishu bot after three failed tries. Secrets: `SITE_URL`, `FEISHU_WEBHOOK`.
 - [ ] **W2.5 JD live.** App key and secret on the server, then `UPDATE app.sources SET enabled = true WHERE id = 'jd'`.
 
 ### Week 2 notes

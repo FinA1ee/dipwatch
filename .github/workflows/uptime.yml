@@ -1,0 +1,43 @@
+# Checks the live site every 10 minutes from outside the server, and posts to
+# the owner's Feishu bot when it is down. /api/stores goes through Caddy, the
+# gateway, core and Postgres, so one request covers the whole chain.
+# Secrets: SITE_URL (e.g. https://example.com) and FEISHU_WEBHOOK. The message
+# starts with "dipwatch", the bot's keyword.
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the site
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$FEISHU_WEBHOOK" ]; then
+            echo "uptime: SITE_URL or FEISHU_WEBHOOK is not set"
+            exit 0
+          fi
+          up() { curl -fsS --max-time 20 "$SITE_URL/api/stores" | grep -q '"stores"'; }
+          # Three tries 30 seconds apart, so one slow answer is not an alert.
+          for try in 1 2 3; do
+            if up; then echo "uptime: up"; exit 0; fi
+            [ "$try" -lt 3 ] && sleep 30
+          done
+          text="dipwatch: the site is down. Three checks of /api/stores failed at $(date -u +%H:%M) UTC. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          jq -n --arg text "$text" '{msg_type: "text", content: {text: $text}}' |
+            curl -fsS --max-time 20 -H 'content-type: application/json' --data-binary @- "$FEISHU_WEBHOOK"
+          exit 1

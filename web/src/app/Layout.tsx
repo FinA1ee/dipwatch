@@ -51,6 +51,11 @@ export function Layout() {
       <main className="mx-auto max-w-[1040px] px-6 pt-2 pb-16">
         <Outlet />
       </main>
+      <footer className="mx-auto max-w-[1040px] border-t border-rule px-6 py-6 text-sm text-muted">
+        <Link to="/privacy" className="hover:underline">
+          Privacy
+        </Link>
+      </footer>
     </div>
   );
 }

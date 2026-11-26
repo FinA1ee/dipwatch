@@ -120,6 +120,23 @@ func (w *NotifyWorker) message(a store.GetAlertToSendRow) (subject, text string)
 	return subject, strings.Join(lines, "\n")
 }
 
+// forget deletes what the privacy page says is kept for 30 days: search
+// counters by IP address, and expired sign-in sessions. A failure is logged:
+// it must not stop refreshes, and the next run tries again.
+func forget(ctx context.Context, q *store.Queries) {
+	quota, err := q.DeleteOldQuota(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "schedule: delete old search counters", "err", err)
+	}
+	sessions, err := q.DeleteOldSessions(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "schedule: delete old sessions", "err", err)
+	}
+	if quota+sessions > 0 {
+		slog.InfoContext(ctx, "schedule: deleted old records", "search_counters", quota, "sessions", sessions)
+	}
+}
+
 // ScheduleArgs enqueues refreshes for tracked products that are due (T3).
 type ScheduleArgs struct{}
 
@@ -139,6 +156,7 @@ type ScheduleWorker struct {
 }
 
 func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs]) error {
+	forget(ctx, store.New(w.DB))
 	if spend.LevelOf(ctx, w.Spend) == spend.StoredOnly {
 		slog.InfoContext(ctx, "schedule: paused, daily budget used up")
 		return nil
