@@ -1,0 +1,44 @@
+web/src/pages/Search/modules/ResultsModule/View/ResultsListView.tsx
+  s_3313d584934833::t_a01f11c12c1d39 2,5,16,18-21
+web/src/pages/Product/modules/OffersModule/View/OffersView.tsx
+  s_3313d584934833::t_5c74ad11d3bdc2 2-3,8,10,12-15,17-32
+web/src/pages/Product/modules/TrackModule/View/TrackView.tsx
+  s_3313d584934833::t_6b3b6639316d4c 4,13,15-18,33,50-54,57,59-60,92-99,102-104,130-139,146,148,155-156,161
+  s_3313d584934833::t_9fde4d8dddc379 120,125
+  s_3313d584934833::t_a01f11c12c1d39 157-160
+web/src/pages/Product/modules/TrackModule/Component/AlertChannel.tsx
+  s_3313d584934833::t_d29e1821d23197 1-35,38-62
+  s_3313d584934833::t_a01f11c12c1d39 36-37
+web/src/pages/Product/index.tsx
+  s_3313d584934833::t_5c74ad11d3bdc2 3,6,10,13
+web/src/pages/Search/modules/ResultsModule/View/ResultsSummaryView.tsx
+  s_3313d584934833::t_a01f11c12c1d39 7,63
+docs/tasks.md
+  s_3313d584934833::t_39c26678a5be93 328,339-340
+web/src/pages/MyProducts/modules/SettingsModule/View/SettingsView.tsx
+  s_3313d584934833::t_3c8f58dcaa0f52 2
+web/src/pages/Product/modules/OffersModule/View/SummaryView.tsx
+  s_3313d584934833::t_5c74ad11d3bdc2 1-35
+web/src/components/TrackListingButton.tsx
+  s_3313d584934833::t_5c74ad11d3bdc2 1-20
+web/src/pages/Search/modules/ResultsModule/Component/TrackPrompt.tsx
+  s_3313d584934833::t_a01f11c12c1d39 1-23
+core/internal/jobs/alerts.go
+  s_3313d584934833::t_1e92f78769df12 187-188,212-219,224-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "795ee9b8fe3861532504ffc60e644fefd6270fa1",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
