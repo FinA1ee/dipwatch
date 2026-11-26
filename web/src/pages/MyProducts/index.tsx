@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { useMember } from "@/hooks/useMember";
 import { SettingsView } from "./modules/SettingsModule/View/SettingsView";
 import { TrackedView } from "./modules/TrackedModule/View/TrackedView";
@@ -19,6 +20,7 @@ export function MyProductsPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
+        <Breadcrumbs items={[{ label: "Search", to: "/" }, { label: "My products" }]} />
         <h1 className="text-2xl font-semibold">My products</h1>
         <TrackedView />
       </section>

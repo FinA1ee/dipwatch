@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 	"unicode/utf8"
 
@@ -106,6 +107,9 @@ type Service struct {
 	Feishu         notify.Feishu
 	EmailAvailable bool
 	Limits         *limits.Store // nil: the defaults
+	// CheckNow queues a rule check on stored offers after a save, so a rule
+	// that already holds alerts at once (nil: only after the next refresh).
+	CheckNow func(ctx context.Context, productID int64, sources []string) error
 }
 
 func (s *Service) limits(ctx context.Context) limits.Limits {
@@ -258,6 +262,11 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 	})
 	if err != nil {
 		return Item{}, err
+	}
+	if s.CheckNow != nil {
+		if err := s.CheckNow(ctx, productID, w.Sources); err != nil {
+			slog.WarnContext(ctx, "tracking: queue rule check", "product", productID, "err", err)
+		}
 	}
 	for _, it := range must(s.List(ctx, v)) {
 		if it.ProductID == productID {

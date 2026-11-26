@@ -149,6 +149,7 @@ func run() error {
 	river.AddWorker(workers, &jobs.NotifyWorker{DB: pool, Mailer: mailer, PublicURL: os.Getenv("PUBLIC_URL")})
 	river.AddWorker(workers, &jobs.ScheduleWorker{DB: pool, Spend: breaker, Limits: &limits.Store{DB: pool}})
 	river.AddWorker(workers, &jobs.SimulateDropWorker{DB: pool, Alerts: checker})
+	river.AddWorker(workers, &jobs.CheckTrackerWorker{DB: pool, Alerts: checker})
 	river.AddWorker(workers, &jobs.FXRefreshWorker{
 		DB:     pool,
 		Client: &http.Client{Timeout: 20 * time.Second},

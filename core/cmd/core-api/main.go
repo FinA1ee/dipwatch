@@ -112,7 +112,10 @@ func serve() error {
 	go liveFeed.Run(ctx)
 	handler, _ := httpapi.New(pool, cfg.InternalToken, httpapi.Services{
 		Search: searcher, Products: searcher, Runs: &runs.Reader{DB: pool}, Live: liveFeed,
-		Tracking: &tracking.Service{DB: pool, EmailAvailable: os.Getenv("EMAIL_ALERTS_AVAILABLE") == "true", Limits: limitStore},
+		Tracking: &tracking.Service{
+			DB: pool, EmailAvailable: os.Getenv("EMAIL_ALERTS_AVAILABLE") == "true", Limits: limitStore,
+			CheckNow: jobs.Simulator{Queue: queue}.CheckTracker,
+		},
 		Simulate: jobs.Simulator{Queue: queue},
 		Limits:   limitStore,
 		Spend:    breaker,

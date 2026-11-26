@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const ISSUES = "https://github.com/FinA1ee/dipwatch/issues";
 
@@ -16,6 +17,7 @@ export function PrivacyPage() {
   return (
     <article className="max-w-[68ch] space-y-8">
       <header className="space-y-2">
+        <Breadcrumbs items={[{ label: "Search", to: "/" }, { label: "Privacy" }]} />
         <h1 className="text-[34px] font-semibold leading-tight">Privacy</h1>
         <p className="text-muted">Last updated 26 November 2026.</p>
         <p>

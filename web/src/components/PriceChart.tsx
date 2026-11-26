@@ -21,7 +21,7 @@ export function PriceChart({ history }: Props) {
     return (
       <p className="text-muted">
         Lowest so far: <strong className="text-ink">{formatMoney(first.converted)}</strong> on {first.day}.
-        The chart appears once there are prices from a second day.
+        Dipwatch adds the day's price at every check, so the line starts from the second day.
       </p>
     );
   }

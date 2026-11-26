@@ -1,15 +1,36 @@
 import { PriceChart } from "@/components/PriceChart";
 import { useHistory } from "../Model/useHistory";
 
-/** Price of one listing, or the lowest of one size, per day. */
+/**
+ * The price over time: of what the member tracks, from the day tracking
+ * started, else of the picked listing or size.
+ */
 export function HistoryView() {
-  const { scope, since, history } = useHistory();
+  const h = useHistory();
+  const { scope, since, history } = h;
+  const tracked = "tracked" in h ? h.tracked : undefined;
   if (!scope) {
     return (
       <p className="text-sm text-muted">
-        Pick a size above, or press "Track this listing" on one listing, to see its price over time. Listings
+        Pick a size below, or press "Track this listing" on one listing, to see its price over time. Listings
         of different sizes are never drawn as one line.
       </p>
+    );
+  }
+  if (tracked && since) {
+    const what = tracked.listing
+      ? tracked.listing.title
+      : `the cheapest ${tracked.variant ? `${tracked.variant} ` : ""}listing`;
+    return (
+      <section className="space-y-2 rounded-[14px] border-2 border-drop bg-white p-5">
+        <h2 className="font-head text-[22px] font-semibold tracking-tight">Your tracked price</h2>
+        <p className="text-sm text-muted">
+          <span className="font-medium text-ink">{what}</span>, since you started tracking on{" "}
+          {new Date(since).toLocaleDateString()}.{" "}
+          {tracked.listing ? "Only this listing, at this store." : "Other sizes are left out."}
+        </p>
+        <PriceChart history={history} />
+      </section>
     );
   }
   return (
