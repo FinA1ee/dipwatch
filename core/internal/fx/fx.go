@@ -171,3 +171,28 @@ func (r Rates) DailyLows(points []Point) []DayLow {
 	}
 	return out
 }
+
+// FillDays carries each day's price forward to the next one that has its own,
+// through until: prices are recorded only when they change, so a day without
+// a point kept the last price. Days are YYYY-MM-DD in UTC, oldest first.
+func FillDays(lows []DayLow, until time.Time) []DayLow {
+	if len(lows) == 0 {
+		return lows
+	}
+	first, err := time.Parse(time.DateOnly, lows[0].Day)
+	if err != nil {
+		return lows
+	}
+	last := until.UTC().Truncate(24 * time.Hour)
+	out := make([]DayLow, 0, len(lows))
+	next, price := 0, lows[0].CNY
+	for d := first; !d.After(last); d = d.AddDate(0, 0, 1) {
+		day := d.Format(time.DateOnly)
+		if next < len(lows) && lows[next].Day == day {
+			price = lows[next].CNY
+			next++
+		}
+		out = append(out, DayLow{Day: day, CNY: price})
+	}
+	return out
+}

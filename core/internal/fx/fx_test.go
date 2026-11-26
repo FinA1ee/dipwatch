@@ -105,11 +105,28 @@ func TestDailyLows(t *testing.T) {
 	got := r.DailyLows([]Point{
 		{At: day(24, 1), Minor: 120000, Currency: "CNY"},
 		{At: day(24, 9), Minor: 110000, Currency: "CNY"}, // lower the same day
-		{At: day(25, 3), Minor: 21000, Currency: "JPY"}, // ¥1,000 in CNY
-		{At: day(25, 4), Minor: 5, Currency: "XXX"},     // no rate: left out
+		{At: day(25, 3), Minor: 21000, Currency: "JPY"},  // ¥1,000 in CNY
+		{At: day(25, 4), Minor: 5, Currency: "XXX"},      // no rate: left out
 	})
 	want := []DayLow{{Day: "2026-11-24", CNY: 110000}, {Day: "2026-11-25", CNY: 100000}}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestFillDays(t *testing.T) {
+	lows := []DayLow{{Day: "2026-11-23", CNY: 100}, {Day: "2026-11-25", CNY: 90}}
+	got := FillDays(lows, time.Date(2026, 11, 26, 15, 0, 0, 0, time.UTC))
+	want := []DayLow{{"2026-11-23", 100}, {"2026-11-24", 100}, {"2026-11-25", 90}, {"2026-11-26", 90}}
+	if len(got) != len(want) {
+		t.Fatalf("got %+v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("day %d: got %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	if len(FillDays(nil, time.Now())) != 0 {
+		t.Fatal("empty input")
 	}
 }
