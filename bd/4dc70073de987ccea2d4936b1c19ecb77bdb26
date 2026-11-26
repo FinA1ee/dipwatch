@@ -1,0 +1,56 @@
+web/src/components/Breadcrumbs.tsx
+  s_3313d584934833::t_dd06c4625bfcf7 1-10,12-27
+  s_3313d584934833::t_22684e8fe43b2e 11
+web/src/pages/Product/modules/HistoryModule/View/HistoryView.tsx
+  s_3313d584934833::t_f452f750856666 4-7,9-11,15,20-28,31-33
+  s_3313d584934833::t_c14ed05ef985d1 29-30
+web/src/pages/Product/index.tsx
+  s_3313d584934833::t_accd3316d987fc 2,7-10,14-15
+web/src/pages/Product/modules/HistoryModule/Model/useHistory.ts
+  s_3313d584934833::t_f452f750856666 39
+core/internal/store/queries/products.sql
+  s_3313d584934833::t_9ed9a9dd2fa7ea 43-74
+core/internal/jobs/simulate_queue.go
+  s_3313d584934833::t_5a03b3ecc2de64 6,9-11
+  s_3313d584934833::t_c8263c0d4804d2 25-66
+core/cmd/worker/main.go
+  s_3313d584934833::t_5a03b3ecc2de64 152
+core/internal/jobs/schedule_test.go
+  s_3313d584934833::t_01ab22189b7b1d 97-141
+core/internal/tracking/tracking.go
+  s_3313d584934833::t_5a03b3ecc2de64 10,110-112,266-269
+web/src/index.css
+  s_3313d584934833::t_e2552b029e9698 26-39
+web/src/pages/Privacy/index.tsx
+  s_3313d584934833::t_944438cdb3d7a1 2,20
+core/cmd/core-api/main.go
+  s_3313d584934833::t_5a03b3ecc2de64 115-118
+web/src/pages/Product/modules/OffersModule/View/HeaderView.tsx
+  s_3313d584934833::t_accd3316d987fc 1-36
+docs/tasks.md
+  s_3313d584934833::t_22684e8fe43b2e 344
+web/src/pages/MyProducts/index.tsx
+  s_3313d584934833::t_944438cdb3d7a1 2,23
+web/src/pages/Product/modules/OffersModule/View/SummaryView.tsx
+  s_3313d584934833::t_accd3316d987fc 3,7-10,12,14,16,18-19
+core/internal/store/products.sql.go
+  s_3313d584934833::t_9ed9a9dd2fa7ea 35-58,68-75
+web/src/components/PriceChart.tsx
+  s_3313d584934833::t_f452f750856666 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "bd4dc70073de987ccea2d4936b1c19ecb77bdb26",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
