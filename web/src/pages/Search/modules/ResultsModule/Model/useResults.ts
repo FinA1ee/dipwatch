@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import type { DoneEvent, OffersEvent } from "@/services/api";
 import { useSearchStore } from "../../../store";
+import { useVariant } from "../../FiltersModule/Model/useVariant";
 import { filterOffers } from "./filterOffers";
 
 /**
@@ -19,6 +20,7 @@ export function useResults() {
   const inviteOnly = useSearchStore((s) => s.inviteOnly);
   const filters = useSearchStore((s) => s.filters);
   const patch = useSearchStore((s) => s.patch);
+  const variant = useVariant();
   // Each event carries the whole ranked list, so it replaces the current one.
   const applyOffers = useCallback(
     (e: OffersEvent) => patch({ offers: e.offers, pending: e.pending }),
@@ -38,7 +40,8 @@ export function useResults() {
     inviteOnly,
     pending,
     total: offers.length,
-    shown: filterOffers(offers, filters),
+    variant,
+    shown: filterOffers(offers, filters, variant),
     applyOffers,
     finish,
   };

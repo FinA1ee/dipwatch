@@ -16,6 +16,7 @@ export function useListing() {
     setParams(
       (p) => {
         p.set("listing", String(id ?? 0));
+        p.delete("variant"); // the listing's size, or the tracker's
         return p;
       },
       { replace: true },

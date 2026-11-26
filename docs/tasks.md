@@ -321,9 +321,14 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - [x] **W2.2 Listing price history.** `GET /products/{id}?listing=` returns the history of one listing; the product page shows it for the listing being tracked or picked.
 - [x] **W2.3 Higher default limits.** Two stores per search and three tracked products per member, also raised in a saved limits row (migration 00012, never lowered).
 - [x] **W2.4 Invite list.** Invite-only on by default. Only admins and invited sign-in emails run costly searches and track products; others get stored results, or a 403 naming their email for a product with none. The list is edited on `/admin`.
+- [x] **W2.6 Sizes (variants).** The matcher (match-v3) gives each listing its memory or storage size ("24GB", "48GB") and rejects listings that name several models. Search and product pages compare one size at a time, preselecting the size named in the query or the most common one; a tracker can follow one size, and the price chart is per size or per listing, never across sizes.
+- [x] **W2.7 Price trust.** Kakaku's links to shop feeds are marked "price not confirmed at the store"; a price more than twice or under half the median of its size is marked unusual. Marked offers come after the others, are never the lowest, stay off the price ladder and the baseline, and never trigger an alert.
 - [ ] **W2.5 JD live.** App key and secret on the server, then `UPDATE app.sources SET enabled = true WHERE id = 'jd'`.
 
 ### Week 2 notes
 
 - **A listing can disappear.** SMZDM entries are deal posts that expire; a new deal for the same card gets a new id. When a store's last refresh did not see the pinned listing, My products and the track form say so, and the member picks another listing or goes back to the cheapest. Re-pinning automatically would need fuzzy title matching.
 - **One tracker per product.** A member follows one listing or the cheapest offer of a product, not several listings of it; switching listings resets the drop baseline to the new listing's price.
+- **Why a 4090 ranged from ¥14,700 to ¥95,900.** One product name covered standard 24 GB cards, 48 GB cards modified for AI work, listings for several models at once, and reseller listings on Amazon Japan. Kakaku shows the last price from Amazon's feed even when the Amazon page has no seller left (¥2,288,800 for an ASUS ROG card). Sizes and price trust (W2.6, W2.7) separate them.
+- **match-v3 kept the matcher's accuracy.** 99.6% on the 283 labelled listings, the same as match-v2, with the same one mistake. The migration clears the match cache, so each product's listings are matched again on its next refresh (one cheap call per store).
+- **The unusual-price rule needs enough listings of a size.** With fewer than three comparable prices of a size, or when one store's prices are all high (Kakaku alone), the median is not a good reference and nothing is marked.

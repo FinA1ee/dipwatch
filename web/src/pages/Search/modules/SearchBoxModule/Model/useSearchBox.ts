@@ -22,6 +22,7 @@ export function useSearchBox() {
         pending: [],
         paused: result.paused ?? false,
         inviteOnly: result.invite_only ?? false,
+        queryVariant: result.variant ?? "",
         ...(sameProduct ? {} : { filters: NO_FILTERS }),
       }),
     [patch],

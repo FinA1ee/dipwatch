@@ -5,8 +5,10 @@ import { useSettings } from "@/hooks/useSettings";
 import { useStores } from "@/hooks/useStores";
 import { useTracked } from "@/hooks/useTracked";
 import { draftToRules, EMPTY_DRAFT, type RuleDraft, rulesToDraft } from "@/utils/rules";
+import { ANY_VARIANT } from "@/utils/variants";
 import { useListing } from "../../OffersModule/Model/useListing";
 import { useProductPage } from "../../OffersModule/Model/useProductPage";
+import { useVariant } from "../../OffersModule/Model/useVariant";
 
 /** Track this product, or one of its listings: rules, note, save or stop (T1, T2). */
 export function TrackView() {
@@ -17,6 +19,8 @@ export function TrackView() {
   const stores = useStores();
   const { listing, choose } = useListing();
   const { page } = useProductPage();
+  const { variant } = useVariant();
+  const size = variant === ANY_VARIANT ? "" : variant; // "" (not stated) tracks any size too
   const current = t.items.find((i) => i.product_id === productId);
   const [draft, setDraft] = useState<RuleDraft>(EMPTY_DRAFT);
   const [note, setNote] = useState("");
@@ -66,7 +70,14 @@ export function TrackView() {
     const rules = draftToRules(draft, currency);
     if (typeof rules === "string") return setProblem(rules);
     setProblem("");
-    t.save.mutate({ productId, note: note.trim(), rules, stores: stores.selected, offerId: listing });
+    t.save.mutate({
+      productId,
+      note: note.trim(),
+      rules,
+      stores: stores.selected,
+      offerId: listing,
+      variant: listing ? "" : size,
+    });
   };
   const error = problem || t.save.error?.message || t.remove.error?.message;
 
@@ -86,9 +97,10 @@ export function TrackView() {
         </p>
       ) : (
         <p className="text-sm text-muted">
-          Follows the cheapest listing at {storeNames}
-          {!current && " (the store picked on the search page)"}. Pick one listing in the list above to follow
-          only that one.
+          Follows the cheapest {size ? `${size} ` : ""}listing at {storeNames}
+          {!current && " (the store picked on the search page)"}.{" "}
+          {size ? "Other sizes are ignored. " : "Pick a size above to compare like with like. "}Pick one
+          listing in the list above to follow only that one.
         </p>
       )}
       {pinned?.gone && pinned.offer_id === listing && (

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
+	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -21,18 +22,21 @@ type DayLow struct {
 
 // ProductPage is everything the product page shows.
 type ProductPage struct {
-	Product       Product   `json:"product"`
-	LastRefreshed time.Time `json:"last_refreshed,omitzero"`
-	Refreshing    bool      `json:"refreshing" doc:"true while sources are being searched"`
-	Offers        []Offer   `json:"offers" doc:"Cheapest first, compared in CNY"`
-	History       []DayLow  `json:"history" doc:"Oldest first; days without any price are left out"`
-	HistoryOf     int64     `json:"history_of,omitempty" doc:"Offer id the history is for; absent: the lowest of all listings"`
+	Product        Product   `json:"product"`
+	LastRefreshed  time.Time `json:"last_refreshed,omitzero"`
+	Refreshing     bool      `json:"refreshing" doc:"true while sources are being searched"`
+	Offers         []Offer   `json:"offers" doc:"Cheapest first, compared in CNY"`
+	History        []DayLow  `json:"history" doc:"Oldest first; days without any price are left out"`
+	HistoryOf      int64     `json:"history_of,omitempty" doc:"Offer id the history is for"`
+	HistoryVariant string    `json:"history_variant,omitempty" doc:"Variant the history is the daily lowest of, when no listing is given"`
 }
 
-// Product returns a product's offers and daily lowest price, of all listings
-// or of one (listing > 0). It never starts a refresh, so opening the page costs
-// nothing. pgx.ErrNoRows when unknown.
-func (s *Service) Product(ctx context.Context, productID int64, currency string, listing int64) (ProductPage, error) {
+// Product returns a product's offers and a price history: of one listing
+// (listing > 0), or the daily lowest of one variant. Listings of different
+// variants are not mixed into one line, so without either there is no history.
+// It never starts a refresh, so opening the page costs nothing. pgx.ErrNoRows
+// when unknown.
+func (s *Service) Product(ctx context.Context, productID int64, currency string, listing int64, variant string) (ProductPage, error) {
 	q := store.New(s.DB)
 	p, err := q.GetProduct(ctx, productID)
 	if err != nil {
@@ -62,8 +66,11 @@ func (s *Service) Product(ctx context.Context, productID int64, currency string,
 			points = append(points, store.ListProductPricePointsRow(r))
 		}
 		page.HistoryOf = listing
-	} else if points, err = q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{ProductID: p.ID, Since: from}); err != nil {
-		return ProductPage{}, err
+	} else if variant = matcher.NormalizeVariant(variant); variant != "" {
+		if points, err = q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{ProductID: p.ID, Since: from, Variant: variant}); err != nil {
+			return ProductPage{}, err
+		}
+		page.HistoryVariant = variant
 	}
 	rates, err := fx.Latest(ctx, q)
 	if err != nil {

@@ -112,10 +112,13 @@ func parseItem(item *goquery.Selection) (sources.Offer, bool) {
 		o.URL = "https://kakaku.com/item/" + m[1] + "/"
 	} else {
 		// A single listing from an online mall, linked through a tracking redirect.
+		// Its price comes from the mall's feed and is not compared on Kakaku: it
+		// can be stale (an Amazon item with no seller left still shows one).
 		sum := sha256.Sum256([]byte(href))
 		o.ExternalID = "mall-" + hex.EncodeToString(sum[:8])
 		o.URL = href
 		o.SellerType = "third_party"
+		o.PriceUnconfirmed = true
 	}
 	return o, true
 }

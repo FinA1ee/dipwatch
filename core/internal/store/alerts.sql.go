@@ -112,7 +112,7 @@ func (q *Queries) LatestPricePoint(ctx context.Context, offerID int64) (LatestPr
 }
 
 const listAlertOffers = `-- name: ListAlertOffers :many
-SELECT id, price_minor, currency, availability, first_seen_at
+SELECT id, price_minor, currency, availability, first_seen_at, variant, price_unconfirmed
 FROM app.offers
 WHERE product_id = $1 AND source_id = $2 AND is_product IS NOT FALSE
 `
@@ -123,11 +123,13 @@ type ListAlertOffersParams struct {
 }
 
 type ListAlertOffersRow struct {
-	ID           int64
-	PriceMinor   int64
-	Currency     string
-	Availability string
-	FirstSeenAt  pgtype.Timestamptz
+	ID               int64
+	PriceMinor       int64
+	Currency         string
+	Availability     string
+	FirstSeenAt      pgtype.Timestamptz
+	Variant          string
+	PriceUnconfirmed bool
 }
 
 // One source's offers for the product that the matcher did not reject.
@@ -146,6 +148,8 @@ func (q *Queries) ListAlertOffers(ctx context.Context, arg ListAlertOffersParams
 			&i.Currency,
 			&i.Availability,
 			&i.FirstSeenAt,
+			&i.Variant,
+			&i.PriceUnconfirmed,
 		); err != nil {
 			return nil, err
 		}

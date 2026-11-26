@@ -11,8 +11,16 @@ x-llm-env: &llm-env
   LLM_PRICE_OUT_CNY_PER_M: ${LLM_PRICE_OUT_CNY_PER_M:-8}
   LLM_EXTRA_BODY: ${LLM_EXTRA_BODY:-}
 
+# Container logs are capped at 3 files of 10 MB per service, so they cannot fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   postgres:
+    logging: *logging
     # On the server this points at a copy in ACR, because Docker Hub is not reachable.
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
@@ -35,6 +43,7 @@ services:
           memory: 512m
 
   core-api:
+    logging: *logging
     image: ${IMAGE_REPO:-dipwatch}:core-${IMAGE_TAG:-local}
     build:
       context: ../core
@@ -60,6 +69,7 @@ services:
           memory: 256m
 
   worker:
+    logging: *logging
     # Worker image: Go worker plus Node, Chromium and Playwright MCP for the browsing agent.
     image: ${IMAGE_REPO:-dipwatch}:worker-${IMAGE_TAG:-local}
     build:
@@ -87,6 +97,7 @@ services:
           memory: 1536m
 
   gateway:
+    logging: *logging
     image: ${IMAGE_REPO:-dipwatch}:gateway-${IMAGE_TAG:-local}
     build:
       context: ..
@@ -119,6 +130,7 @@ services:
           memory: 256m
 
   web:
+    logging: *logging
     image: ${IMAGE_REPO:-dipwatch}:web-${IMAGE_TAG:-local}
     build:
       context: ..

@@ -23,14 +23,19 @@ export async function search(query: string, currency: string, stores: string[]):
   return data;
 }
 
-/** The product page; with a listing (offer id), its price history is of that listing only. */
+/**
+ * The product page. Its price history is of a listing (offer id), or the daily
+ * lowest of a variant; with neither it is empty.
+ */
 export async function getProduct(
   productId: number,
   currency: string,
   listing?: number,
+  variant?: string,
 ): Promise<ProductPage> {
+  const query = { currency, ...(listing ? { listing } : {}), ...(variant ? { variant } : {}) };
   const { data, error, response } = await api.GET("/products/{productId}", {
-    params: { path: { productId }, query: { currency, ...(listing ? { listing } : {}) } },
+    params: { path: { productId }, query },
   });
   if (!data) fail(response, error);
   return data;

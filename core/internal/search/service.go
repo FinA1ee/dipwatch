@@ -16,7 +16,9 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/jobs"
 	"github.com/FinA1ee/dipwatch/core/internal/limits"
+	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/money"
+	"github.com/FinA1ee/dipwatch/core/internal/pricetrust"
 	"github.com/FinA1ee/dipwatch/core/internal/spend"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
@@ -46,7 +48,14 @@ type Offer struct {
 	Condition     string `json:"condition" enum:"new,used,refurbished,unknown"`
 	Availability  string `json:"availability" enum:"in_stock,out_of_stock,unknown"`
 	SellerType    string `json:"seller_type" enum:"official,third_party,individual,unknown"`
+	Variant       string `json:"variant" doc:"Memory or storage size the listing sells, e.g. 24GB; empty when the title does not say"`
+	// Offers with either flag are listed after the others and are never the lowest.
+	PriceUnconfirmed bool `json:"price_unconfirmed,omitempty" doc:"The store relays this price from a shop's feed without showing it on its own page; it may be stale"`
+	UnusualPrice     bool `json:"unusual_price,omitempty" doc:"More than twice, or under half, the median price of listings with the same variant"`
 }
+
+// Trusted reports whether the offer's price can be compared with others.
+func (o Offer) Trusted() bool { return !o.PriceUnconfirmed && !o.UnusualPrice }
 
 // Product is the resolved search target.
 type Product struct {
@@ -60,7 +69,8 @@ type Result struct {
 	Status     string  `json:"status" enum:"fresh,refreshing" doc:"refreshing: open the events stream for new offers"`
 	Paused     bool    `json:"paused,omitempty" doc:"true when stored offers are older than usual because today's budget is spent"`
 	InviteOnly bool    `json:"invite_only,omitempty" doc:"true when stored offers were not refreshed because the viewer is not invited"`
-	Offers     []Offer `json:"offers" doc:"Cheapest first, compared in CNY"`
+	Offers     []Offer `json:"offers" doc:"Cheapest first, compared in CNY; offers with an unconfirmed or unusual price come after the others"`
+	Variant    string  `json:"variant,omitempty" doc:"Size named in the query (e.g. 48GB), for the page to preselect"`
 }
 
 // Inserter enqueues jobs. *river.Client satisfies it; tests use a fake.
@@ -154,7 +164,7 @@ func (s *Service) Search(ctx context.Context, viewer guard.Viewer, text, currenc
 	if err != nil {
 		return Result{}, err
 	}
-	res := Result{Product: Product{ID: product.ID, Name: product.CanonicalName}, Status: "fresh"}
+	res := Result{Product: Product{ID: product.ID, Name: product.CanonicalName}, Status: "fresh", Variant: matcher.VariantInQuery(text)}
 	now := time.Now
 	if s.Now != nil {
 		now = s.Now
@@ -240,6 +250,7 @@ func (s *Service) offers(ctx context.Context, q *store.Queries, productID int64,
 			Source: Source{ID: r.SourceID, Name: r.SourceName, Region: r.SourceRegion},
 			URL:    r.Url, Price: Money{Minor: r.PriceMinor, Currency: r.Currency}, ShippingMinor: r.ShippingMinor,
 			Condition: r.Condition, Availability: r.Availability, SellerType: r.SellerType,
+			Variant: r.Variant, PriceUnconfirmed: r.PriceUnconfirmed,
 		}
 		if o.Title == "" {
 			o.Title = r.TitleOriginal // not matched yet
@@ -253,8 +264,21 @@ func (s *Service) offers(ctx context.Context, q *store.Queries, productID int64,
 		}
 		list = append(list, item)
 	}
+	prices := make([]pricetrust.Price, len(list))
+	for i, item := range list {
+		// Unconfirmed prices do not count towards the median they are judged by.
+		prices[i] = pricetrust.Price{CNY: item.cny, Known: item.known && !item.offer.PriceUnconfirmed, Variant: item.offer.Variant}
+	}
+	for i, unusual := range pricetrust.Unusual(prices) {
+		list[i].offer.UnusualPrice = unusual
+	}
 	slices.SortStableFunc(list, func(a, b ranked) int {
 		switch {
+		case a.offer.Trusted() != b.offer.Trusted(): // flagged prices after the comparable ones
+			if a.offer.Trusted() {
+				return -1
+			}
+			return 1
 		case a.known != b.known: // offers without a rate go last
 			if a.known {
 				return -1

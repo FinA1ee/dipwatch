@@ -17,7 +17,9 @@ import (
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
 	"github.com/FinA1ee/dipwatch/core/internal/guard"
 	"github.com/FinA1ee/dipwatch/core/internal/limits"
+	"github.com/FinA1ee/dipwatch/core/internal/matcher"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
+	"github.com/FinA1ee/dipwatch/core/internal/pricetrust"
 	"github.com/FinA1ee/dipwatch/core/internal/store"
 )
 
@@ -53,6 +55,7 @@ type Item struct {
 	Note        string        `json:"note"`
 	Rules       []alerts.Rule `json:"rules"`
 	Stores      []string      `json:"stores" doc:"Stores refreshed and alerted on; empty: every store"`
+	Variant     string        `json:"variant" doc:"Only listings of this variant count, e.g. 24GB; empty: any variant"`
 	Baseline    *alerts.Money `json:"baseline,omitempty" doc:"Price when tracking started (of the listing, if one is pinned), in CNY"`
 	Listing     *Listing      `json:"listing,omitempty" doc:"The listing this tracker follows; absent: the product's cheapest offer"`
 	TrackedAt   time.Time     `json:"tracked_at"`
@@ -65,6 +68,7 @@ type Listing struct {
 	Store   string       `json:"store" doc:"Source id"`
 	URL     string       `json:"url"`
 	Price   alerts.Money `json:"price" doc:"Price at the store, in its currency"`
+	Variant string       `json:"variant" doc:"The listing's variant, e.g. 24GB; empty when its title does not say"`
 	Gone    bool         `json:"gone" doc:"The store's last refresh no longer listed it"`
 }
 
@@ -116,15 +120,16 @@ func (s *Service) List(ctx context.Context, v guard.Viewer) ([]Item, error) {
 	for i, r := range rows {
 		out[i] = item(r.ProductID, r.CanonicalName, r.Note, r.Rules, r.BaselinePriceCnyMinor, r.CreatedAt.Time, r.Sources)
 		out[i].Listing = listing(r)
+		out[i].Variant = r.Variant
 	}
 	return out, nil
 }
 
 // Save starts tracking a product, or updates its note and rules. A tracker
-// follows the product's cheapest offer at the given stores, or, with offerID,
-// one listing at its store. The stores and the baseline price are set when
-// tracking starts and again when the pinned listing changes.
-func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64) (Item, error) {
+// follows the cheapest offer of a variant ("" any) at the given stores, or,
+// with offerID, one listing at its store. The stores and the baseline price are
+// set when tracking starts and again when the listing or variant changes.
+func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64, variant string) (Item, error) {
 	q, err := s.member(ctx, v)
 	if err != nil {
 		return Item{}, err
@@ -161,6 +166,7 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 		}
 	}
 
+	variant = matcher.NormalizeVariant(variant)
 	baseline, sources := existing.BaselinePriceCnyMinor, existing.Sources
 	switch {
 	case offerID != nil && (isNew || !sameID(existing.OfferID, offerID)):
@@ -172,20 +178,23 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 			return Item{}, err
 		}
 		sources = []string{o.SourceID}
+		variant = "" // the listing decides
 		baseline = nil
 		if rates, err := fx.Latest(ctx, q); err == nil {
 			if cny, err := rates.ToCNYMinor(o.PriceMinor, o.Currency); err == nil {
 				baseline = &cny
 			}
 		}
-	case offerID == nil && (isNew || existing.OfferID != nil):
+	case offerID != nil:
+		variant = "" // same listing as before
+	case isNew || existing.OfferID != nil || existing.Variant != variant:
 		if isNew {
 			if len(stores) == 0 || len(stores) > l.SourcesPerSearch {
 				return Item{}, ErrStores
 			}
 			sources = stores
 		}
-		if baseline, err = lowestCNY(ctx, q, productID, sources); err != nil {
+		if baseline, err = lowestCNY(ctx, q, productID, sources, variant); err != nil {
 			return Item{}, err
 		}
 	}
@@ -198,7 +207,7 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 	}
 	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{
 		UserID: v.UserID, ProductID: productID, Note: note, Rules: raw,
-		BaselinePriceCnyMinor: baseline, Sources: sources, OfferID: offerID,
+		BaselinePriceCnyMinor: baseline, Sources: sources, OfferID: offerID, Variant: variant,
 	})
 	if err != nil {
 		return Item{}, err
@@ -236,6 +245,7 @@ func listing(r store.ListWatchItemsRow) *Listing {
 	return &Listing{
 		OfferID: *r.OfferID, Title: *r.OfferTitle, Store: deref(r.OfferSourceID), URL: deref(r.OfferUrl),
 		Price: alerts.Money{Minor: derefInt(r.OfferPriceMinor), Currency: deref(r.OfferCurrency)}, Gone: gone,
+		Variant: deref(r.OfferVariant),
 	}
 }
 
@@ -306,8 +316,10 @@ func (s *Service) TestFeishu(ctx context.Context, v guard.Viewer) error {
 	return s.Feishu.Send(ctx, set.FeishuWebhook, "dipwatch: test message. Price alerts for your tracked products will arrive here.")
 }
 
-// lowestCNY is the cheapest current offer in CNY at the stores, the baseline of drop rules.
-func lowestCNY(ctx context.Context, q *store.Queries, productID int64, stores []string) (*int64, error) {
+// lowestCNY is the cheapest comparable offer in CNY at the stores, of the
+// variant ("" any): the baseline of drop rules. Unconfirmed and unusual prices
+// do not count (pricetrust).
+func lowestCNY(ctx context.Context, q *store.Queries, productID int64, stores []string, variant string) (*int64, error) {
 	rows, err := q.ListSearchOffers(ctx, store.ListSearchOffersParams{ProductID: productID, SourceIds: stores})
 	if err != nil {
 		return nil, err
@@ -316,10 +328,19 @@ func lowestCNY(ctx context.Context, q *store.Queries, productID int64, stores []
 	if err != nil {
 		rates = fx.Rates{}
 	}
+	prices := make([]pricetrust.Price, len(rows))
+	for i, r := range rows {
+		cny, err := rates.ToCNYMinor(r.PriceMinor, r.Currency)
+		prices[i] = pricetrust.Price{CNY: cny, Known: err == nil && !r.PriceUnconfirmed, Variant: r.Variant}
+	}
+	unusual := pricetrust.Unusual(prices)
 	var low *int64
-	for _, r := range rows {
-		if cny, err := rates.ToCNYMinor(r.PriceMinor, r.Currency); err == nil && (low == nil || cny < *low) {
-			v := cny
+	for i, p := range prices {
+		if !p.Known || unusual[i] || (variant != "" && p.Variant != variant) {
+			continue
+		}
+		if low == nil || p.CNY < *low {
+			v := p.CNY
 			low = &v
 		}
 	}

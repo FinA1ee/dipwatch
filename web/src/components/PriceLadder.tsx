@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { Offer } from "@/services/api";
 import { formatMoney } from "@/utils/money";
+import { trusted } from "@/utils/variants";
 
 type Props = {
-  offers: Offer[]; // cheapest first
+  offers: Offer[]; // cheapest first; unconfirmed and unusual prices are left off
   note?: string; // e.g. how the lowest compares with last week
 };
 
@@ -15,7 +16,7 @@ type Props = {
 export function PriceLadder({ offers, note }: Props) {
   const [active, setActive] = useState<number | null>(null);
   const priced = offers
-    .filter((o) => o.converted)
+    .filter((o) => o.converted && trusted(o))
     .map((o) => ({ o, m: o.converted as NonNullable<Offer["converted"]> }));
   const first = priced[0];
   const last = priced.at(-1);

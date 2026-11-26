@@ -138,7 +138,7 @@ func (q *Queries) ListOfferPricePoints(ctx context.Context, arg ListOfferPricePo
 }
 
 const listOffersByProduct = `-- name: ListOffersByProduct :many
-SELECT id, product_id, source_id, external_id, url, title_original, title_en, price_minor, currency, shipping_minor, condition, availability, seller_type, specs, raw, first_seen_at, last_seen_at, is_product FROM app.offers WHERE product_id = $1 ORDER BY price_minor, id
+SELECT id, product_id, source_id, external_id, url, title_original, title_en, price_minor, currency, shipping_minor, condition, availability, seller_type, specs, raw, first_seen_at, last_seen_at, is_product, variant, price_unconfirmed FROM app.offers WHERE product_id = $1 ORDER BY price_minor, id
 `
 
 func (q *Queries) ListOffersByProduct(ctx context.Context, productID int64) ([]AppOffer, error) {
@@ -169,6 +169,8 @@ func (q *Queries) ListOffersByProduct(ctx context.Context, productID int64) ([]A
 			&i.FirstSeenAt,
 			&i.LastSeenAt,
 			&i.IsProduct,
+			&i.Variant,
+			&i.PriceUnconfirmed,
 		); err != nil {
 			return nil, err
 		}
@@ -186,12 +188,15 @@ FROM app.price_points pp
 JOIN app.offers o ON o.id = pp.offer_id
 WHERE o.product_id = $1
   AND o.is_product IS NOT FALSE
-  AND pp.observed_at >= $2
+  AND NOT o.price_unconfirmed
+  AND o.variant = $2
+  AND pp.observed_at >= $3
 ORDER BY pp.observed_at
 `
 
 type ListProductPricePointsParams struct {
 	ProductID int64
+	Variant   string
 	Since     pgtype.Timestamptz
 }
 
@@ -201,10 +206,11 @@ type ListProductPricePointsRow struct {
 	Currency   string
 }
 
-// Price history for the product page: every price point of offers the matcher
-// did not reject, since a start time. Converted and reduced per day in Go.
+// Price history for the product page: every price point of offers of one
+// variant that the matcher did not reject and whose price the store confirms,
+// since a start time. Converted and reduced per day in Go.
 func (q *Queries) ListProductPricePoints(ctx context.Context, arg ListProductPricePointsParams) ([]ListProductPricePointsRow, error) {
-	rows, err := q.db.Query(ctx, listProductPricePoints, arg.ProductID, arg.Since)
+	rows, err := q.db.Query(ctx, listProductPricePoints, arg.ProductID, arg.Variant, arg.Since)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +232,7 @@ func (q *Queries) ListProductPricePoints(ctx context.Context, arg ListProductPri
 const listSearchOffers = `-- name: ListSearchOffers :many
 SELECT o.id, o.source_id, s.name AS source_name, s.region AS source_region,
        o.url, o.title_original, o.title_en, o.price_minor, o.currency, o.shipping_minor,
-       o.condition, o.availability, o.seller_type
+       o.condition, o.availability, o.seller_type, o.variant, o.price_unconfirmed
 FROM app.offers o
 JOIN app.sources s ON s.id = o.source_id
 WHERE o.product_id = $1
@@ -241,19 +247,21 @@ type ListSearchOffersParams struct {
 }
 
 type ListSearchOffersRow struct {
-	ID            int64
-	SourceID      string
-	SourceName    string
-	SourceRegion  string
-	Url           string
-	TitleOriginal string
-	TitleEn       string
-	PriceMinor    int64
-	Currency      string
-	ShippingMinor *int64
-	Condition     string
-	Availability  string
-	SellerType    string
+	ID               int64
+	SourceID         string
+	SourceName       string
+	SourceRegion     string
+	Url              string
+	TitleOriginal    string
+	TitleEn          string
+	PriceMinor       int64
+	Currency         string
+	ShippingMinor    *int64
+	Condition        string
+	Availability     string
+	SellerType       string
+	Variant          string
+	PriceUnconfirmed bool
 }
 
 // Offers shown in search results: everything the matcher did not reject (S6),
@@ -281,6 +289,8 @@ func (q *Queries) ListSearchOffers(ctx context.Context, arg ListSearchOffersPara
 			&i.Condition,
 			&i.Availability,
 			&i.SellerType,
+			&i.Variant,
+			&i.PriceUnconfirmed,
 		); err != nil {
 			return nil, err
 		}
@@ -310,10 +320,10 @@ func (q *Queries) SetOfferPrice(ctx context.Context, arg SetOfferPriceParams) er
 const upsertOffer = `-- name: UpsertOffer :one
 INSERT INTO app.offers (
     product_id, source_id, external_id, url, title_original,
-    price_minor, currency, shipping_minor, condition, availability, seller_type, raw
+    price_minor, currency, shipping_minor, condition, availability, seller_type, raw, price_unconfirmed
 ) VALUES (
     $1, $2, $3, $4, $5,
-    $6, $7, $8, $9, $10, $11, $12
+    $6, $7, $8, $9, $10, $11, $12, $13
 )
 ON CONFLICT (source_id, external_id) DO UPDATE SET
     url = EXCLUDED.url,
@@ -325,23 +335,25 @@ ON CONFLICT (source_id, external_id) DO UPDATE SET
     availability = EXCLUDED.availability,
     seller_type = EXCLUDED.seller_type,
     raw = EXCLUDED.raw,
+    price_unconfirmed = EXCLUDED.price_unconfirmed,
     last_seen_at = now()
 RETURNING id
 `
 
 type UpsertOfferParams struct {
-	ProductID     int64
-	SourceID      string
-	ExternalID    string
-	Url           string
-	TitleOriginal string
-	PriceMinor    int64
-	Currency      string
-	ShippingMinor *int64
-	Condition     string
-	Availability  string
-	SellerType    string
-	Raw           []byte
+	ProductID        int64
+	SourceID         string
+	ExternalID       string
+	Url              string
+	TitleOriginal    string
+	PriceMinor       int64
+	Currency         string
+	ShippingMinor    *int64
+	Condition        string
+	Availability     string
+	SellerType       string
+	Raw              []byte
+	PriceUnconfirmed bool
 }
 
 // One row per listing (source_id, external_id). Re-seeing a listing updates it in place.
@@ -359,6 +371,7 @@ func (q *Queries) UpsertOffer(ctx context.Context, arg UpsertOfferParams) (int64
 		arg.Availability,
 		arg.SellerType,
 		arg.Raw,
+		arg.PriceUnconfirmed,
 	)
 	var id int64
 	err := row.Scan(&id)

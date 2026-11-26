@@ -259,12 +259,16 @@ components:
         tracked_at:
           format: date-time
           type: string
+        variant:
+          description: "Only listings of this variant count, e.g. 24GB; empty: any variant"
+          type: string
       required:
         - product_id
         - product_name
         - note
         - rules
         - stores
+        - variant
         - tracked_at
       type: object
     Limits:
@@ -344,12 +348,16 @@ components:
           type: string
         url:
           type: string
+        variant:
+          description: The listing's variant, e.g. 24GB; empty when its title does not say
+          type: string
       required:
         - offer_id
         - title
         - store
         - url
         - price
+        - variant
         - gone
       type: object
     Metrics:
@@ -412,6 +420,9 @@ components:
         price:
           $ref: "#/components/schemas/Money"
           description: Price in the store's currency
+        price_unconfirmed:
+          description: The store relays this price from a shop's feed without showing it on its own page; it may be stale
+          type: boolean
         seller_type:
           enum:
             - official
@@ -431,8 +442,14 @@ components:
         title_original:
           description: Title as the store shows it
           type: string
+        unusual_price:
+          description: More than twice, or under half, the median price of listings with the same variant
+          type: boolean
         url:
           format: uri
+          type: string
+        variant:
+          description: Memory or storage size the listing sells, e.g. 24GB; empty when the title does not say
           type: string
       required:
         - id
@@ -445,6 +462,7 @@ components:
         - condition
         - availability
         - seller_type
+        - variant
       type: object
     OffersEvent:
       additionalProperties: false
@@ -491,9 +509,12 @@ components:
             $ref: "#/components/schemas/DayLow"
           type: array
         history_of:
-          description: "Offer id the history is for; absent: the lowest of all listings"
+          description: Offer id the history is for
           format: int64
           type: integer
+        history_variant:
+          description: Variant the history is the daily lowest of, when no listing is given
+          type: string
         last_refreshed:
           format: date-time
           type: string
@@ -527,7 +548,7 @@ components:
           description: true when stored offers were not refreshed because the viewer is not invited
           type: boolean
         offers:
-          description: Cheapest first, compared in CNY
+          description: Cheapest first, compared in CNY; offers with an unconfirmed or unusual price come after the others
           items:
             $ref: "#/components/schemas/Offer"
           type: array
@@ -541,6 +562,9 @@ components:
           enum:
             - fresh
             - refreshing
+          type: string
+        variant:
+          description: Size named in the query (e.g. 48GB), for the page to preselect
           type: string
       required:
         - product
@@ -653,6 +677,10 @@ components:
             type: string
           maxItems: 20
           type: array
+        variant:
+          description: "Without a listing: only listings of this variant count, e.g. 24GB; omit for any variant"
+          maxLength: 16
+          type: string
       required:
         - note
         - rules
@@ -1660,15 +1688,23 @@ paths:
             default: CNY
             pattern: ^[A-Z]{3}$
             type: string
-        - description: "Offer id: price history of this listing only; 0: the lowest of all listings"
+        - description: "Offer id: price history of this listing"
           explode: false
           in: query
           name: listing
           schema:
-            description: "Offer id: price history of this listing only; 0: the lowest of all listings"
+            description: "Offer id: price history of this listing"
             format: int64
             minimum: 0
             type: integer
+        - description: "Without a listing: history of the daily lowest price of this variant, e.g. 24GB"
+          explode: false
+          in: query
+          name: variant
+          schema:
+            description: "Without a listing: history of the daily lowest price of this variant, e.g. 24GB"
+            maxLength: 16
+            type: string
       responses:
         "200":
           content:

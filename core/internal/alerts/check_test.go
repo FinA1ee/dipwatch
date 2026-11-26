@@ -192,3 +192,28 @@ func TestPinnedTrackerOnlyAlertsOnItsListing(t *testing.T) {
 		t.Fatalf("alert for offer %d, want the pinned %d (not the cheaper %d)", offerID, f.dear, f.cheap)
 	}
 }
+
+func TestTrackersOfAVariantIgnoreOtherVariants(t *testing.T) {
+	ctx, pool := setup(t)
+	f := newFixture(t, ctx, pool, []Rule{{Type: RuleBelow, Below: &Money{Minor: 100000, Currency: "CNY"}}}, 90000)
+	// The ¥500 offer is 24GB, the ¥900 one 48GB; the member tracks the 48GB variant.
+	for id, v := range map[int64]string{f.cheap: "24GB", f.dear: "48GB"} {
+		if _, err := pool.Exec(ctx, "UPDATE app.offers SET variant = $1 WHERE id = $2", v, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(ctx, "UPDATE app.watch_items SET variant = '48GB' WHERE id = $1", f.watchID); err != nil {
+		t.Fatal(err)
+	}
+	out := &queued{}
+	if n, err := (&Checker{Enqueue: out.enqueue}).Check(ctx, f.q, f.productID, f.sourceID, Changes{}); err != nil || n != 1 {
+		t.Fatalf("alerts: %d, %v", n, err)
+	}
+	var offerID int64
+	if err := pool.QueryRow(ctx, "SELECT offer_id FROM app.alerts WHERE id = $1", out.ids[0]).Scan(&offerID); err != nil {
+		t.Fatal(err)
+	}
+	if offerID != f.dear {
+		t.Fatalf("alert for offer %d, want the 48GB one %d", offerID, f.dear)
+	}
+}
