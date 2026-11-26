@@ -269,7 +269,7 @@ func history(ctx context.Context, q *store.Queries, rates fx.Rates, r store.List
 			points = append(points, fx.Point{At: p.ObservedAt.Time, Minor: p.PriceMinor, Currency: p.Currency})
 		}
 	}
-	lows := rates.DailyLows(points)
+	lows := fx.FillDays(rates.DailyLows(points), time.Now())
 	out := make([]DayPrice, len(lows))
 	for i, d := range lows {
 		out[i] = DayPrice{Day: d.Day, Price: alerts.Money{Minor: d.CNY, Currency: "CNY"}}

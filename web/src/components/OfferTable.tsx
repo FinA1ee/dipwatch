@@ -93,6 +93,13 @@ export function OfferTable({ offers, action, selected }: Props) {
               {o.converted && o.converted.currency !== o.price.currency && (
                 <span className="block text-[13px] text-muted">{formatMoney(o.price)} at the store</span>
               )}
+              {o.id === selected ? (
+                <span className="mt-2 inline-block rounded-full bg-drop px-2.5 py-0.5 text-[13px] font-semibold text-white">
+                  ✓ Tracking
+                </span>
+              ) : (
+                action && <span className="mt-2 inline-block">{action(o)}</span>
+              )}
             </span>
             {o.title !== o.title_original && (
               <span className="truncate text-[13px] text-muted" title={o.title_original}>
@@ -114,8 +121,6 @@ export function OfferTable({ offers, action, selected }: Props) {
                   Open at {o.source.name}
                 </a>
               )}
-              {o.id === selected && <span className="font-semibold text-drop">Tracked listing</span>}
-              {action?.(o)}
             </span>
           </li>
         );

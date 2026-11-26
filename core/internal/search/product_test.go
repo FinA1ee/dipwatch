@@ -21,8 +21,12 @@ func TestDailyLowsComparesInCNY(t *testing.T) {
 		{ObservedAt: at(25, 3), PriceMinor: 85000, Currency: "CNY"},
 		{ObservedAt: at(25, 4), PriceMinor: 100, Currency: "XXX"}, // no rate: ignored
 	}
-	got := dailyLows(points, rates, "USD")
+	got := dailyLows(points, rates, "USD", at(25, 12).Time)
 	if len(got) != 2 || got[0].Day != "2026-11-24" || got[0].Converted.Minor != 10000 || got[1].Converted.Minor != 10625 {
 		t.Fatalf("lows: %+v", got)
+	}
+	// A day without a price change keeps the last price, up to today.
+	if got := dailyLows(points, rates, "USD", at(27, 12).Time); len(got) != 4 || got[3].Day != "2026-11-27" || got[3].Converted.Minor != 10625 {
+		t.Fatalf("filled: %+v", got)
 	}
 }

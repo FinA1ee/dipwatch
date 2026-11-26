@@ -76,18 +76,19 @@ func (s *Service) Product(ctx context.Context, productID int64, currency string,
 	if err != nil {
 		return page, nil // no rates yet: history cannot be compared across currencies
 	}
-	page.History = dailyLows(points, rates, currency)
+	page.History = dailyLows(points, rates, currency, time.Now())
 	return page, nil
 }
 
 // dailyLows reduces price points to the lowest price per UTC day, converted to
-// currency (see fx.DailyLows).
-func dailyLows(points []store.ListProductPricePointsRow, rates fx.Rates, currency string) []DayLow {
+// currency, with days without a change filled up to until (see fx.DailyLows
+// and fx.FillDays).
+func dailyLows(points []store.ListProductPricePointsRow, rates fx.Rates, currency string, until time.Time) []DayLow {
 	in := make([]fx.Point, len(points))
 	for i, p := range points {
 		in[i] = fx.Point{At: p.ObservedAt.Time, Minor: p.PriceMinor, Currency: p.Currency}
 	}
-	lows := rates.DailyLows(in)
+	lows := fx.FillDays(rates.DailyLows(in), until)
 	out := make([]DayLow, 0, len(lows))
 	for _, d := range lows {
 		if converted, err := rates.FromCNYMinor(d.CNY, currency); err == nil {
