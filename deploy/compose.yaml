@@ -138,10 +138,30 @@ services:
       context: ..
       dockerfile: web/Dockerfile
     ports:
-      - "${HTTP_PORT:-18080}:80"
+      # HTTP_BIND=127.0.0.1 once the Cloudflare Tunnel serves the domain.
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-18080}:80"
     depends_on:
       gateway:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # Cloudflare Tunnel: serves the public domain over HTTPS without opening
+  # ports 80 or 443. It runs only when CLOUDFLARE_TUNNEL_TOKEN is set
+  # (profile "tunnel", enabled by deploy.sh), and connects out to Cloudflare.
+  tunnel:
+    logging: *logging
+    profiles: ["tunnel"]
+    # On the server this points at a copy in ACR, because Docker Hub is not reachable.
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.11.2}
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+    restart: unless-stopped
     deploy:
       resources:
         limits:

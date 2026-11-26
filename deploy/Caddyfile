@@ -1,5 +1,15 @@
-# Plain HTTP until ICP filing is done. Replace ":80" with the domain name
-# afterwards and Caddy will obtain and renew HTTPS certificates on its own.
+# Plain HTTP inside the server. The public domain reaches it through the
+# Cloudflare Tunnel (the "tunnel" service), which handles HTTPS.
+{
+	servers {
+		# The visitor's IP: from Cloudflare's header when the request comes from
+		# the tunnel container (a private address). Port 18080 is bound to
+		# localhost once the tunnel is live, so nobody else can set it.
+		trusted_proxies static private_ranges
+		client_ip_headers Cf-Connecting-Ip X-Forwarded-For
+	}
+}
+
 :80 {
 	encode zstd gzip
 
@@ -7,6 +17,8 @@
 		# flush_interval -1 streams SSE responses without buffering.
 		reverse_proxy gateway:3000 {
 			flush_interval -1
+			# The gateway reads the last X-Forwarded-For entry as the visitor.
+			header_up X-Forwarded-For {client_ip}
 		}
 	}
 

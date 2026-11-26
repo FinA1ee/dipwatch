@@ -18,7 +18,11 @@ PORT="${PORT:-18080}"
 PREVIOUS="$(cat .deployed_tag 2>/dev/null || true)"
 
 start() {
-	export IMAGE_REPO="$REPO" IMAGE_TAG="$1" POSTGRES_IMAGE="$REPO:postgres-16"
+	export IMAGE_REPO="$REPO" IMAGE_TAG="$1" POSTGRES_IMAGE="$REPO:postgres-16" CLOUDFLARED_IMAGE="$REPO:cloudflared-2026.11.2"
+	# The Cloudflare Tunnel runs once its token is in .env.
+	if grep -q '^CLOUDFLARE_TUNNEL_TOKEN=.' .env; then
+		export COMPOSE_PROFILES=tunnel
+	fi
 	docker compose -f compose.yaml pull --quiet
 	docker compose -f compose.yaml up -d --no-build --remove-orphans
 }
