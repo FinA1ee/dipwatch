@@ -184,8 +184,8 @@ func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs])
 	return nil
 }
 
-// SimulateDropArgs lowers the cheapest offer of a product and runs the alert
-// check, to test delivery end to end (M6.3). Admin only, through the API.
+// SimulateDropArgs lowers the offer a tracker of the product follows and runs
+// the alert check, to test delivery end to end (M6.3). Admin only, through the API.
 type SimulateDropArgs struct {
 	ProductID int64 `json:"product_id"`
 	Percent   int   `json:"percent"`
@@ -209,12 +209,25 @@ func (w *SimulateDropWorker) Work(ctx context.Context, job *river.Job[SimulateDr
 	if err != nil {
 		rates = fx.Rates{}
 	}
-	// Cheapest in CNY: raw minor units are not comparable across currencies.
+	// The offer a tracker would alert on: its pinned listing, else the cheapest
+	// confirmed price of its size (any size without a tracker). Raw minor units
+	// are not comparable across currencies, so compare in CNY.
+	var pinned *int64
+	variant := ""
+	if watchers, err := q.ListProductWatchers(ctx, job.Args.ProductID); err == nil && len(watchers) > 0 {
+		pinned, variant = watchers[0].OfferID, watchers[0].Variant
+	}
 	var target *store.AppOffer
 	var best int64
 	for i := range offers {
 		o := &offers[i]
-		if o.IsProduct != nil && !*o.IsProduct {
+		if pinned != nil {
+			if o.ID == *pinned {
+				target = o
+			}
+			continue
+		}
+		if (o.IsProduct != nil && !*o.IsProduct) || o.PriceUnconfirmed || (variant != "" && o.Variant != variant) {
 			continue
 		}
 		cny, err := rates.ToCNYMinor(o.PriceMinor, o.Currency)

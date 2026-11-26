@@ -4,6 +4,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useStores } from "@/hooks/useStores";
 import { streamOffers } from "@/services/search";
 import { ResultsHeader } from "../Component/ResultsHeader";
+import { TrackPrompt } from "../Component/TrackPrompt";
 import { useResults } from "../Model/useResults";
 
 /** The product, the price ladder, and the stream of updates while a refresh runs (S2). */
@@ -59,6 +60,7 @@ export function ResultsSummaryView() {
         </p>
       )}
       {r.shown.length > 0 && <PriceLadder offers={r.shown} />}
+      {r.shown.length > 0 && <TrackPrompt productId={r.product.id} variant={r.variant} />}
     </section>
   );
 }

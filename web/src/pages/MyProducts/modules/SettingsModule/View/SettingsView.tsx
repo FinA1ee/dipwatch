@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { useAlertSettings } from "@/hooks/useAlertSettings";
 import { SettingsForm } from "../Component/SettingsForm";
-import { useAlertSettings } from "../Model/useAlertSettings";
 
 /** Where alerts go (T6). A form with local state; the Model saves. */
 export function SettingsView() {
