@@ -301,7 +301,7 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - [x] **7.1 Spend breaker.** Today's LLM spend from `agent_runs` (China day); daily budget as a live limit; 80% and 100% rules in search, the refresh jobs, the matcher and the scheduler; spend on `/admin`.
 - [x] **7.2 UI pass.** Two mockups of the search page; apply the chosen one to every page.
 - [x] **7.3 JD Union adapter.** `jd.union.open.goods.query` with the router's MD5 signature; app key and secret from env; source row disabled until keys are set.
-- [ ] **7.4 Rollback test and backups.** Broken-image deploy on the server; `deploy/backup.sh` installed by the deploy script, restore check.
+- [x] **7.4 Rollback test and backups.** Broken-image deploy on the server; `deploy/backup.sh` installed by the deploy script, restore check.
 - [ ] **7.5 README and retro.** Fresh-clone check, README updates for sign-in, limits and alerts; `docs/retro.md`.
 
 ### Day 7 notes
@@ -334,3 +334,4 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - **Why a 4090 ranged from ¥14,700 to ¥95,900.** One product name covered standard 24 GB cards, 48 GB cards modified for AI work, listings for several models at once, and reseller listings on Amazon Japan. Kakaku shows the last price from Amazon's feed even when the Amazon page has no seller left (¥2,288,800 for an ASUS ROG card). Sizes and price trust (W2.6, W2.7) separate them.
 - **match-v3 kept the matcher's accuracy.** 99.6% on the 283 labelled listings, the same as match-v2, with the same one mistake. The migration clears the match cache, so each product's listings are matched again on its next refresh (one cheap call per store).
 - **The unusual-price rule needs enough listings of a size.** With fewer than three comparable prices of a size, or when one store's prices are all high (Kakaku alone), the median is not a good reference and nothing is marked.
+- **Rollback test, re-run (26 November).** Two deliberately bad releases on the server, with a probe of `/api/healthz` every second. A tag that does not exist failed at the pull and rolled back with no downtime. A release whose core image was Postgres failed to start and rolled back on its own in 33 seconds, with 28 seconds of downtime. Both times `.deployed_tag` stayed on the good release and the data was unchanged. The test tags (`*-rbtest`) are still in the registry; delete them in the ACR console.
