@@ -36,6 +36,7 @@ export function useHistory() {
     return {
       scope: scope ?? { variant: "" },
       since: tracked.tracked_at,
+      tracked,
       history: tracked.history.map((d) => ({ day: d.day, converted: d.price })),
     };
   }

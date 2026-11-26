@@ -32,18 +32,34 @@ func (q *Queries) AdaptRefreshInterval(ctx context.Context, id int64) error {
 }
 
 const dueTrackedProducts = `-- name: DueTrackedProducts :many
-SELECT p.id,
-       ARRAY(SELECT DISTINCT s FROM app.watch_items w, unnest(w.sources) s WHERE w.product_id = p.id ORDER BY 1)::text[] AS sources,
-       EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id AND cardinality(w.sources) = 0) AS all_sources
-FROM app.products p
-WHERE EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
-  AND cardinality(p.refreshing_sources) = 0
-  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + LEAST(
-        p.refresh_interval,
-        COALESCE((SELECT GREATEST(min(w.check_every), make_interval(secs => $1::int))
-                  FROM app.watch_items w WHERE w.product_id = p.id), p.refresh_interval)
-      ) <= now())
-ORDER BY p.last_refreshed_at NULLS FIRST
+SELECT id, sources, all_sources FROM (
+    SELECT p.id, p.last_refreshed_at,
+           ARRAY(
+               SELECT DISTINCT s.src
+               FROM app.watch_items w
+               CROSS JOIN LATERAL unnest(w.sources) AS s(src)
+               LEFT JOIN app.product_sources ps ON ps.product_id = p.id AND ps.source_id = s.src
+               WHERE w.product_id = p.id
+                 AND (ps.last_refreshed_at IS NULL OR ps.last_refreshed_at + CASE
+                      WHEN w.check_every IS NULL THEN p.refresh_interval -- automatic
+                      ELSE LEAST(p.refresh_interval, GREATEST(w.check_every, make_interval(secs => $1::int)))
+                      END <= now())
+               ORDER BY 1
+           )::text[] AS sources,
+           EXISTS (
+               SELECT 1 FROM app.watch_items w
+               WHERE w.product_id = p.id AND cardinality(w.sources) = 0
+                 AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + CASE
+                      WHEN w.check_every IS NULL THEN p.refresh_interval -- automatic
+                      ELSE LEAST(p.refresh_interval, GREATEST(w.check_every, make_interval(secs => $1::int)))
+                      END <= now())
+           ) AS all_sources
+    FROM app.products p
+    WHERE cardinality(p.refreshing_sources) = 0
+      AND EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
+) due
+WHERE cardinality(sources) > 0 OR all_sources
+ORDER BY last_refreshed_at NULLS FIRST
 LIMIT 50
 `
 
@@ -53,11 +69,15 @@ type DueTrackedProductsRow struct {
 	AllSources bool
 }
 
-// Tracked products whose refresh interval has passed and that are not refreshing
-// (T3), with the stores their trackers chose. An empty list means a tracker from
-// before per-store tracking: every enabled store. Untracked products are never scheduled.
-// The interval is the automatic one, or the shortest a tracker chose, but never
-// under the owner's minimum (min_check_seconds).
+// Tracked products with stores whose re-check is due and that are not
+// refreshing (T3). Each tracker is due at its store when that store was last
+// refreshed longer ago than the tracker's interval: the automatic one, or the
+// one it chose, but never under the owner's minimum (min_check_seconds). A
+// search at another store does not delay it. sources lists only the due
+// stores; all_sources is a tracker from before per-store tracking (every
+// enabled store), due by the product's last refresh. Untracked products are
+// never scheduled. (Postgres's GREATEST ignores NULL, so "automatic" needs
+// its own branch: GREATEST(NULL, 1 hour) would be 1 hour.)
 func (q *Queries) DueTrackedProducts(ctx context.Context, minCheckSeconds int32) ([]DueTrackedProductsRow, error) {
 	rows, err := q.db.Query(ctx, dueTrackedProducts, minCheckSeconds)
 	if err != nil {

@@ -82,3 +82,36 @@ func TestJDRequestAndKeyNotInErrors(t *testing.T) {
 		t.Fatalf("transport error must not show the key: %v", err)
 	}
 }
+
+func TestJDLookup(t *testing.T) {
+	item := func(id string) string {
+		return `{"itemId":"` + id + `","skuName":"RTX 5090 32G","owner":"p","materialUrl":"jingfen.jd.com/detail/` + id + `.html",
+			"priceInfo":{"price":36283.79},"purchasePriceInfo":{"code":200,"purchasePrice":36283.79}}`
+	}
+	var answer string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("keyword") != "stored-id" {
+			t.Errorf("keyword %q, want the stored id", r.URL.Query().Get("keyword"))
+		}
+		_, _ = w.Write([]byte(answer))
+	}))
+	defer srv.Close()
+	j := &JD{HTTP: srv.Client(), URL: srv.URL, APIKey: "k", KeyID: "J1"}
+
+	// The API answers with the same listing under another encoding of its id.
+	answer = `{"code":200,"msg":"suc","data":{"list":[` + item("other-encoding") + `]}}`
+	o, ok, err := j.Lookup(context.Background(), "stored-id")
+	if err != nil || !ok || o.ExternalID != "stored-id" || o.PriceMinor != 3628379 {
+		t.Fatalf("single result: %+v, %v, %v", o, ok, err)
+	}
+	// Several results without the id: do not guess.
+	answer = `{"code":200,"msg":"suc","data":{"list":[` + item("a") + `,` + item("b") + `]}}`
+	if _, ok, err := j.Lookup(context.Background(), "stored-id"); ok || err != nil {
+		t.Fatalf("ambiguous: ok %v, %v", ok, err)
+	}
+	// No results: the listing is gone.
+	answer = `{"code":200,"msg":"suc","data":{"list":[]}}`
+	if _, ok, err := j.Lookup(context.Background(), "stored-id"); ok || err != nil {
+		t.Fatalf("gone: ok %v, %v", ok, err)
+	}
+}

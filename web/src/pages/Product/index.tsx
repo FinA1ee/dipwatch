@@ -1,15 +1,20 @@
 import { HistoryView } from "./modules/HistoryModule/View/HistoryView";
+import { HeaderView } from "./modules/OffersModule/View/HeaderView";
 import { OffersView } from "./modules/OffersModule/View/OffersView";
 import { SummaryView } from "./modules/OffersModule/View/SummaryView";
 import { TrackView } from "./modules/TrackModule/View/TrackView";
 
-/** Summary first, then tracking, so "Track" is visible without scrolling past every listing. */
+/**
+ * The price you track over time first, then every listing right now, then
+ * tracking settings and the full list.
+ */
 export function ProductPage() {
   return (
     <div className="space-y-8">
+      <HeaderView />
+      <HistoryView />
       <SummaryView />
       <TrackView />
-      <HistoryView />
       <OffersView />
     </div>
   );

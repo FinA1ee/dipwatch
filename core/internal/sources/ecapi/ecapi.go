@@ -55,6 +55,32 @@ func (j *JD) Search(ctx context.Context, q sources.Query) ([]sources.Offer, erro
 	return parseJD(body, limit)
 }
 
+// Lookup fetches one JD listing by its itemId: the API takes an item id as the
+// keyword. The answer may encode the id differently, so a single result is
+// taken as the listing; the offer keeps the id it was stored under.
+func (j *JD) Lookup(ctx context.Context, externalID string) (sources.Offer, bool, error) {
+	params := url.Values{"apkey": {j.APIKey}, "key_id": {j.KeyID}, "keyword": {externalID}, "pageSize": {"5"}}
+	body, err := get(ctx, j.HTTP, strings.TrimRight(j.URL, "/")+"/jingdong/getJdUnionItems", params)
+	if err != nil {
+		return sources.Offer{}, false, err
+	}
+	offers, err := parseJD(body, 5)
+	if err != nil {
+		return sources.Offer{}, false, err
+	}
+	for _, o := range offers {
+		if o.ExternalID == externalID {
+			return o, true, nil
+		}
+	}
+	if len(offers) != 1 {
+		return sources.Offer{}, false, nil // gone, or ambiguous: do not guess
+	}
+	o := offers[0]
+	o.ExternalID = externalID
+	return o, true, nil
+}
+
 // get calls the API. The URL carries the API key, so transport errors are
 // returned without it: Go's url.Error would otherwise print it into logs.
 func get(ctx context.Context, client *http.Client, endpoint string, params url.Values) ([]byte, error) {
