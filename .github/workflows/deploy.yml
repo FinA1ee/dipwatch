@@ -107,6 +107,13 @@ jobs:
           docker pull --platform linux/amd64 postgres:16-alpine
           docker tag postgres:16-alpine "$TARGET"
           docker push "$TARGET"
+      - name: Mirror cloudflared to ACR
+        env:
+          TARGET: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/dipwatch:cloudflared-2026.11.2
+        run: |
+          docker pull --platform linux/amd64 cloudflare/cloudflared:2026.11.2
+          docker tag cloudflare/cloudflared:2026.11.2 "$TARGET"
+          docker push "$TARGET"
 
   deploy:
     needs: [images, postgres-image]

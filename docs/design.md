@@ -330,6 +330,7 @@ flowchart LR
 - Images: `dipwatch-core` (both Go binaries), `dipwatch-gateway`, `dipwatch-web` (Caddy with the built web files). Built on GitHub runners, so the server never pulls from Docker Hub or GitHub.
 - The server keeps `deploy/.env` with secrets, written once by hand. CI only sets the image tag.
 - Rollback: the deploy script records the previous tag and re-deploys it if the health check fails for 60 seconds.
+- Public domain: a Cloudflare Tunnel (`tunnel` service, `cloudflared`) connects out from the server to Cloudflare, which serves `https://dipwatch.icu` and forwards to Caddy inside the compose network. No inbound port 80 or 443 is opened. It starts when `CLOUDFLARE_TUNNEL_TOKEN` is in the server's `.env`; then `HTTP_BIND=127.0.0.1` keeps port 18080 for the server itself. Caddy takes the visitor's IP from `Cf-Connecting-Ip` only from private addresses (the tunnel container). Decision (26 November): the owner chose this over an ICP filing or a server outside mainland China, accepting that a mainland server without a filing may be asked by Aliyun to file or stop.
 
 ## Local development
 
