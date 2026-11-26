@@ -1,0 +1,37 @@
+core/internal/sources/ecapi/testdata/jd-rtx4090.json
+  s_3313d584934833::t_0b407ffa6eb53d 1-164
+deploy/.env.example
+  s_3313d584934833::t_249aafa63ffb9b 37-39,41-42
+deploy/compose.yaml
+  s_3313d584934833::t_249aafa63ffb9b 88-90
+docs/tasks.md
+  s_3313d584934833::t_da3a2e6fc13888 304,337
+  s_3313d584934833::t_158d9b459cc11d 326-327
+  s_3313d584934833::t_39c26678a5be93 328,339-340
+  s_3313d584934833::t_af99f6d5a2dd5b 329
+  s_3313d584934833::t_6f6b055ce1f8c2 330,342
+core/cmd/source-smoke/main.go
+  s_3313d584934833::t_1c490458f650f7 23,49-54
+core/internal/sources/ecapi/ecapi_test.go
+  s_3313d584934833::t_4a0c28e1fb59a6 1-84
+core/cmd/worker/main.go
+  s_3313d584934833::t_249aafa63ffb9b 35,65-70
+core/internal/sources/ecapi/ecapi.go
+  s_3313d584934833::t_9b26865aa77bf1 1-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "85ec8143a809268a008566328593a1196b8b8201",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
