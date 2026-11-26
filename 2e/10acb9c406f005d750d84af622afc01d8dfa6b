@@ -1,0 +1,30 @@
+deploy/deploy.sh
+  s_3313d584934833::t_4983abb3a6c815 21-25
+deploy/Caddyfile
+  s_3313d584934833::t_b093745dc5bea0 1-12,20-21
+.github/workflows/deploy.yml
+  s_3313d584934833::t_4983abb3a6c815 110-116
+deploy/compose.yaml
+  s_3313d584934833::t_b093745dc5bea0 141-142
+  s_3313d584934833::t_4983abb3a6c815 151-169
+deploy/.env.example
+  s_3313d584934833::t_840aaa6c691e59 45-49
+docs/design.md
+  s_3313d584934833::t_840aaa6c691e59 333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "2e10acb9c406f005d750d84af622afc01d8dfa6b",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
