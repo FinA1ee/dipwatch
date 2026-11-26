@@ -85,7 +85,9 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:18080}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-}
-      # JD through its affiliate API (JD Union); empty keeps the JD store off.
+      # JD through 喵有券 (ecapi.cn) or its own affiliate API (JD Union); all empty keeps JD off.
+      ECAPI_API_KEY: ${ECAPI_API_KEY:-}
+      ECAPI_JD_KEY_ID: ${ECAPI_JD_KEY_ID:-}
       JD_UNION_APP_KEY: ${JD_UNION_APP_KEY:-}
       JD_UNION_APP_SECRET: ${JD_UNION_APP_SECRET:-}
     depends_on:

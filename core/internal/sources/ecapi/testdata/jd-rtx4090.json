@@ -1,0 +1,164 @@
+{
+ "code": 200,
+ "msg": "suc",
+ "data": {
+  "totalCount": 756,
+  "list": [
+   {
+    "itemId": "ph4N7kThUN4NgSl41ax5NgSl41ax54_373ZMXQGReNgLRJuMh",
+    "skuName": "京家  英伟达 NVIDIA RTX4090显卡 RTX4090 24G涡轮显卡 超强算力光线追踪 AI加速  工业包装",
+    "owner": "g",
+    "materialUrl": "jingfen.jd.com/detail/ph4N7kThUN4NgSl41ax5NgSl41ax54_373ZMXQGReNgLRJuMh.html",
+    "priceInfo": {
+     "lowestCouponPrice": 35366,
+     "lowestPrice": 35366,
+     "lowestPriceType": 1,
+     "price": 35366
+    },
+    "purchasePriceInfo": {
+     "basisPriceType": 1,
+     "code": 200,
+     "couponList": [],
+     "message": "success",
+     "purchaseNum": 1,
+     "purchasePrice": 35366,
+     "thresholdPrice": 35366
+    },
+    "couponInfo": {
+     "couponList": []
+    },
+    "shopInfo": {
+     "shopName": "CYBERHASH元器件京东自营专区"
+    },
+    "categoryInfo": {
+     "cid3Name": "GPU-图像处理器"
+    },
+    "inOrderCount30Days": 0
+   },
+   {
+    "itemId": "Ip47p464mdLQZu0mw24sQZu0mw24s4_3NM1dojRPK7ZeY7dA4",
+    "skuName": "英伟达（NVIDIA）RTX4090涡轮系列 深度学习计算GPU运算加速专业独立显卡 NVIDIA RTX4090 24G 涡轮版 定制",
+    "owner": "g",
+    "materialUrl": "jingfen.jd.com/detail/Ip47p464mdLQZu0mw24sQZu0mw24s4_3NM1dojRPK7ZeY7dA4.html",
+    "priceInfo": {
+     "lowestCouponPrice": 32941.18,
+     "lowestPrice": 32941.18,
+     "lowestPriceType": 1,
+     "price": 32941.18
+    },
+    "purchasePriceInfo": {
+     "basisPriceType": 1,
+     "code": 200,
+     "couponList": [],
+     "message": "success",
+     "purchaseNum": 1,
+     "purchasePrice": 32941.18,
+     "thresholdPrice": 32941.18
+    },
+    "couponInfo": {
+     "couponList": []
+    },
+    "shopInfo": {
+     "shopName": "英伟达（NVIDIA）微处理器京东自营专区"
+    },
+    "categoryInfo": {
+     "cid3Name": "GPU-图像处理器"
+    },
+    "inOrderCount30Days": 0
+   },
+   {
+    "itemId": "wAQEbTB6KNzwDwoGc9pCwDwoGc9pCQ_3ioMtBevhkEDhrUiKy",
+    "skuName": "英伟达（NVIDIA）RTX4090涡轮系列 深度学习计算GPU运算加速专业独立显卡 NVIDIA RTX4090 24G 涡轮版 定制",
+    "owner": "g",
+    "materialUrl": "jingfen.jd.com/detail/wAQEbTB6KNzwDwoGc9pCwDwoGc9pCQ_3ioMtBevhkEDhrUiKy.html",
+    "priceInfo": {
+     "lowestCouponPrice": 29500,
+     "lowestPrice": 29500,
+     "lowestPriceType": 1,
+     "price": 29500
+    },
+    "purchasePriceInfo": {
+     "basisPriceType": 1,
+     "code": 200,
+     "couponList": [],
+     "message": "success",
+     "purchaseNum": 1,
+     "purchasePrice": 29500,
+     "thresholdPrice": 29500
+    },
+    "couponInfo": {
+     "couponList": []
+    },
+    "shopInfo": {
+     "shopName": "英伟达（NVIDIA）微处理器京东自营专区"
+    },
+    "categoryInfo": {
+     "cid3Name": "GPU-图像处理器"
+    },
+    "inOrderCount30Days": 3
+   },
+   {
+    "itemId": "MOQsWh2zXXieFH61jvKKeFH61jvKKQ_3UIh1pHL5Lh9r2DJlg",
+    "skuName": "开元极智RTX4090 24G涡轮公版显卡 RTX 4090 24G",
+    "owner": "p",
+    "materialUrl": "jingfen.jd.com/detail/MOQsWh2zXXieFH61jvKKeFH61jvKKQ_3UIh1pHL5Lh9r2DJlg.html",
+    "priceInfo": {
+     "lowestCouponPrice": 29800,
+     "lowestPrice": 29800,
+     "lowestPriceType": 1,
+     "price": 29800
+    },
+    "purchasePriceInfo": {
+     "basisPriceType": 1,
+     "code": 200,
+     "couponList": [],
+     "message": "success",
+     "purchaseNum": 1,
+     "purchasePrice": 29800,
+     "thresholdPrice": 29800
+    },
+    "couponInfo": {
+     "couponList": []
+    },
+    "shopInfo": {
+     "shopName": "开元极智旗舰店"
+    },
+    "categoryInfo": {
+     "cid3Name": "显卡"
+    },
+    "inOrderCount30Days": 0
+   },
+   {
+    "itemId": "ELTqXoXIo5g3WxCb4vxZ3WxCb4vxZT_309lQhtpDloOt6nulC",
+    "skuName": "华硕（ASUS）RTX4090 24G显卡猛禽/TUF 电竞游戏显卡 华硕猛禽RTX4090 24G|不含税 工包",
+    "owner": "p",
+    "materialUrl": "jingfen.jd.com/detail/ELTqXoXIo5g3WxCb4vxZ3WxCb4vxZT_309lQhtpDloOt6nulC.html",
+    "priceInfo": {
+     "lowestCouponPrice": 31200,
+     "lowestPrice": 31200,
+     "lowestPriceType": 1,
+     "price": 31200
+    },
+    "purchasePriceInfo": {
+     "basisPriceType": 1,
+     "code": 200,
+     "couponList": [],
+     "message": "success",
+     "purchaseNum": 1,
+     "purchasePrice": 31200,
+     "thresholdPrice": 31200
+    },
+    "couponInfo": {
+     "couponList": []
+    },
+    "shopInfo": {
+     "shopName": "AI智能专业显卡小店"
+    },
+    "categoryInfo": {
+     "cid3Name": "显卡"
+    },
+    "inOrderCount30Days": 1
+   }
+  ]
+ }
+}
