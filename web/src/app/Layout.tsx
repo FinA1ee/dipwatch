@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router";
+import { CurrencyMenu } from "@/components/CurrencyMenu";
 import { useMember } from "@/hooks/useMember";
 import { CURRENCIES, type Currency, useSettings } from "@/hooks/useSettings";
 
@@ -18,18 +19,7 @@ export function Layout() {
             dip<span className="text-drop">watch</span>
           </Link>
           <div className="flex-1" />
-          <label className="flex items-center gap-2 text-sm font-medium text-muted">
-            <span className="sr-only">Currency</span>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value as Currency)}
-              className="bg-transparent font-medium text-muted"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
+          <CurrencyMenu value={currency} options={CURRENCIES} onChange={(c) => setCurrency(c as Currency)} />
           {!loading && member && (
             <span className="flex items-center gap-3 text-sm">
               <Link to="/me" className="whitespace-nowrap hover:underline">
