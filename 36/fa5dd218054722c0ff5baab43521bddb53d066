@@ -1,0 +1,29 @@
+core/internal/jobs/refresh.go
+  s_3313d584934833::t_9a9b66e30a0e0c 231-232,261-297
+core/internal/sources/ecapi/ecapi.go
+  s_3313d584934833::t_9a9b66e30a0e0c 58-83
+core/internal/sources/ecapi/ecapi_test.go
+  s_3313d584934833::t_4d320ee5b8a3ab 85-117
+core/internal/sources/sources.go
+  s_3313d584934833::t_9a9b66e30a0e0c 40-47
+core/internal/store/watch.sql.go
+  s_3313d584934833::t_9a9b66e30a0e0c 72-110
+core/internal/store/queries/watch.sql
+  s_3313d584934833::t_9a9b66e30a0e0c 50-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "36fa5dd218054722c0ff5baab43521bddb53d066",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
