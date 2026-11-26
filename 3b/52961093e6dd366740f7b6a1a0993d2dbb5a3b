@@ -1,0 +1,32 @@
+core/internal/search/product_test.go
+  s_3313d584934833::t_dbf6cee72c8090 24,28-30
+core/internal/fx/fx_test.go
+  s_3313d584934833::t_027a18483c5fa3 108-109
+  s_3313d584934833::t_bc55986cd4567e 116-132
+core/internal/fx/fx.go
+  s_3313d584934833::t_bc55986cd4567e 174-198
+core/internal/tracking/tracking.go
+  s_3313d584934833::t_027a18483c5fa3 272
+core/internal/search/product.go
+  s_3313d584934833::t_dbf6cee72c8090 79,84-86,91
+web/src/components/OfferTable.tsx
+  s_3313d584934833::t_bc5892fabf9203 96-102
+web/src/components/TrackListingButton.tsx
+  s_3313d584934833::t_bc5892fabf9203 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "3b52961093e6dd366740f7b6a1a0993d2dbb5a3b",
+  "prompts": {},
+  "sessions": {
+    "s_3313d584934833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eb16dd4-b9b3-416d-a2da-268c0e32093c",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "FinA1ee <39509457+FinA1ee@users.noreply.github.com>"
+    }
+  }
+}
