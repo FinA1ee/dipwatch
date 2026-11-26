@@ -16,6 +16,7 @@ const (
 	RuleDrop        = "drop"          // dropped by a percentage since tracking started
 	RuleBackInStock = "back_in_stock" // an offer that was out of stock is in stock again
 	RuleNewSource   = "new_source"    // an offer from a source the product had none from
+	RuleChange      = "change"        // the tracked price moved by a percentage, up or down
 )
 
 // Money is the API's amount type.
@@ -23,9 +24,9 @@ type Money = money.Money
 
 // Rule is one tracking rule, as stored in watch_items.rules and sent by the API.
 type Rule struct {
-	Type    string `json:"type" enum:"below,drop,back_in_stock,new_source"`
+	Type    string `json:"type" enum:"below,drop,back_in_stock,new_source,change"`
 	Below   *Money `json:"below,omitempty" doc:"For below: alert when an offer costs less than this"`
-	Percent int    `json:"percent,omitempty" minimum:"0" maximum:"90" doc:"For drop: alert at this drop from the price when tracking started"`
+	Percent int    `json:"percent,omitempty" minimum:"0" maximum:"90" doc:"For drop: alert at this drop from the price when tracking started. For change: alert when the price moves at least this much, up or down, from the last price seen"`
 }
 
 // MaxRules keeps one tracker's rule list small.
@@ -54,6 +55,10 @@ func Validate(rules []Rule) error {
 			if r.Percent < 1 || r.Percent > 90 {
 				return RuleError("a drop rule needs a percentage from 1 to 90")
 			}
+		case RuleChange:
+			if r.Percent < 1 || r.Percent > 90 {
+				return RuleError("a price change rule needs a percentage from 1 to 90")
+			}
 		case RuleBackInStock, RuleNewSource:
 		default:
 			return RuleError(fmt.Sprintf("unknown rule %q", r.Type))
@@ -78,6 +83,8 @@ func (r Rule) Key() string {
 		}
 	case RuleDrop:
 		return fmt.Sprintf("drop:%d", r.Percent)
+	case RuleChange:
+		return fmt.Sprintf("change:%d", r.Percent)
 	}
 	return r.Type
 }
@@ -91,6 +98,8 @@ func (r Rule) Describe(format func(Money) string) string {
 		}
 	case RuleDrop:
 		return fmt.Sprintf("price %d%% below where it was when you started tracking", r.Percent)
+	case RuleChange:
+		return fmt.Sprintf("price changed by %d%% or more", r.Percent)
 	case RuleBackInStock:
 		return "back in stock"
 	case RuleNewSource:
@@ -111,6 +120,9 @@ func DescribeKey(key string, format func(Money) string) string {
 	case strings.HasPrefix(key, "drop:"):
 		r.Type = RuleDrop
 		_, _ = fmt.Sscanf(key, "drop:%d", &r.Percent)
+	case strings.HasPrefix(key, "change:"):
+		r.Type = RuleChange
+		_, _ = fmt.Sscanf(key, "change:%d", &r.Percent)
 	default:
 		r.Type = key
 	}

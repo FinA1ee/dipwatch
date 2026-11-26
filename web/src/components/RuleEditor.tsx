@@ -8,7 +8,7 @@ type Props = {
   onNote: (note: string) => void;
 };
 
-const box = "rounded border border-rule px-2 py-1";
+const box = "rounded border border-rule px-2 py-1 leading-normal";
 
 /** Tracking rules (T1) and note (T2). Pure form: the caller saves. */
 export function RuleEditor({ draft, note, currency, onDraft, onNote }: Props) {
@@ -16,29 +16,56 @@ export function RuleEditor({ draft, note, currency, onDraft, onNote }: Props) {
   return (
     <div className="space-y-2 text-sm">
       <p className="font-medium">Alert me when</p>
-      <label className="flex flex-wrap items-center gap-2">
-        <input type="checkbox" checked={draft.below} onChange={(e) => set({ below: e.target.checked })} />
+      <label className="block leading-9">
+        <input
+          type="checkbox"
+          className="mr-2 align-middle"
+          checked={draft.below}
+          onChange={(e) => set({ below: e.target.checked })}
+        />
         the price is below
         <input
           inputMode="decimal"
           value={draft.belowAmount}
           onChange={(e) => set({ belowAmount: e.target.value, below: true })}
-          className={`${box} w-28`}
+          className={`${box} mx-1.5 w-28`}
           aria-label="Price threshold"
         />
         {currency}
       </label>
-      <label className="flex flex-wrap items-center gap-2">
-        <input type="checkbox" checked={draft.drop} onChange={(e) => set({ drop: e.target.checked })} />
+      <label className="block leading-9">
+        <input
+          type="checkbox"
+          className="mr-2 align-middle"
+          checked={draft.drop}
+          onChange={(e) => set({ drop: e.target.checked })}
+        />
         the price drops
         <input
           inputMode="numeric"
           value={draft.dropPercent}
           onChange={(e) => set({ dropPercent: e.target.value, drop: true })}
-          className={`${box} w-16`}
+          className={`${box} mx-1.5 w-16`}
           aria-label="Drop percentage"
         />
         % from the price when tracking started
+      </label>
+      <label className="block leading-9">
+        <input
+          type="checkbox"
+          className="mr-2 align-middle"
+          checked={draft.change}
+          onChange={(e) => set({ change: e.target.checked })}
+        />
+        the price changes by
+        <input
+          inputMode="numeric"
+          value={draft.changePercent}
+          onChange={(e) => set({ changePercent: e.target.value, change: true })}
+          className={`${box} mx-1.5 w-16`}
+          aria-label="Price change percentage"
+        />
+        % or more, up or down
       </label>
       <label className="flex items-center gap-2">
         <input

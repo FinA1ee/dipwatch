@@ -12,7 +12,7 @@ import (
 )
 
 const getAlertToSend = `-- name: GetAlertToSend :one
-SELECT a.id, a.rule, a.channel, a.status,
+SELECT a.id, a.rule, a.channel, a.status, a.previous_cny_minor, a.current_cny_minor,
        o.title_en, o.title_original, o.url, o.price_minor, o.currency,
        s.name AS source_name, p.id AS product_id, p.canonical_name,
        u.email, u.feishu_webhook
@@ -26,20 +26,22 @@ WHERE a.id = $1
 `
 
 type GetAlertToSendRow struct {
-	ID            int64
-	Rule          string
-	Channel       string
-	Status        string
-	TitleEn       string
-	TitleOriginal string
-	Url           string
-	PriceMinor    int64
-	Currency      string
-	SourceName    string
-	ProductID     int64
-	CanonicalName string
-	Email         string
-	FeishuWebhook string
+	ID               int64
+	Rule             string
+	Channel          string
+	Status           string
+	PreviousCnyMinor *int64
+	CurrentCnyMinor  *int64
+	TitleEn          string
+	TitleOriginal    string
+	Url              string
+	PriceMinor       int64
+	Currency         string
+	SourceName       string
+	ProductID        int64
+	CanonicalName    string
+	Email            string
+	FeishuWebhook    string
 }
 
 func (q *Queries) GetAlertToSend(ctx context.Context, id int64) (GetAlertToSendRow, error) {
@@ -50,6 +52,8 @@ func (q *Queries) GetAlertToSend(ctx context.Context, id int64) (GetAlertToSendR
 		&i.Rule,
 		&i.Channel,
 		&i.Status,
+		&i.PreviousCnyMinor,
+		&i.CurrentCnyMinor,
 		&i.TitleEn,
 		&i.TitleOriginal,
 		&i.Url,
@@ -65,17 +69,20 @@ func (q *Queries) GetAlertToSend(ctx context.Context, id int64) (GetAlertToSendR
 }
 
 const insertAlert = `-- name: InsertAlert :one
-INSERT INTO app.alerts (watch_item_id, offer_id, rule, channel, alert_date)
-VALUES ($1, $2, $3, $4, (now() AT TIME ZONE 'UTC')::date)
+INSERT INTO app.alerts (watch_item_id, offer_id, rule, channel, alert_date, previous_cny_minor, current_cny_minor)
+VALUES ($1, $2, $3, $4, (now() AT TIME ZONE 'UTC')::date,
+        $5, $6)
 ON CONFLICT DO NOTHING
 RETURNING id
 `
 
 type InsertAlertParams struct {
-	WatchItemID int64
-	OfferID     int64
-	Rule        string
-	Channel     string
+	WatchItemID      int64
+	OfferID          int64
+	Rule             string
+	Channel          string
+	PreviousCnyMinor *int64
+	CurrentCnyMinor  *int64
 }
 
 // One alert per tracker, offer, rule and channel per day (T5); a repeat returns no row.
@@ -85,6 +92,8 @@ func (q *Queries) InsertAlert(ctx context.Context, arg InsertAlertParams) (int64
 		arg.OfferID,
 		arg.Rule,
 		arg.Channel,
+		arg.PreviousCnyMinor,
+		arg.CurrentCnyMinor,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -112,18 +121,14 @@ func (q *Queries) LatestPricePoint(ctx context.Context, offerID int64) (LatestPr
 }
 
 const listAlertOffers = `-- name: ListAlertOffers :many
-SELECT id, price_minor, currency, availability, first_seen_at, variant, price_unconfirmed
+SELECT id, source_id, price_minor, currency, availability, first_seen_at, variant, price_unconfirmed
 FROM app.offers
-WHERE product_id = $1 AND source_id = $2 AND is_product IS NOT FALSE
+WHERE product_id = $1 AND is_product IS NOT FALSE
 `
-
-type ListAlertOffersParams struct {
-	ProductID int64
-	SourceID  string
-}
 
 type ListAlertOffersRow struct {
 	ID               int64
+	SourceID         string
 	PriceMinor       int64
 	Currency         string
 	Availability     string
@@ -132,9 +137,9 @@ type ListAlertOffersRow struct {
 	PriceUnconfirmed bool
 }
 
-// One source's offers for the product that the matcher did not reject.
-func (q *Queries) ListAlertOffers(ctx context.Context, arg ListAlertOffersParams) ([]ListAlertOffersRow, error) {
-	rows, err := q.db.Query(ctx, listAlertOffers, arg.ProductID, arg.SourceID)
+// The product's offers that the matcher did not reject, from every store.
+func (q *Queries) ListAlertOffers(ctx context.Context, productID int64) ([]ListAlertOffersRow, error) {
+	rows, err := q.db.Query(ctx, listAlertOffers, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +149,7 @@ func (q *Queries) ListAlertOffers(ctx context.Context, arg ListAlertOffersParams
 		var i ListAlertOffersRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.SourceID,
 			&i.PriceMinor,
 			&i.Currency,
 			&i.Availability,
@@ -172,6 +178,21 @@ type MarkAlertParams struct {
 
 func (q *Queries) MarkAlert(ctx context.Context, arg MarkAlertParams) error {
 	_, err := q.db.Exec(ctx, markAlert, arg.Status, arg.ID)
+	return err
+}
+
+const setWatchLastPrice = `-- name: SetWatchLastPrice :exec
+UPDATE app.watch_items SET last_price_cny_minor = $1 WHERE id = $2
+`
+
+type SetWatchLastPriceParams struct {
+	Price *int64
+	ID    int64
+}
+
+// The tracked price a refresh last saw, for rule "change".
+func (q *Queries) SetWatchLastPrice(ctx context.Context, arg SetWatchLastPriceParams) error {
+	_, err := q.db.Exec(ctx, setWatchLastPrice, arg.Price, arg.ID)
 	return err
 }
 

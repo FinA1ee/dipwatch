@@ -4,6 +4,7 @@ import { useTracked } from "@/hooks/useTracked";
 import { formatMoney } from "@/utils/money";
 import { describeRule } from "@/utils/rules";
 import { safeHref } from "@/utils/url";
+import { PriceTrend } from "../Component/PriceTrend";
 
 /** The member's tracked products (T1, T2), each linking to its offers and price chart (T7). */
 export function TrackedView() {
@@ -54,6 +55,7 @@ export function TrackedView() {
                 ` · ${i.listing ? "price" : "lowest"} when you started: ${formatMoney(i.baseline)}`}
             </p>
             {i.note && <p className="text-sm text-muted">{i.note}</p>}
+            <PriceTrend history={i.history} />
           </div>
           <span className="flex gap-3 text-sm">
             <Link to={`/p/${i.product_id}`} className="hover:underline">

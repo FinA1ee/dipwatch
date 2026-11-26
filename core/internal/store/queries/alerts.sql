@@ -1,12 +1,13 @@
 -- name: InsertAlert :one
 -- One alert per tracker, offer, rule and channel per day (T5); a repeat returns no row.
-INSERT INTO app.alerts (watch_item_id, offer_id, rule, channel, alert_date)
-VALUES (@watch_item_id, @offer_id, @rule, @channel, (now() AT TIME ZONE 'UTC')::date)
+INSERT INTO app.alerts (watch_item_id, offer_id, rule, channel, alert_date, previous_cny_minor, current_cny_minor)
+VALUES (@watch_item_id, @offer_id, @rule, @channel, (now() AT TIME ZONE 'UTC')::date,
+        sqlc.narg('previous_cny_minor'), sqlc.narg('current_cny_minor'))
 ON CONFLICT DO NOTHING
 RETURNING id;
 
 -- name: GetAlertToSend :one
-SELECT a.id, a.rule, a.channel, a.status,
+SELECT a.id, a.rule, a.channel, a.status, a.previous_cny_minor, a.current_cny_minor,
        o.title_en, o.title_original, o.url, o.price_minor, o.currency,
        s.name AS source_name, p.id AS product_id, p.canonical_name,
        u.email, u.feishu_webhook
@@ -35,7 +36,11 @@ SELECT EXISTS (
 )::bool;
 
 -- name: ListAlertOffers :many
--- One source's offers for the product that the matcher did not reject.
-SELECT id, price_minor, currency, availability, first_seen_at, variant, price_unconfirmed
+-- The product's offers that the matcher did not reject, from every store.
+SELECT id, source_id, price_minor, currency, availability, first_seen_at, variant, price_unconfirmed
 FROM app.offers
-WHERE product_id = @product_id AND source_id = @source_id AND is_product IS NOT FALSE;
+WHERE product_id = @product_id AND is_product IS NOT FALSE;
+
+-- name: SetWatchLastPrice :exec
+-- The tracked price a refresh last saw, for rule "change".
+UPDATE app.watch_items SET last_price_cny_minor = @price WHERE id = @id;

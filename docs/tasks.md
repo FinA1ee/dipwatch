@@ -326,6 +326,7 @@ Already met on earlier days: the injection eval case passes (H5, Day 4), two pro
 - [x] **W2.8 Privacy page and retention.** `/privacy` says what is stored, who else sees it and how to delete it. The scheduler deletes search counters (which name visitor IP addresses) after 30 days and sign-in sessions 30 days after they expire.
 - [x] **W2.9 Uptime check.** A GitHub Actions workflow requests `/api/stores` every 10 minutes and posts to the owner's Feishu bot after three failed tries. Secrets: `SITE_URL`, `FEISHU_WEBHOOK`.
 - [x] **W2.10 Tracking up front.** The product page shows the track form right under the price summary, before the list of listings, with the Feishu webhook field inline when none is saved and a "Send a test message" link when one is. The search page shows "Track the 24GB price" under the price ladder; "Track this listing" is an outlined button on every row.
+- [x] **W2.11 Price-change alerts and price trend.** Rule "change": alert when the tracked price moves by at least N%, up or down, from the last price the tracker saw (across its stores; the message says "price up 6.0%, CN¥510 to CN¥540.60"). My products shows each tracker's price over the last 30 days as a small line with the change since the first day. The price ladder's hover label no longer overlaps the end labels or leaves the card, and the header, ladder and rule form fit a 390 px phone.
 - [ ] **W2.5 JD live.** App key and secret on the server, then `UPDATE app.sources SET enabled = true WHERE id = 'jd'`.
 
 ### Week 2 notes

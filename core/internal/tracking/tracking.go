@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/FinA1ee/dipwatch/core/internal/alerts"
@@ -58,7 +59,17 @@ type Item struct {
 	Variant     string        `json:"variant" doc:"Only listings of this variant count, e.g. 24GB; empty: any variant"`
 	Baseline    *alerts.Money `json:"baseline,omitempty" doc:"Price when tracking started (of the listing, if one is pinned), in CNY"`
 	Listing     *Listing      `json:"listing,omitempty" doc:"The listing this tracker follows; absent: the product's cheapest offer"`
+	History     []DayPrice    `json:"history" doc:"The tracked price per day, last 30 days, oldest first: the listing's, or the lowest of the variant at the tracker's stores"`
 	TrackedAt   time.Time     `json:"tracked_at"`
+}
+
+// HistoryDays is how far back a tracker's history goes.
+const HistoryDays = 30
+
+// DayPrice is the tracked price on one UTC day.
+type DayPrice struct {
+	Day   string       `json:"day" format:"date"`
+	Price alerts.Money `json:"price" doc:"In CNY"`
 }
 
 // Listing is a pinned offer, as last seen.
@@ -121,6 +132,18 @@ func (s *Service) List(ctx context.Context, v guard.Viewer) ([]Item, error) {
 		out[i] = item(r.ProductID, r.CanonicalName, r.Note, r.Rules, r.BaselinePriceCnyMinor, r.CreatedAt.Time, r.Sources)
 		out[i].Listing = listing(r)
 		out[i].Variant = r.Variant
+	}
+	if len(out) == 0 {
+		return out, nil
+	}
+	rates, err := fx.Latest(ctx, q)
+	if err != nil {
+		return out, nil // no rates yet: no history to compare
+	}
+	for i, r := range rows {
+		if out[i].History, err = history(ctx, q, rates, r); err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }
@@ -218,6 +241,40 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 		}
 	}
 	return item(w.ProductID, product.CanonicalName, w.Note, w.Rules, w.BaselinePriceCnyMinor, w.CreatedAt.Time, w.Sources), nil
+}
+
+// history is the tracker's price per day: its listing's, or the lowest of its
+// variant at its stores. Unconfirmed prices are left out.
+func history(ctx context.Context, q *store.Queries, rates fx.Rates, r store.ListWatchItemsRow) ([]DayPrice, error) {
+	since := pgtype.Timestamptz{Time: time.Now().UTC().AddDate(0, 0, -HistoryDays+1).Truncate(24 * time.Hour), Valid: true}
+	var points []fx.Point
+	if r.OfferID != nil {
+		rows, err := q.ListOfferPricePoints(ctx, store.ListOfferPricePointsParams{OfferID: *r.OfferID, ProductID: r.ProductID, Since: since})
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range rows {
+			points = append(points, fx.Point{At: p.ObservedAt.Time, Minor: p.PriceMinor, Currency: p.Currency})
+		}
+	} else {
+		sources := r.Sources
+		if sources == nil {
+			sources = []string{}
+		}
+		rows, err := q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{ProductID: r.ProductID, Since: since, Variant: r.Variant, SourceIds: sources})
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range rows {
+			points = append(points, fx.Point{At: p.ObservedAt.Time, Minor: p.PriceMinor, Currency: p.Currency})
+		}
+	}
+	lows := rates.DailyLows(points)
+	out := make([]DayPrice, len(lows))
+	for i, d := range lows {
+		out[i] = DayPrice{Day: d.Day, Price: alerts.Money{Minor: d.CNY, Currency: "CNY"}}
+	}
+	return out, nil
 }
 
 func sameID(a, b *int64) bool { return (a == nil) == (b == nil) && (a == nil || *a == *b) }
@@ -351,7 +408,7 @@ func item(productID int64, name, note string, raw []byte, baseline *int64, at ti
 	if stores == nil {
 		stores = []string{}
 	}
-	it := Item{ProductID: productID, ProductName: name, Note: note, Rules: alerts.Parse(raw), TrackedAt: at, Stores: stores}
+	it := Item{ProductID: productID, ProductName: name, Note: note, Rules: alerts.Parse(raw), TrackedAt: at, Stores: stores, History: []DayPrice{}}
 	if it.Rules == nil {
 		it.Rules = []alerts.Rule{}
 	}

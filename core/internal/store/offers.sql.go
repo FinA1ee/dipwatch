@@ -189,14 +189,16 @@ JOIN app.offers o ON o.id = pp.offer_id
 WHERE o.product_id = $1
   AND o.is_product IS NOT FALSE
   AND NOT o.price_unconfirmed
-  AND o.variant = $2
-  AND pp.observed_at >= $3
+  AND ($2::text = '' OR o.variant = $2)
+  AND (cardinality($3::text[]) = 0 OR o.source_id = ANY($3::text[]))
+  AND pp.observed_at >= $4
 ORDER BY pp.observed_at
 `
 
 type ListProductPricePointsParams struct {
 	ProductID int64
 	Variant   string
+	SourceIds []string
 	Since     pgtype.Timestamptz
 }
 
@@ -210,7 +212,12 @@ type ListProductPricePointsRow struct {
 // variant that the matcher did not reject and whose price the store confirms,
 // since a start time. Converted and reduced per day in Go.
 func (q *Queries) ListProductPricePoints(ctx context.Context, arg ListProductPricePointsParams) ([]ListProductPricePointsRow, error) {
-	rows, err := q.db.Query(ctx, listProductPricePoints, arg.ProductID, arg.Variant, arg.Since)
+	rows, err := q.db.Query(ctx, listProductPricePoints,
+		arg.ProductID,
+		arg.Variant,
+		arg.SourceIds,
+		arg.Since,
+	)
 	if err != nil {
 		return nil, err
 	}

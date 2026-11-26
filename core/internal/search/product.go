@@ -67,7 +67,7 @@ func (s *Service) Product(ctx context.Context, productID int64, currency string,
 		}
 		page.HistoryOf = listing
 	} else if variant = matcher.NormalizeVariant(variant); variant != "" {
-		if points, err = q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{ProductID: p.ID, Since: from, Variant: variant}); err != nil {
+		if points, err = q.ListProductPricePoints(ctx, store.ListProductPricePointsParams{ProductID: p.ID, Since: from, Variant: variant, SourceIds: []string{}}); err != nil {
 			return ProductPage{}, err
 		}
 		page.HistoryVariant = variant
@@ -80,30 +80,18 @@ func (s *Service) Product(ctx context.Context, productID int64, currency string,
 	return page, nil
 }
 
-// dailyLows reduces price points to the lowest CNY value per UTC day, converted
-// to currency. Today's rates are used for every day, so the line shows price
-// moves rather than exchange-rate moves.
+// dailyLows reduces price points to the lowest price per UTC day, converted to
+// currency (see fx.DailyLows).
 func dailyLows(points []store.ListProductPricePointsRow, rates fx.Rates, currency string) []DayLow {
-	var days []string
-	lows := map[string]int64{}
-	for _, pt := range points {
-		cny, err := rates.ToCNYMinor(pt.PriceMinor, pt.Currency)
-		if err != nil {
-			continue
-		}
-		day := pt.ObservedAt.Time.UTC().Format(time.DateOnly)
-		low, seen := lows[day]
-		if !seen {
-			days = append(days, day) // points come oldest first
-		}
-		if !seen || cny < low {
-			lows[day] = cny
-		}
+	in := make([]fx.Point, len(points))
+	for i, p := range points {
+		in[i] = fx.Point{At: p.ObservedAt.Time, Minor: p.PriceMinor, Currency: p.Currency}
 	}
-	out := make([]DayLow, 0, len(days))
-	for _, day := range days {
-		if converted, err := rates.FromCNYMinor(lows[day], currency); err == nil {
-			out = append(out, DayLow{Day: day, Converted: Money{Minor: converted, Currency: currency}})
+	lows := rates.DailyLows(in)
+	out := make([]DayLow, 0, len(lows))
+	for _, d := range lows {
+		if converted, err := rates.FromCNYMinor(d.CNY, currency); err == nil {
+			out = append(out, DayLow{Day: d.Day, Converted: Money{Minor: converted, Currency: currency}})
 		}
 	}
 	return out

@@ -138,3 +138,36 @@ func Refresh(ctx context.Context, q *store.Queries, client *http.Client, url str
 	}
 	return stored, fetchErr
 }
+
+// Point is one observed price.
+type Point struct {
+	At       time.Time
+	Minor    int64
+	Currency string
+}
+
+// DayLow is the lowest price of one UTC day, in CNY minor units.
+type DayLow struct {
+	Day string // YYYY-MM-DD
+	CNY int64
+}
+
+// DailyLows reduces points (oldest first) to the lowest CNY value per UTC day.
+// Today's rates are used for every day, so a line drawn from them shows price
+// moves rather than exchange-rate moves. Points without a rate are left out.
+func (r Rates) DailyLows(points []Point) []DayLow {
+	var out []DayLow
+	for _, p := range points {
+		cny, err := r.ToCNYMinor(p.Minor, p.Currency)
+		if err != nil {
+			continue
+		}
+		day := p.At.UTC().Format(time.DateOnly)
+		if n := len(out); n > 0 && out[n-1].Day == day {
+			out[n-1].CNY = min(out[n-1].CNY, cny)
+			continue
+		}
+		out = append(out, DayLow{Day: day, CNY: cny})
+	}
+	return out
+}

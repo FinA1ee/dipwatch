@@ -307,6 +307,12 @@ export interface components {
             /** Format: date */
             day: string;
         };
+        DayPrice: {
+            /** Format: date */
+            day: string;
+            /** @description In CNY */
+            price: components["schemas"]["Money"];
+        };
         Detail: {
             /**
              * Format: uri
@@ -445,6 +451,8 @@ export interface components {
             readonly $schema?: string;
             /** @description Price when tracking started (of the listing, if one is pinned), in CNY */
             baseline?: components["schemas"]["Money"];
+            /** @description The tracked price per day, last 30 days, oldest first: the listing's, or the lowest of the variant at the tracker's stores */
+            history: components["schemas"]["DayPrice"][];
             /** @description The listing this tracker follows; absent: the product's cheapest offer */
             listing?: components["schemas"]["Listing"];
             note: string;
@@ -619,11 +627,11 @@ export interface components {
             below?: components["schemas"]["Money"];
             /**
              * Format: int64
-             * @description For drop: alert at this drop from the price when tracking started
+             * @description For drop: alert at this drop from the price when tracking started. For change: alert when the price moves at least this much, up or down, from the last price seen
              */
             percent?: number;
             /** @enum {string} */
-            type: "below" | "drop" | "back_in_stock" | "new_source";
+            type: "below" | "drop" | "back_in_stock" | "new_source" | "change";
         };
         Run: {
             /** @description Missing while the run is in progress */

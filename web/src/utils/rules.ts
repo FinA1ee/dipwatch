@@ -7,6 +7,8 @@ export type RuleDraft = {
   belowAmount: string;
   drop: boolean;
   dropPercent: string;
+  change: boolean;
+  changePercent: string;
   backInStock: boolean;
   newSource: boolean;
 };
@@ -16,6 +18,8 @@ export const EMPTY_DRAFT: RuleDraft = {
   belowAmount: "",
   drop: true,
   dropPercent: "10",
+  change: false,
+  changePercent: "5",
   backInStock: false,
   newSource: false,
 };
@@ -34,6 +38,12 @@ export function draftToRules(d: RuleDraft, currency: string): Rule[] | string {
       return "The drop must be a whole percentage from 1 to 90.";
     rules.push({ type: "drop", percent: pct });
   }
+  if (d.change) {
+    const pct = Number(d.changePercent);
+    if (!Number.isInteger(pct) || pct < 1 || pct > 90)
+      return "The price change must be a whole percentage from 1 to 90.";
+    rules.push({ type: "change", percent: pct });
+  }
   if (d.backInStock) rules.push({ type: "back_in_stock" });
   if (d.newSource) rules.push({ type: "new_source" });
   return rules.length > 0 ? rules : "Pick at least one rule.";
@@ -50,6 +60,10 @@ export function rulesToDraft(rules: Rule[]): RuleDraft {
       d.drop = true;
       d.dropPercent = String(r.percent ?? 10);
     }
+    if (r.type === "change") {
+      d.change = true;
+      d.changePercent = String(r.percent ?? 5);
+    }
     if (r.type === "back_in_stock") d.backInStock = true;
     if (r.type === "new_source") d.newSource = true;
   }
@@ -63,6 +77,8 @@ export function describeRule(r: Rule): string {
       return r.below ? `below ${formatMoney(r.below)}` : "below";
     case "drop":
       return `${r.percent ?? 0}% drop`;
+    case "change":
+      return `changes by ${r.percent ?? 0}%`;
     case "back_in_stock":
       return "back in stock";
     case "new_source":

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -109,7 +110,17 @@ func (w *NotifyWorker) message(a store.GetAlertToSendRow) (subject, text string)
 	}
 	// Starts with "dipwatch" in lower case: Feishu bots often filter on that
 	// keyword, and the match is case-sensitive.
-	subject = fmt.Sprintf("dipwatch: %s, %s", a.CanonicalName, alerts.DescribeKey(a.Rule, format))
+	what := alerts.DescribeKey(a.Rule, format)
+	if a.PreviousCnyMinor != nil && a.CurrentCnyMinor != nil && *a.PreviousCnyMinor > 0 {
+		before, after := *a.PreviousCnyMinor, *a.CurrentCnyMinor
+		direction := "up"
+		if after < before {
+			direction = "down"
+		}
+		what = fmt.Sprintf("price %s %.1f%%, %s to %s", direction,
+			math.Abs(float64(after-before))*100/float64(before), money.Format(before, "CNY"), money.Format(after, "CNY"))
+	}
+	subject = fmt.Sprintf("dipwatch: %s, %s", a.CanonicalName, what)
 	lines := []string{
 		fmt.Sprintf("%s at %s: %s", money.Format(a.PriceMinor, a.Currency), a.SourceName, title),
 		a.Url,

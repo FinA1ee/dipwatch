@@ -13,7 +13,7 @@ export function Layout() {
   return (
     <div className="min-h-screen">
       <header>
-        <nav className="mx-auto flex max-w-[1040px] items-center gap-6 px-6 py-[18px]">
+        <nav className="mx-auto flex max-w-[1040px] items-center gap-4 px-6 py-[18px] sm:gap-6">
           <Link to="/" className="font-head text-xl font-bold tracking-tight">
             dip<span className="text-drop">watch</span>
           </Link>
@@ -32,11 +32,11 @@ export function Layout() {
           </label>
           {!loading && member && (
             <span className="flex items-center gap-3 text-sm">
-              <Link to="/me" className="hover:underline">
+              <Link to="/me" className="whitespace-nowrap hover:underline">
                 My products
               </Link>
-              <span className="text-muted">{member.email}</span>
-              <button type="button" onClick={signOut} className="text-ink hover:underline">
+              <span className="hidden text-muted md:inline">{member.email}</span>
+              <button type="button" onClick={signOut} className="whitespace-nowrap text-ink hover:underline">
                 Sign out
               </button>
             </span>
