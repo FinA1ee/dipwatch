@@ -17,7 +17,7 @@ import (
 // Tracker manages a member's tracked products and alert settings.
 type Tracker interface {
 	List(ctx context.Context, v guard.Viewer) ([]tracking.Item, error)
-	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64, variant string) (tracking.Item, error)
+	Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64, variant string, checkEveryHours int) (tracking.Item, error)
 	Delete(ctx context.Context, v guard.Viewer, productID int64) error
 	Settings(ctx context.Context, v guard.Viewer) (tracking.Settings, error)
 	SaveSettings(ctx context.Context, v guard.Viewer, feishu string, email bool) (tracking.Settings, error)
@@ -42,11 +42,12 @@ type ProductPath struct {
 type SaveTrackedInput struct {
 	ProductPath
 	Body struct {
-		Note    string        `json:"note" maxLength:"2000" doc:"Up to 500 characters"`
-		Rules   []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
-		Stores  []string      `json:"stores,omitempty" maxItems:"20" doc:"Stores to track at (needed when tracking starts without a listing; ignored afterwards)"`
-		OfferID *int64        `json:"offer_id,omitempty" doc:"Follow this listing only; omit to follow the product's cheapest offer"`
-		Variant string        `json:"variant,omitempty" maxLength:"16" doc:"Without a listing: only listings of this variant count, e.g. 24GB; omit for any variant"`
+		Note            string        `json:"note" maxLength:"2000" doc:"Up to 500 characters"`
+		Rules           []alerts.Rule `json:"rules" minItems:"1" maxItems:"8"`
+		Stores          []string      `json:"stores,omitempty" maxItems:"20" doc:"Stores to track at (needed when tracking starts without a listing; ignored afterwards)"`
+		OfferID         *int64        `json:"offer_id,omitempty" doc:"Follow this listing only; omit to follow the product's cheapest offer"`
+		Variant         string        `json:"variant,omitempty" maxLength:"16" doc:"Without a listing: only listings of this variant count, e.g. 24GB; omit for any variant"`
+		CheckEveryHours int           `json:"check_every_hours,omitempty" minimum:"0" maximum:"168" doc:"Re-check interval in hours; omit or 0 for automatic"`
 	}
 }
 
@@ -90,7 +91,7 @@ func registerTracking(api huma.API, t Tracker, sim Simulator) {
 		Summary: "Track a product, or change its note and rules", Tags: tags,
 		Errors: append(member, http.StatusForbidden, http.StatusNotFound, http.StatusConflict),
 	}, func(ctx context.Context, in *SaveTrackedInput) (*TrackedItemOutput, error) {
-		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores, in.Body.OfferID, in.Body.Variant)
+		item, err := t.Save(ctx, viewerFrom(ctx), in.ProductID, in.Body.Note, in.Body.Rules, in.Body.Stores, in.Body.OfferID, in.Body.Variant, in.Body.CheckEveryHours)
 		if errors.Is(err, guard.ErrInviteOnly) {
 			return nil, inviteError(viewerFrom(ctx))
 		}
@@ -167,6 +168,10 @@ func trackingError(err error) error {
 		return huma.Error400BadRequest(err.Error())
 	case isRuleError(err):
 		return huma.Error400BadRequest(err.Error())
+	}
+	var everyErr *tracking.CheckEveryError
+	if errors.As(err, &everyErr) {
+		return huma.Error400BadRequest(everyErr.Error())
 	}
 	var limitErr *tracking.LimitError
 	if errors.As(err, &limitErr) {

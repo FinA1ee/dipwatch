@@ -23,10 +23,18 @@ export async function saveTracked(
   stores: string[],
   offerId: number | null,
   variant: string,
+  checkEveryHours: number, // 0: automatic
 ): Promise<TrackedItem> {
   const { data, error, response } = await api.PUT("/me/tracked/{productId}", {
     params: { path: { productId } },
-    body: { note, rules, stores, ...(offerId ? { offer_id: offerId } : {}), ...(variant ? { variant } : {}) },
+    body: {
+      note,
+      rules,
+      stores,
+      ...(offerId ? { offer_id: offerId } : {}),
+      ...(variant ? { variant } : {}),
+      ...(checkEveryHours ? { check_every_hours: checkEveryHours } : {}),
+    },
   });
   if (!data) fail(response, error);
   return data;

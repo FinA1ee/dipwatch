@@ -20,6 +20,11 @@ const fields: { key: Field; label: string; hint: string }[] = [
   },
   { key: "member_daily_searches", label: "Daily new searches per member", hint: "Cached answers are free" },
   {
+    key: "min_check_hours",
+    label: "Shortest re-check members may choose (hours)",
+    hint: "Each check of an agent store is one agent run; API and HTML stores cost nothing",
+  },
+  {
     key: "daily_budget_cny",
     label: "Daily LLM budget (yuan)",
     hint: "At 80% only tracked products get agent runs; at 100% only stored prices are shown until midnight (China time)",
@@ -49,7 +54,7 @@ export function LimitsForm({ value, saving, message, onChange, onSave }: Props) 
             <span className="font-medium">{f.label}</span>
             <input
               type="number"
-              min={f.key === "sources_per_search" ? 1 : 0}
+              min={f.key === "sources_per_search" || f.key === "min_check_hours" ? 1 : 0}
               step={f.key === "daily_budget_cny" ? 0.5 : 1}
               value={value[f.key]}
               onChange={(e) => onChange({ ...value, [f.key]: Number(e.target.value) })}

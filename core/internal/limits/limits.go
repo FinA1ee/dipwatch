@@ -25,6 +25,7 @@ type Limits struct {
 	VisitorDailySearches int      `json:"visitor_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per visitor IP per day (C1)"`
 	MemberDailySearches  int      `json:"member_daily_searches" minimum:"0" maximum:"1000" doc:"Costly searches per member per day (C1)"`
 	DailyBudgetCNY       float64  `json:"daily_budget_cny" minimum:"0" maximum:"1000" doc:"LLM spend per China day; at 80% only tracked products get agent runs, at 100% only stored data is served (C4)"`
+	MinCheckHours        int      `json:"min_check_hours" minimum:"1" maximum:"24" doc:"Shortest re-check interval a member may choose for a tracked product"`
 	InviteOnly           bool     `json:"invite_only" doc:"Only invited members (and admins) may run costly searches and track products; everyone can still read stored results"`
 	Invited              []string `json:"invited" maxItems:"500" doc:"Email addresses of invited members, as their sign-in account reports them"`
 }
@@ -40,6 +41,9 @@ func (l Limits) Allows(email string) bool {
 
 // normalize lower-cases, trims, drops blanks and duplicates, and sorts the invite list.
 func (l *Limits) normalize() {
+	if l.MinCheckHours == 0 {
+		l.MinCheckHours = Defaults.MinCheckHours // a saved value from before this limit existed
+	}
 	out := make([]string, 0, len(l.Invited))
 	for _, e := range l.Invited {
 		if e = strings.ToLower(strings.TrimSpace(e)); e != "" {
@@ -53,7 +57,7 @@ func (l *Limits) normalize() {
 // Defaults keep spend low until the owner raises them.
 // The site starts invite-only: a saved limits row from before the invite list
 // existed has no invite_only field, so it gets this default too.
-var Defaults = Limits{SourcesPerSearch: 2, TrackedPerMember: 3, VisitorDailySearches: 10, MemberDailySearches: 30, DailyBudgetCNY: 5, InviteOnly: true, Invited: []string{}}
+var Defaults = Limits{SourcesPerSearch: 2, TrackedPerMember: 3, VisitorDailySearches: 10, MemberDailySearches: 30, DailyBudgetCNY: 5, MinCheckHours: 1, InviteOnly: true, Invited: []string{}}
 
 // Validate checks ranges, matching the API schema, for callers other than the API.
 func (l Limits) Validate() error {
@@ -66,6 +70,8 @@ func (l Limits) Validate() error {
 		return fmt.Errorf("daily searches must be 0 to 1000")
 	case l.DailyBudgetCNY < 0 || l.DailyBudgetCNY > 1000:
 		return fmt.Errorf("the daily budget must be 0 to 1000 yuan")
+	case l.MinCheckHours < 1 || l.MinCheckHours > 24:
+		return fmt.Errorf("the shortest re-check interval must be 1 to 24 hours")
 	case len(l.Invited) > MaxInvited:
 		return fmt.Errorf("the invite list can have up to %d addresses", MaxInvited)
 	}

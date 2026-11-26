@@ -40,7 +40,7 @@ func (q *Queries) DeleteWatchItem(ctx context.Context, arg DeleteWatchItemParams
 }
 
 const getWatchItem = `-- name: GetWatchItem :one
-SELECT id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id, variant, last_price_cny_minor FROM app.watch_items WHERE user_id = $1 AND product_id = $2
+SELECT id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id, variant, last_price_cny_minor, check_every FROM app.watch_items WHERE user_id = $1 AND product_id = $2
 `
 
 type GetWatchItemParams struct {
@@ -64,6 +64,7 @@ func (q *Queries) GetWatchItem(ctx context.Context, arg GetWatchItemParams) (App
 		&i.OfferID,
 		&i.Variant,
 		&i.LastPriceCnyMinor,
+		&i.CheckEvery,
 	)
 	return i, err
 }
@@ -126,7 +127,7 @@ func (q *Queries) ListProductWatchers(ctx context.Context, productID int64) ([]L
 }
 
 const listWatchItems = `-- name: ListWatchItems :many
-SELECT w.id, w.user_id, w.product_id, w.note, w.rules, w.channels, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id, w.variant, w.last_price_cny_minor, p.canonical_name,
+SELECT w.id, w.user_id, w.product_id, w.note, w.rules, w.channels, w.baseline_price_cny_minor, w.created_at, w.sources, w.offer_id, w.variant, w.last_price_cny_minor, w.check_every, p.canonical_name, p.last_refreshed_at AS product_refreshed_at, p.refresh_interval AS product_refresh_interval,
        o.title_original AS offer_title, o.source_id AS offer_source_id, o.url AS offer_url,
        o.price_minor AS offer_price_minor, o.currency AS offer_currency, o.last_seen_at AS offer_last_seen_at,
        o.variant AS offer_variant,
@@ -152,7 +153,10 @@ type ListWatchItemsRow struct {
 	OfferID                *int64
 	Variant                string
 	LastPriceCnyMinor      *int64
+	CheckEvery             pgtype.Interval
 	CanonicalName          string
+	ProductRefreshedAt     pgtype.Timestamptz
+	ProductRefreshInterval pgtype.Interval
 	OfferTitle             *string
 	OfferSourceID          *string
 	OfferUrl               *string
@@ -186,7 +190,10 @@ func (q *Queries) ListWatchItems(ctx context.Context, userID string) ([]ListWatc
 			&i.OfferID,
 			&i.Variant,
 			&i.LastPriceCnyMinor,
+			&i.CheckEvery,
 			&i.CanonicalName,
+			&i.ProductRefreshedAt,
+			&i.ProductRefreshInterval,
 			&i.OfferTitle,
 			&i.OfferSourceID,
 			&i.OfferUrl,
@@ -218,17 +225,17 @@ func (q *Queries) ProductTracked(ctx context.Context, productID int64) (bool, er
 }
 
 const saveWatchItem = `-- name: SaveWatchItem :one
-INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, last_price_cny_minor, sources, offer_id, variant)
+INSERT INTO app.watch_items (user_id, product_id, note, rules, baseline_price_cny_minor, last_price_cny_minor, sources, offer_id, variant, check_every)
 VALUES ($1, $2, $3, $4, $5, $5,
-        $6::text[], $7, $8)
+        $6::text[], $7, $8, CASE WHEN $9::int > 0 THEN make_interval(hours => $9::int) END)
 ON CONFLICT (user_id, product_id) DO UPDATE
 SET note = EXCLUDED.note, rules = EXCLUDED.rules, baseline_price_cny_minor = EXCLUDED.baseline_price_cny_minor,
     -- A new baseline (a new listing or size) restarts the price-change comparison.
     last_price_cny_minor = CASE
         WHEN app.watch_items.baseline_price_cny_minor IS DISTINCT FROM EXCLUDED.baseline_price_cny_minor
         THEN EXCLUDED.baseline_price_cny_minor ELSE app.watch_items.last_price_cny_minor END,
-    sources = EXCLUDED.sources, offer_id = EXCLUDED.offer_id, variant = EXCLUDED.variant
-RETURNING id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id, variant, last_price_cny_minor
+    sources = EXCLUDED.sources, offer_id = EXCLUDED.offer_id, variant = EXCLUDED.variant, check_every = EXCLUDED.check_every
+RETURNING id, user_id, product_id, note, rules, channels, baseline_price_cny_minor, created_at, sources, offer_id, variant, last_price_cny_minor, check_every
 `
 
 type SaveWatchItemParams struct {
@@ -240,6 +247,7 @@ type SaveWatchItemParams struct {
 	Sources               []string
 	OfferID               *int64
 	Variant               string
+	CheckEveryHours       int32
 }
 
 // Creates or updates the tracker. The service decides the baseline price and
@@ -255,6 +263,7 @@ func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (A
 		arg.Sources,
 		arg.OfferID,
 		arg.Variant,
+		arg.CheckEveryHours,
 	)
 	var i AppWatchItem
 	err := row.Scan(
@@ -270,6 +279,7 @@ func (q *Queries) SaveWatchItem(ctx context.Context, arg SaveWatchItemParams) (A
 		&i.OfferID,
 		&i.Variant,
 		&i.LastPriceCnyMinor,
+		&i.CheckEvery,
 	)
 	return i, err
 }

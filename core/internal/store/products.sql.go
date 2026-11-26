@@ -38,7 +38,11 @@ SELECT p.id,
 FROM app.products p
 WHERE EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
   AND cardinality(p.refreshing_sources) = 0
-  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + p.refresh_interval <= now())
+  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + LEAST(
+        p.refresh_interval,
+        COALESCE((SELECT GREATEST(min(w.check_every), make_interval(secs => $1::int))
+                  FROM app.watch_items w WHERE w.product_id = p.id), p.refresh_interval)
+      ) <= now())
 ORDER BY p.last_refreshed_at NULLS FIRST
 LIMIT 50
 `
@@ -52,8 +56,10 @@ type DueTrackedProductsRow struct {
 // Tracked products whose refresh interval has passed and that are not refreshing
 // (T3), with the stores their trackers chose. An empty list means a tracker from
 // before per-store tracking: every enabled store. Untracked products are never scheduled.
-func (q *Queries) DueTrackedProducts(ctx context.Context) ([]DueTrackedProductsRow, error) {
-	rows, err := q.db.Query(ctx, dueTrackedProducts)
+// The interval is the automatic one, or the shortest a tracker chose, but never
+// under the owner's minimum (min_check_seconds).
+func (q *Queries) DueTrackedProducts(ctx context.Context, minCheckSeconds int32) ([]DueTrackedProductsRow, error) {
+	rows, err := q.db.Query(ctx, dueTrackedProducts, minCheckSeconds)
 	if err != nil {
 		return nil, err
 	}

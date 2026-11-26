@@ -15,6 +15,7 @@ import (
 
 	"github.com/FinA1ee/dipwatch/core/internal/alerts"
 	"github.com/FinA1ee/dipwatch/core/internal/fx"
+	"github.com/FinA1ee/dipwatch/core/internal/limits"
 	"github.com/FinA1ee/dipwatch/core/internal/money"
 	"github.com/FinA1ee/dipwatch/core/internal/notify"
 	"github.com/FinA1ee/dipwatch/core/internal/spend"
@@ -162,8 +163,9 @@ func SchedulePeriodicJob() *river.PeriodicJob {
 
 type ScheduleWorker struct {
 	river.WorkerDefaults[ScheduleArgs]
-	DB    *pgxpool.Pool
-	Spend spend.Meter // nil: no daily budget
+	DB     *pgxpool.Pool
+	Spend  spend.Meter   // nil: no daily budget
+	Limits *limits.Store // nil: the defaults (shortest re-check a member may choose)
 }
 
 func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs]) error {
@@ -172,7 +174,11 @@ func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs])
 		slog.InfoContext(ctx, "schedule: paused, daily budget used up")
 		return nil
 	}
-	ids, err := store.New(w.DB).DueTrackedProducts(ctx)
+	l := limits.Defaults
+	if w.Limits != nil {
+		l = w.Limits.Get(ctx)
+	}
+	ids, err := store.New(w.DB).DueTrackedProducts(ctx, int32(max(l.MinCheckHours, 1)*3600)) //nolint:gosec // at most 24 hours
 	if err != nil || len(ids) == 0 {
 		return err
 	}

@@ -39,6 +39,16 @@ var (
 	ErrListing     = errors.New("that listing is not an offer for this product")
 )
 
+// MaxCheckHours is the longest re-check interval a member may choose.
+const MaxCheckHours = 7 * 24
+
+// CheckEveryError means the chosen re-check interval is outside what is allowed.
+type CheckEveryError struct{ Min int }
+
+func (e *CheckEveryError) Error() string {
+	return fmt.Sprintf("re-check every %d to %d hours, or leave it automatic", e.Min, MaxCheckHours)
+}
+
 // LimitError means the member reached the tracked-products limit.
 type LimitError struct{ Limit int }
 
@@ -51,20 +61,20 @@ func (e *LimitError) Error() string {
 
 // Item is one tracked product.
 type Item struct {
-	ProductID   int64         `json:"product_id"`
-	ProductName string        `json:"product_name"`
-	Note        string        `json:"note"`
-	Rules       []alerts.Rule `json:"rules"`
-	Stores      []string      `json:"stores" doc:"Stores refreshed and alerted on; empty: every store"`
-	Variant     string        `json:"variant" doc:"Only listings of this variant count, e.g. 24GB; empty: any variant"`
-	Baseline    *alerts.Money `json:"baseline,omitempty" doc:"Price when tracking started (of the listing, if one is pinned), in CNY"`
-	Listing     *Listing      `json:"listing,omitempty" doc:"The listing this tracker follows; absent: the product's cheapest offer"`
-	History     []DayPrice    `json:"history" doc:"The tracked price per day, last 30 days, oldest first: the listing's, or the lowest of the variant at the tracker's stores"`
-	TrackedAt   time.Time     `json:"tracked_at"`
+	ProductID       int64         `json:"product_id"`
+	ProductName     string        `json:"product_name"`
+	Note            string        `json:"note"`
+	Rules           []alerts.Rule `json:"rules"`
+	Stores          []string      `json:"stores" doc:"Stores refreshed and alerted on; empty: every store"`
+	Variant         string        `json:"variant" doc:"Only listings of this variant count, e.g. 24GB; empty: any variant"`
+	Baseline        *alerts.Money `json:"baseline,omitempty" doc:"Price when tracking started (of the listing, if one is pinned), in CNY"`
+	Listing         *Listing      `json:"listing,omitempty" doc:"The listing this tracker follows; absent: the product's cheapest offer"`
+	History         []DayPrice    `json:"history" doc:"The tracked price per day since tracking started (at most a year), oldest first: the listing's, or the lowest of the variant at the tracker's stores"`
+	CheckEveryHours int           `json:"check_every_hours" doc:"Chosen re-check interval in hours; 0: automatic (6 hours, 2 to 24 as prices move)"`
+	LastChecked     time.Time     `json:"last_checked,omitzero" doc:"When the product was last refreshed"`
+	NextCheck       time.Time     `json:"next_check,omitzero" doc:"When the next scheduled refresh is due, at the latest"`
+	TrackedAt       time.Time     `json:"tracked_at"`
 }
-
-// HistoryDays is how far back a tracker's history goes.
-const HistoryDays = 30
 
 // DayPrice is the tracked price on one UTC day.
 type DayPrice struct {
@@ -132,6 +142,16 @@ func (s *Service) List(ctx context.Context, v guard.Viewer) ([]Item, error) {
 		out[i] = item(r.ProductID, r.CanonicalName, r.Note, r.Rules, r.BaselinePriceCnyMinor, r.CreatedAt.Time, r.Sources)
 		out[i].Listing = listing(r)
 		out[i].Variant = r.Variant
+		out[i].CheckEveryHours = hours(r.CheckEvery)
+		if r.ProductRefreshedAt.Valid {
+			out[i].LastChecked = r.ProductRefreshedAt.Time
+			every := r.ProductRefreshInterval
+			if c := hours(r.CheckEvery); c > 0 && time.Duration(c)*time.Hour < duration(every) {
+				out[i].NextCheck = r.ProductRefreshedAt.Time.Add(time.Duration(c) * time.Hour)
+			} else {
+				out[i].NextCheck = r.ProductRefreshedAt.Time.Add(duration(every))
+			}
+		}
 	}
 	if len(out) == 0 {
 		return out, nil
@@ -152,7 +172,7 @@ func (s *Service) List(ctx context.Context, v guard.Viewer) ([]Item, error) {
 // follows the cheapest offer of a variant ("" any) at the given stores, or,
 // with offerID, one listing at its store. The stores and the baseline price are
 // set when tracking starts and again when the listing or variant changes.
-func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64, variant string) (Item, error) {
+func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, note string, rules []alerts.Rule, stores []string, offerID *int64, variant string, checkEveryHours int) (Item, error) {
 	q, err := s.member(ctx, v)
 	if err != nil {
 		return Item{}, err
@@ -178,6 +198,9 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 	l := s.limits(ctx)
 	if !guard.Invited(l, v) {
 		return Item{}, guard.ErrInviteOnly
+	}
+	if checkEveryHours != 0 && (checkEveryHours < max(l.MinCheckHours, 1) || checkEveryHours > MaxCheckHours) {
+		return Item{}, &CheckEveryError{Min: max(l.MinCheckHours, 1)}
 	}
 	if isNew {
 		count, err := q.CountWatchItems(ctx, v.UserID)
@@ -231,6 +254,7 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 	w, err := q.SaveWatchItem(ctx, store.SaveWatchItemParams{
 		UserID: v.UserID, ProductID: productID, Note: note, Rules: raw,
 		BaselinePriceCnyMinor: baseline, Sources: sources, OfferID: offerID, Variant: variant,
+		CheckEveryHours: int32(checkEveryHours), //nolint:gosec // checked above: at most a week
 	})
 	if err != nil {
 		return Item{}, err
@@ -246,7 +270,12 @@ func (s *Service) Save(ctx context.Context, v guard.Viewer, productID int64, not
 // history is the tracker's price per day: its listing's, or the lowest of its
 // variant at its stores. Unconfirmed prices are left out.
 func history(ctx context.Context, q *store.Queries, rates fx.Rates, r store.ListWatchItemsRow) ([]DayPrice, error) {
-	since := pgtype.Timestamptz{Time: time.Now().UTC().AddDate(0, 0, -HistoryDays+1).Truncate(24 * time.Hour), Valid: true}
+	// From the day tracking started: prices before it are not what the member follows.
+	start := r.CreatedAt.Time.UTC().Truncate(24 * time.Hour)
+	if oldest := time.Now().UTC().AddDate(-1, 0, 0).Truncate(24 * time.Hour); start.Before(oldest) {
+		start = oldest
+	}
+	since := pgtype.Timestamptz{Time: start, Valid: true}
 	var points []fx.Point
 	if r.OfferID != nil {
 		rows, err := q.ListOfferPricePoints(ctx, store.ListOfferPricePointsParams{OfferID: *r.OfferID, ProductID: r.ProductID, Since: since})
@@ -269,12 +298,33 @@ func history(ctx context.Context, q *store.Queries, rates fx.Rates, r store.List
 			points = append(points, fx.Point{At: p.ObservedAt.Time, Minor: p.PriceMinor, Currency: p.Currency})
 		}
 	}
-	lows := fx.FillDays(rates.DailyLows(points), time.Now())
+	lows := rates.DailyLows(points)
+	// The baseline is the tracked price when tracking started; it opens the line
+	// when no refresh has recorded a price on that day yet.
+	if b := r.BaselinePriceCnyMinor; b != nil && (len(lows) == 0 || lows[0].Day != start.Format(time.DateOnly)) {
+		lows = append([]fx.DayLow{{Day: start.Format(time.DateOnly), CNY: *b}}, lows...)
+	}
+	lows = fx.FillDays(lows, time.Now())
 	out := make([]DayPrice, len(lows))
 	for i, d := range lows {
 		out[i] = DayPrice{Day: d.Day, Price: alerts.Money{Minor: d.CNY, Currency: "CNY"}}
 	}
 	return out, nil
+}
+
+// hours reads a Postgres interval as whole hours; NULL or invalid is 0.
+func hours(i pgtype.Interval) int {
+	if !i.Valid {
+		return 0
+	}
+	return int(duration(i) / time.Hour)
+}
+
+func duration(i pgtype.Interval) time.Duration {
+	if !i.Valid {
+		return 6 * time.Hour
+	}
+	return time.Duration(i.Microseconds)*time.Microsecond + time.Duration(i.Days)*24*time.Hour
 }
 
 func sameID(a, b *int64) bool { return (a == nil) == (b == nil) && (a == nil || *a == *b) }
