@@ -250,14 +250,26 @@ components:
         baseline:
           $ref: "#/components/schemas/Money"
           description: Price when tracking started (of the listing, if one is pinned), in CNY
+        check_every_hours:
+          description: "Chosen re-check interval in hours; 0: automatic (6 hours, 2 to 24 as prices move)"
+          format: int64
+          type: integer
         history:
-          description: "The tracked price per day, last 30 days, oldest first: the listing's, or the lowest of the variant at the tracker's stores"
+          description: "The tracked price per day since tracking started (at most a year), oldest first: the listing's, or the lowest of the variant at the tracker's stores"
           items:
             $ref: "#/components/schemas/DayPrice"
           type: array
+        last_checked:
+          description: When the product was last refreshed
+          format: date-time
+          type: string
         listing:
           $ref: "#/components/schemas/Listing"
           description: "The listing this tracker follows; absent: the product's cheapest offer"
+        next_check:
+          description: When the next scheduled refresh is due, at the latest
+          format: date-time
+          type: string
         note:
           type: string
         product_id:
@@ -288,6 +300,7 @@ components:
         - stores
         - variant
         - history
+        - check_every_hours
         - tracked_at
       type: object
     Limits:
@@ -321,6 +334,12 @@ components:
           maximum: 1000
           minimum: 0
           type: integer
+        min_check_hours:
+          description: Shortest re-check interval a member may choose for a tracked product
+          format: int64
+          maximum: 24
+          minimum: 1
+          type: integer
         sources_per_search:
           description: Stores a member or visitor may pick for one search
           format: int64
@@ -345,6 +364,7 @@ components:
         - visitor_daily_searches
         - member_daily_searches
         - daily_budget_cny
+        - min_check_hours
         - invite_only
         - invited
       type: object
@@ -677,6 +697,12 @@ components:
           format: uri
           readOnly: true
           type: string
+        check_every_hours:
+          description: Re-check interval in hours; omit or 0 for automatic
+          format: int64
+          maximum: 168
+          minimum: 0
+          type: integer
         note:
           description: Up to 500 characters
           maxLength: 2000

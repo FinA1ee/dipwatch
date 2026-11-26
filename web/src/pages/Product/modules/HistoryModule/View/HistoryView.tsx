@@ -1,9 +1,9 @@
-import { PriceChart } from "../Component/PriceChart";
+import { PriceChart } from "@/components/PriceChart";
 import { useHistory } from "../Model/useHistory";
 
 /** Price of one listing, or the lowest of one size, per day. */
 export function HistoryView() {
-  const { scope, history } = useHistory();
+  const { scope, since, history } = useHistory();
   if (!scope) {
     return (
       <p className="text-sm text-muted">
@@ -15,8 +15,11 @@ export function HistoryView() {
   return (
     <section className="space-y-2">
       <h2 className="text-lg font-semibold">
-        {scope.listing ? "Price of this listing per day" : `Lowest ${scope.variant} price per day`}, last 30
-        days
+        {since
+          ? `Your tracked price since ${new Date(since).toLocaleDateString()}`
+          : scope.listing
+            ? "Price of this listing per day, last 30 days"
+            : `Lowest ${scope.variant} price per day, last 30 days`}
       </h2>
       <PriceChart history={history} />
     </section>

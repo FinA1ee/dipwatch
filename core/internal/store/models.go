@@ -156,6 +156,7 @@ type AppWatchItem struct {
 	OfferID               *int64
 	Variant               string
 	LastPriceCnyMinor     *int64
+	CheckEvery            pgtype.Interval
 }
 
 type AuthAccount struct {

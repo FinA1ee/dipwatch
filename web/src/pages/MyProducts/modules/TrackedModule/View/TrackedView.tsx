@@ -55,7 +55,7 @@ export function TrackedView() {
                 ` · ${i.listing ? "price" : "lowest"} when you started: ${formatMoney(i.baseline)}`}
             </p>
             {i.note && <p className="text-sm text-muted">{i.note}</p>}
-            <PriceTrend history={i.history} />
+            <PriceTrend item={i} />
           </div>
           <span className="flex gap-3 text-sm">
             <Link to={`/p/${i.product_id}`} className="hover:underline">

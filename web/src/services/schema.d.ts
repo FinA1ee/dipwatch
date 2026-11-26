@@ -451,10 +451,25 @@ export interface components {
             readonly $schema?: string;
             /** @description Price when tracking started (of the listing, if one is pinned), in CNY */
             baseline?: components["schemas"]["Money"];
-            /** @description The tracked price per day, last 30 days, oldest first: the listing's, or the lowest of the variant at the tracker's stores */
+            /**
+             * Format: int64
+             * @description Chosen re-check interval in hours; 0: automatic (6 hours, 2 to 24 as prices move)
+             */
+            check_every_hours: number;
+            /** @description The tracked price per day since tracking started (at most a year), oldest first: the listing's, or the lowest of the variant at the tracker's stores */
             history: components["schemas"]["DayPrice"][];
+            /**
+             * Format: date-time
+             * @description When the product was last refreshed
+             */
+            last_checked?: string;
             /** @description The listing this tracker follows; absent: the product's cheapest offer */
             listing?: components["schemas"]["Listing"];
+            /**
+             * Format: date-time
+             * @description When the next scheduled refresh is due, at the latest
+             */
+            next_check?: string;
             note: string;
             /** Format: int64 */
             product_id: number;
@@ -488,6 +503,11 @@ export interface components {
              * @description Costly searches per member per day (C1)
              */
             member_daily_searches: number;
+            /**
+             * Format: int64
+             * @description Shortest re-check interval a member may choose for a tracked product
+             */
+            min_check_hours: number;
             /**
              * Format: int64
              * @description Stores a member or visitor may pick for one search
@@ -667,6 +687,11 @@ export interface components {
              * @example https://example.com/schemas/SaveTrackedInputBody.json
              */
             readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Re-check interval in hours; omit or 0 for automatic
+             */
+            check_every_hours?: number;
             /** @description Up to 500 characters */
             note: string;
             /**

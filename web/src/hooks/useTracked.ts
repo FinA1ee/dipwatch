@@ -18,7 +18,8 @@ export function useTracked() {
       stores: string[];
       offerId: number | null;
       variant: string;
-    }) => saveTracked(v.productId, v.note, v.rules, v.stores, v.offerId, v.variant),
+      checkEveryHours: number;
+    }) => saveTracked(v.productId, v.note, v.rules, v.stores, v.offerId, v.variant, v.checkEveryHours),
     onSuccess: refresh,
   });
   const remove = useMutation({

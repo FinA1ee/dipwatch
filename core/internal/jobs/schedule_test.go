@@ -23,7 +23,7 @@ func TestAdaptiveIntervalAndDueProducts(t *testing.T) {
 	}
 
 	due := func() map[int64]bool {
-		ids, err := q.DueTrackedProducts(ctx)
+		ids, err := q.DueTrackedProducts(ctx, 3600)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,5 +70,27 @@ func TestAdaptiveIntervalAndDueProducts(t *testing.T) {
 	}
 	if got := interval(); got != 24*time.Hour {
 		t.Fatalf("capped at: %s, want 24h", got)
+	}
+
+	// A tracker that asks for hourly checks makes the product due after an hour,
+	// although the automatic interval is 24 hours now.
+	if _, err := pool.Exec(ctx, "UPDATE app.watch_items SET check_every = interval '1 hour' WHERE product_id = $1", tracked.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE app.products SET last_refreshed_at = now() - interval '90 minutes' WHERE id = $1", tracked.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !due()[tracked.ID] {
+		t.Fatal("not due 90 minutes after a refresh with hourly checks")
+	}
+	// The owner's minimum wins over the member's choice.
+	if ids, err := q.DueTrackedProducts(ctx, 2*3600); err != nil {
+		t.Fatal(err)
+	} else {
+		for _, row := range ids {
+			if row.ID == tracked.ID {
+				t.Fatal("due before the owner's 2-hour minimum")
+			}
+		}
 	}
 }

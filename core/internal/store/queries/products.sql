@@ -43,13 +43,19 @@ SELECT pg_notify('dipwatch_agent', @payload::text);
 -- Tracked products whose refresh interval has passed and that are not refreshing
 -- (T3), with the stores their trackers chose. An empty list means a tracker from
 -- before per-store tracking: every enabled store. Untracked products are never scheduled.
+-- The interval is the automatic one, or the shortest a tracker chose, but never
+-- under the owner's minimum (min_check_seconds).
 SELECT p.id,
        ARRAY(SELECT DISTINCT s FROM app.watch_items w, unnest(w.sources) s WHERE w.product_id = p.id ORDER BY 1)::text[] AS sources,
        EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id AND cardinality(w.sources) = 0) AS all_sources
 FROM app.products p
 WHERE EXISTS (SELECT 1 FROM app.watch_items w WHERE w.product_id = p.id)
   AND cardinality(p.refreshing_sources) = 0
-  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + p.refresh_interval <= now())
+  AND (p.last_refreshed_at IS NULL OR p.last_refreshed_at + LEAST(
+        p.refresh_interval,
+        COALESCE((SELECT GREATEST(min(w.check_every), make_interval(secs => @min_check_seconds::int))
+                  FROM app.watch_items w WHERE w.product_id = p.id), p.refresh_interval)
+      ) <= now())
 ORDER BY p.last_refreshed_at NULLS FIRST
 LIMIT 50;
 

@@ -12,6 +12,8 @@ import { useProductPage } from "../../OffersModule/Model/useProductPage";
 import { useVariant } from "../../OffersModule/Model/useVariant";
 import { AlertChannel } from "../Component/AlertChannel";
 
+const CHECK_HOURS = [1, 2, 4, 6, 12, 24];
+
 /**
  * Track this product, one size of it, or one listing: rules, note, where alerts
  * go, save or stop (T1, T2, T6). It sits right under the price summary.
@@ -30,6 +32,7 @@ export function TrackView() {
   const [draft, setDraft] = useState<RuleDraft>(EMPTY_DRAFT);
   const [note, setNote] = useState("");
   const [problem, setProblem] = useState("");
+  const [checkEvery, setCheckEvery] = useState(0); // hours; 0: automatic
   const alerts = useAlertSettings();
 
   // Load the saved tracker into the form once it arrives.
@@ -37,6 +40,7 @@ export function TrackView() {
     if (current) {
       setDraft(rulesToDraft(current.rules));
       setNote(current.note);
+      setCheckEvery(current.check_every_hours);
     }
   }, [current]);
 
@@ -86,6 +90,7 @@ export function TrackView() {
       stores: stores.selected,
       offerId: listing,
       variant: listing ? "" : size,
+      checkEveryHours: checkEvery,
     });
   };
   const error = problem || t.save.error?.message || t.remove.error?.message;
@@ -125,7 +130,21 @@ export function TrackView() {
           The store no longer lists it. Pick another listing below, or follow the cheapest listing.
         </p>
       )}
-      <p className="text-sm text-muted">Dipwatch re-checks it every few hours.</p>
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">Check the price</span>
+        <select
+          value={checkEvery}
+          onChange={(e) => setCheckEvery(Number(e.target.value))}
+          className="rounded border border-rule bg-white px-2 py-1"
+        >
+          <option value={0}>automatically (every 2 to 24 hours as it moves)</option>
+          {CHECK_HOURS.map((h) => (
+            <option key={h} value={h}>
+              every {h} {h === 1 ? "hour" : "hours"}
+            </option>
+          ))}
+        </select>
+      </label>
       <RuleEditor draft={draft} note={note} currency={currency} onDraft={setDraft} onNote={setNote} />
       {alerts.settings && (
         <AlertChannel
