@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -109,7 +110,17 @@ func (w *NotifyWorker) message(a store.GetAlertToSendRow) (subject, text string)
 	}
 	// Starts with "dipwatch" in lower case: Feishu bots often filter on that
 	// keyword, and the match is case-sensitive.
-	subject = fmt.Sprintf("dipwatch: %s, %s", a.CanonicalName, alerts.DescribeKey(a.Rule, format))
+	what := alerts.DescribeKey(a.Rule, format)
+	if a.PreviousCnyMinor != nil && a.CurrentCnyMinor != nil && *a.PreviousCnyMinor > 0 {
+		before, after := *a.PreviousCnyMinor, *a.CurrentCnyMinor
+		direction := "up"
+		if after < before {
+			direction = "down"
+		}
+		what = fmt.Sprintf("price %s %.1f%%, %s to %s", direction,
+			math.Abs(float64(after-before))*100/float64(before), money.Format(before, "CNY"), money.Format(after, "CNY"))
+	}
+	subject = fmt.Sprintf("dipwatch: %s, %s", a.CanonicalName, what)
 	lines := []string{
 		fmt.Sprintf("%s at %s: %s", money.Format(a.PriceMinor, a.Currency), a.SourceName, title),
 		a.Url,
@@ -118,6 +129,23 @@ func (w *NotifyWorker) message(a store.GetAlertToSendRow) (subject, text string)
 		lines = append(lines, fmt.Sprintf("All offers and price history: %s/p/%d", strings.TrimRight(w.PublicURL, "/"), a.ProductID))
 	}
 	return subject, strings.Join(lines, "\n")
+}
+
+// forget deletes what the privacy page says is kept for 30 days: search
+// counters by IP address, and expired sign-in sessions. A failure is logged:
+// it must not stop refreshes, and the next run tries again.
+func forget(ctx context.Context, q *store.Queries) {
+	quota, err := q.DeleteOldQuota(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "schedule: delete old search counters", "err", err)
+	}
+	sessions, err := q.DeleteOldSessions(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "schedule: delete old sessions", "err", err)
+	}
+	if quota+sessions > 0 {
+		slog.InfoContext(ctx, "schedule: deleted old records", "search_counters", quota, "sessions", sessions)
+	}
 }
 
 // ScheduleArgs enqueues refreshes for tracked products that are due (T3).
@@ -139,6 +167,7 @@ type ScheduleWorker struct {
 }
 
 func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs]) error {
+	forget(ctx, store.New(w.DB))
 	if spend.LevelOf(ctx, w.Spend) == spend.StoredOnly {
 		slog.InfoContext(ctx, "schedule: paused, daily budget used up")
 		return nil
@@ -166,8 +195,8 @@ func (w *ScheduleWorker) Work(ctx context.Context, job *river.Job[ScheduleArgs])
 	return nil
 }
 
-// SimulateDropArgs lowers the cheapest offer of a product and runs the alert
-// check, to test delivery end to end (M6.3). Admin only, through the API.
+// SimulateDropArgs lowers the offer a tracker of the product follows and runs
+// the alert check, to test delivery end to end (M6.3). Admin only, through the API.
 type SimulateDropArgs struct {
 	ProductID int64 `json:"product_id"`
 	Percent   int   `json:"percent"`
@@ -191,12 +220,25 @@ func (w *SimulateDropWorker) Work(ctx context.Context, job *river.Job[SimulateDr
 	if err != nil {
 		rates = fx.Rates{}
 	}
-	// Cheapest in CNY: raw minor units are not comparable across currencies.
+	// The offer a tracker would alert on: its pinned listing, else the cheapest
+	// confirmed price of its size (any size without a tracker). Raw minor units
+	// are not comparable across currencies, so compare in CNY.
+	var pinned *int64
+	variant := ""
+	if watchers, err := q.ListProductWatchers(ctx, job.Args.ProductID); err == nil && len(watchers) > 0 {
+		pinned, variant = watchers[0].OfferID, watchers[0].Variant
+	}
 	var target *store.AppOffer
 	var best int64
 	for i := range offers {
 		o := &offers[i]
-		if o.IsProduct != nil && !*o.IsProduct {
+		if pinned != nil {
+			if o.ID == *pinned {
+				target = o
+			}
+			continue
+		}
+		if (o.IsProduct != nil && !*o.IsProduct) || o.PriceUnconfirmed || (variant != "" && o.Variant != variant) {
 			continue
 		}
 		cny, err := rates.ToCNYMinor(o.PriceMinor, o.Currency)

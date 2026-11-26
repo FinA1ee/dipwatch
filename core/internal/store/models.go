@@ -25,15 +25,17 @@ type AppAgentRun struct {
 }
 
 type AppAlert struct {
-	ID          int64
-	WatchItemID int64
-	OfferID     int64
-	Rule        string
-	Channel     string
-	AlertDate   pgtype.Date
-	Status      string
-	SentAt      pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
+	ID               int64
+	WatchItemID      int64
+	OfferID          int64
+	Rule             string
+	Channel          string
+	AlertDate        pgtype.Date
+	Status           string
+	SentAt           pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	PreviousCnyMinor *int64
+	CurrentCnyMinor  *int64
 }
 
 type AppFxRate struct {
@@ -153,6 +155,7 @@ type AppWatchItem struct {
 	Sources               []string
 	OfferID               *int64
 	Variant               string
+	LastPriceCnyMinor     *int64
 }
 
 type AuthAccount struct {

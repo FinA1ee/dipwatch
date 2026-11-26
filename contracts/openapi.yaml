@@ -13,6 +13,19 @@ components:
         - day
         - converted
       type: object
+    DayPrice:
+      additionalProperties: false
+      properties:
+        day:
+          format: date
+          type: string
+        price:
+          $ref: "#/components/schemas/Money"
+          description: In CNY
+      required:
+        - day
+        - price
+      type: object
     Detail:
       additionalProperties: false
       properties:
@@ -237,6 +250,11 @@ components:
         baseline:
           $ref: "#/components/schemas/Money"
           description: Price when tracking started (of the listing, if one is pinned), in CNY
+        history:
+          description: "The tracked price per day, last 30 days, oldest first: the listing's, or the lowest of the variant at the tracker's stores"
+          items:
+            $ref: "#/components/schemas/DayPrice"
+          type: array
         listing:
           $ref: "#/components/schemas/Listing"
           description: "The listing this tracker follows; absent: the product's cheapest offer"
@@ -269,6 +287,7 @@ components:
         - rules
         - stores
         - variant
+        - history
         - tracked_at
       type: object
     Limits:
@@ -578,7 +597,7 @@ components:
           $ref: "#/components/schemas/Money"
           description: "For below: alert when an offer costs less than this"
         percent:
-          description: "For drop: alert at this drop from the price when tracking started"
+          description: "For drop: alert at this drop from the price when tracking started. For change: alert when the price moves at least this much, up or down, from the last price seen"
           format: int64
           maximum: 90
           minimum: 0
@@ -589,6 +608,7 @@ components:
             - drop
             - back_in_stock
             - new_source
+            - change
           type: string
       required:
         - type

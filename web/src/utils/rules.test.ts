@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Rule } from "@/services/tracking";
 import { describeRule, draftToRules, EMPTY_DRAFT, rulesToDraft } from "./rules";
 
 describe("rules", () => {
@@ -30,5 +31,11 @@ describe("rules", () => {
     ];
     expect(draftToRules(rulesToDraft(rules), "CNY")).toEqual(rules);
     expect(rules.map(describeRule)).toEqual(["below CN¥1,499.50", "new store"]);
+  });
+  it("adds a price-change rule and reads it back", () => {
+    const rules = draftToRules({ ...EMPTY_DRAFT, drop: false, change: true, changePercent: "3" }, "CNY");
+    expect(rules).toEqual([{ type: "change", percent: 3 }]);
+    expect(rulesToDraft(rules as Rule[])).toMatchObject({ change: true, changePercent: "3", drop: false });
+    expect(typeof draftToRules({ ...EMPTY_DRAFT, change: true, changePercent: "0" }, "CNY")).toBe("string");
   });
 });

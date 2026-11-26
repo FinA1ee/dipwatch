@@ -70,7 +70,8 @@ JOIN app.offers o ON o.id = pp.offer_id
 WHERE o.product_id = @product_id
   AND o.is_product IS NOT FALSE
   AND NOT o.price_unconfirmed
-  AND o.variant = @variant
+  AND (@variant::text = '' OR o.variant = @variant)
+  AND (cardinality(@source_ids::text[]) = 0 OR o.source_id = ANY(@source_ids::text[]))
   AND pp.observed_at >= @since
 ORDER BY pp.observed_at;
 

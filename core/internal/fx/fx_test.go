@@ -98,3 +98,18 @@ func TestRefreshFallsBackToStoredRates(t *testing.T) {
 	// Leave no far-future row behind for other code that reads the latest rates.
 	_, _ = pool.Exec(ctx, `DELETE FROM app.fx_rates WHERE date = '2099-01-02'`)
 }
+
+func TestDailyLows(t *testing.T) {
+	r := Rates{Rates: map[string]float64{"JPY": 21}} // 1 CNY = 21 JPY
+	day := func(d, h int) time.Time { return time.Date(2026, 11, d, h, 0, 0, 0, time.UTC) }
+	got := r.DailyLows([]Point{
+		{At: day(24, 1), Minor: 120000, Currency: "CNY"},
+		{At: day(24, 9), Minor: 110000, Currency: "CNY"}, // lower the same day
+		{At: day(25, 3), Minor: 21000, Currency: "JPY"}, // ¥1,000 in CNY
+		{At: day(25, 4), Minor: 5, Currency: "XXX"},     // no rate: left out
+	})
+	want := []DayLow{{Day: "2026-11-24", CNY: 110000}, {Day: "2026-11-25", CNY: 100000}}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}

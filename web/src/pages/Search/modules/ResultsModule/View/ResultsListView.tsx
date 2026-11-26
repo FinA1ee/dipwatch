@@ -1,9 +1,8 @@
-import { Link } from "react-router";
 import { OfferTable } from "@/components/OfferTable";
-import { ANY_VARIANT } from "@/utils/variants";
+import { TrackListingButton } from "@/components/TrackListingButton";
 import { useResults } from "../Model/useResults";
 
-/** The ranked offers and the prompt to track the product. */
+/** The ranked offers, each with "Track this listing". */
 export function ResultsListView() {
   const r = useResults();
   if (!r.product || r.phase === "idle" || r.phase === "error") return null;
@@ -14,31 +13,11 @@ export function ResultsListView() {
       </p>
     );
   }
+  const productId = r.product.id;
   return (
-    <section className="space-y-8">
-      <OfferTable
-        offers={r.shown}
-        action={(o) => (
-          <Link
-            to={`/p/${r.product?.id}?listing=${o.id}#track`}
-            className="font-medium text-ink hover:underline"
-          >
-            Track this listing
-          </Link>
-        )}
-      />
-      <aside className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[14px] bg-ink px-[22px] py-[18px] text-white">
-        <p className="min-w-60 flex-1">
-          Get a Feishu message when the {r.product.name} drops below a price you choose, at any listing or one
-          you pick above.
-        </p>
-        <Link
-          to={`/p/${r.product.id}${r.variant !== ANY_VARIANT && r.variant ? `?variant=${encodeURIComponent(r.variant)}` : ""}`}
-          className="rounded-[10px] bg-white px-[18px] py-2.5 font-semibold text-ink hover:bg-paper"
-        >
-          Track {r.variant !== ANY_VARIANT && r.variant ? `the ${r.variant} version` : "this product"}
-        </Link>
-      </aside>
-    </section>
+    <OfferTable
+      offers={r.shown}
+      action={(o) => <TrackListingButton to={`/p/${productId}?listing=${o.id}#track`} />}
+    />
   );
 }

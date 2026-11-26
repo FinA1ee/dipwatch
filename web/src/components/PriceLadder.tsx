@@ -29,9 +29,9 @@ export function PriceLadder({ offers, note }: Props) {
   return (
     <section aria-label="Price spread" className="rounded-[14px] bg-white px-6 pt-5 pb-4">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <p className="font-head text-[44px] font-bold leading-none tracking-tight tabular-nums">
+        <p className="font-head text-[34px] font-bold leading-none tracking-tight tabular-nums sm:text-[44px]">
           {formatMoney(first.m)}
-          <span className="ml-2.5 font-sans text-[15px] font-medium tracking-normal text-muted">
+          <span className="ml-2.5 whitespace-nowrap font-sans text-[15px] font-medium tracking-normal text-muted">
             lowest now
           </span>
         </p>
@@ -61,19 +61,28 @@ export function PriceLadder({ offers, note }: Props) {
             />
           </button>
         ))}
-        <span className="absolute top-12 left-0 text-xs font-semibold text-drop">
-          {focus && active !== 0 ? "" : `${formatMoney(first.m)} ${first.o.source.name}`}
-        </span>
-        {priced.length > 1 && (
-          <span className="absolute top-12 right-0 text-xs text-muted">{formatMoney(last.m)}</span>
-        )}
-        {focus && active !== 0 && (
+        {focus ? (
+          // The focused offer's label replaces the end labels, so they never overlap.
+          // It grows away from the nearer edge and is cut to fit inside the card.
           <span
-            className="absolute top-12 max-w-[60%] -translate-x-1/2 truncate text-xs font-medium text-ink"
-            style={{ left: `${Math.min(Math.max(pos(focus.m.minor), 15), 85)}%` }}
+            className="absolute top-12 truncate text-xs font-medium text-ink"
+            style={
+              pos(focus.m.minor) < 50
+                ? { left: `${pos(focus.m.minor)}%`, maxWidth: `${100 - pos(focus.m.minor)}%` }
+                : { right: `${100 - pos(focus.m.minor)}%`, maxWidth: `${pos(focus.m.minor)}%` }
+            }
           >
-            {formatMoney(focus.m)} · {focus.o.title}
+            {formatMoney(focus.m)} · {focus.o.source.name} · {focus.o.title}
           </span>
+        ) : (
+          <>
+            <span className="absolute top-12 left-0 text-xs font-semibold text-drop">
+              {formatMoney(first.m)} {first.o.source.name}
+            </span>
+            {priced.length > 1 && (
+              <span className="absolute top-12 right-0 text-xs text-muted">{formatMoney(last.m)}</span>
+            )}
+          </>
         )}
       </div>
     </section>

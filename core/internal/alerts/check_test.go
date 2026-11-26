@@ -217,3 +217,54 @@ func TestTrackersOfAVariantIgnoreOtherVariants(t *testing.T) {
 		t.Fatalf("alert for offer %d, want the 48GB one %d", offerID, f.dear)
 	}
 }
+
+func TestPriceChangeFiresBothWays(t *testing.T) {
+	ctx, pool := setup(t)
+	// Track the ¥500 offer with "change by 5%"; the tracker last saw ¥500.
+	f := newFixture(t, ctx, pool, []Rule{{Type: RuleChange, Percent: 5}}, 50000)
+	if _, err := pool.Exec(ctx, "UPDATE app.watch_items SET offer_id = $1, last_price_cny_minor = 50000 WHERE id = $2", f.cheap, f.watchID); err != nil {
+		t.Fatal(err)
+	}
+	c := &Checker{Enqueue: (&queued{}).enqueue}
+	set := func(minor int64) {
+		if _, err := pool.Exec(ctx, "UPDATE app.offers SET price_minor = $1 WHERE id = $2", minor, f.cheap); err != nil {
+			t.Fatal(err)
+		}
+	}
+	last := func() int64 {
+		var v int64
+		if err := pool.QueryRow(ctx, "SELECT last_price_cny_minor FROM app.watch_items WHERE id = $1", f.watchID).Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+
+	set(51000) // +2%: no alert, but the new price is remembered
+	if n, err := c.Check(ctx, f.q, f.productID, f.sourceID, Changes{}); err != nil || n != 0 || last() != 51000 {
+		t.Fatalf("+2%%: %d alerts, %v, last %d", n, err, last())
+	}
+	set(54060) // +6% from ¥510
+	n, err := c.Check(ctx, f.q, f.productID, f.sourceID, Changes{})
+	if err != nil || n != 1 || last() != 54060 {
+		t.Fatalf("+6%%: %d alerts, %v, last %d", n, err, last())
+	}
+	var before, after int64
+	if err := pool.QueryRow(ctx, "SELECT previous_cny_minor, current_cny_minor FROM app.alerts WHERE watch_item_id = $1", f.watchID).Scan(&before, &after); err != nil {
+		t.Fatal(err)
+	}
+	if before != 51000 || after != 54060 {
+		t.Fatalf("alert recorded %d to %d", before, after)
+	}
+}
+
+func TestMoved(t *testing.T) {
+	for _, c := range []struct {
+		from, to int64
+		percent  int
+		want     bool
+	}{{100, 105, 5, true}, {100, 95, 5, true}, {100, 104, 5, false}, {100, 96, 5, false}} {
+		if got := Moved(c.from, c.to, c.percent); got != c.want {
+			t.Errorf("Moved(%d, %d, %d) = %v", c.from, c.to, c.percent, got)
+		}
+	}
+}
